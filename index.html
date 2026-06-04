@@ -8,6 +8,8 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -203,6 +205,18 @@ tbody tr:hover{background:#f8f9fa}
 .ann-content{font-size:13px;color:#555;line-height:1.6;margin-bottom:6px;white-space:pre-wrap;word-break:break-word}
 .ann-footer{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:11px;color:#aaa}
 
+/* ===== SURVEY RESULT CHART ===== */
+.result-q-block{background:#fff;border:1px solid #e8e8e8;border-radius:10px;padding:18px;margin-bottom:18px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.result-q-title{font-weight:700;font-size:14px;color:var(--dark);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.result-q-type{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:700}
+.chart-wrap{position:relative;width:100%;height:260px}
+.text-ans-list{list-style:none;padding:0;margin:0}
+.text-ans-list li{padding:8px 12px;border-left:3px solid var(--pri);background:#f8f9fa;border-radius:0 6px 6px 0;margin-bottom:6px;font-size:13px;line-height:1.5}
+.text-ans-list li .ans-who{font-size:11px;color:#aaa;margin-bottom:2px}
+.result-stat-item{text-align:center;min-width:90px;padding:8px 12px;background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.result-stat-item .num{font-size:28px;font-weight:700;color:var(--dark);line-height:1.1}
+.result-stat-item .lbl{font-size:11px;color:#aaa;margin-top:2px}
+
 /* responsive */
 @media(max-width:768px){
   .container{padding:10px}
@@ -212,6 +226,16 @@ tbody tr:hover{background:#f8f9fa}
   .stats-grid{grid-template-columns:repeat(2,1fr)}
   .modal-body{padding:18px}
 }
+
+/* ===== 集計グラフ ===== */
+.result-q-block{background:#fff;border:1px solid #e8e8e8;border-radius:10px;padding:18px;margin-bottom:18px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.result-q-title{font-weight:700;font-size:14px;color:var(--dark);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.chart-wrap{position:relative;width:100%;height:260px}
+.text-ans-list{list-style:none;padding:0;margin:0}
+.text-ans-list li{padding:8px 12px;border-left:3px solid var(--pri);background:#f8f9fa;border-radius:0 6px 6px 0;margin-bottom:6px;font-size:13px;color:#444;line-height:1.5}
+.result-stat-item{text-align:center;min-width:90px}
+.result-stat-item .num{font-size:28px;font-weight:700;color:var(--dark)}
+.result-stat-item .lbl{font-size:11px;color:#aaa;margin-top:2px}
 </style>
 </head>
 <body>
@@ -547,11 +571,18 @@ tbody tr:hover{background:#f8f9fa}
 
 <!-- アンケート集計モーダル -->
 <div id="surveyResultModal" class="modal">
-  <div class="modal-body" style="max-width:700px">
+  <div class="modal-body" style="max-width:820px">
     <div class="modal-hdr">
       <span class="modal-title"><i class="fas fa-chart-bar"></i> 集計結果</span>
-      <button class="modal-close" onclick="closeModal('surveyResultModal')"><i class="fas fa-times"></i></button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-sec btn-sm" id="csvExportBtn" onclick="exportResultCSV()">
+          <i class="fas fa-file-csv"></i> CSVダウンロード
+        </button>
+        <button class="modal-close" onclick="closeModal('surveyResultModal')"><i class="fas fa-times"></i></button>
+      </div>
     </div>
+    <!-- サマリーバー -->
+    <div id="resultSummary" style="display:flex;gap:16px;flex-wrap:wrap;background:var(--lbg);border-radius:10px;padding:14px 18px;margin-bottom:18px"></div>
     <div id="resultBody"></div>
   </div>
 </div>
@@ -1052,39 +1083,173 @@ async function submitAnswer(){
     closeModal('surveyAnswerModal');loadSurveys();showNotif('回答を送信しました','success');
   }catch(e){showNotif('送信失敗: '+e.message,'error');}
 }
+// ---- 集計結果グローバル保持（CSV用） ----
+let _resultSurvey = null;
+let _resultResponses = [];
+let _resultQs = [];
+// Chart.js インスタンスを管理（再描画時に破棄）
+const _chartInstances = {};
+
 async function openResultModal(surveyId){
-  const pass=prompt('集計パスワードを入力してください');if(pass===null)return;
+  const pass=prompt('集計パスワードを入力してください');
+  if(pass===null)return;
   const surveys=await fsGet('surveys');
-  const s=surveys.find(x=>x.docId===surveyId);if(!s)return;
+  const s=surveys.find(x=>x.docId===surveyId);
+  if(!s)return;
   if(s.password!==pass){showNotif('パスワードが違います','error');return;}
-  let qs=[];try{qs=JSON.parse(s.questions||'[]');}catch{}
-  let responses=[];try{responses=JSON.parse(s.responses||'[]');}catch{}
-  let html=`<h3 style="margin-bottom:12px;font-size:16px">${escH(s.title)}</h3><p style="font-size:13px;color:#888;margin-bottom:20px"><i class="fas fa-users"></i> 回答数：${responses.length}件</p>`;
+
+  let qs=[];  try{qs=JSON.parse(s.questions||'[]');}catch{}
+  let responses=[]; try{responses=JSON.parse(s.responses||'[]');}catch{}
+
+  // グローバル保持
+  _resultSurvey=s; _resultResponses=responses; _resultQs=qs;
+
+  // ---- サマリーバー ----
+  const answeredUsers=[...new Set(responses.map(r=>r.userName))];
+  document.getElementById('resultSummary').innerHTML=`
+    <div class="result-stat-item"><div class="num">${responses.length}</div><div class="lbl">総回答数</div></div>
+    <div class="result-stat-item"><div class="num">${answeredUsers.length}</div><div class="lbl">回答者数</div></div>
+    <div class="result-stat-item"><div class="num">${qs.length}</div><div class="lbl">質問数</div></div>
+    <div class="result-stat-item"><div class="num">${qs.filter(q=>q.type==='checkbox').length}</div><div class="lbl">選択式</div></div>
+    <div class="result-stat-item"><div class="num">${qs.filter(q=>q.type==='text').length}</div><div class="lbl">記述式</div></div>
+  `;
+
+  // ---- 質問ブロック生成 ----
+  // 既存 Chart インスタンスを全破棄
+  Object.values(_chartInstances).forEach(c=>c.destroy());
+  Object.keys(_chartInstances).forEach(k=>delete _chartInstances[k]);
+
+  const rbody = document.getElementById('resultBody');
+  rbody.innerHTML = '';
+
   qs.forEach((q,i)=>{
-    html+=`<div style="margin-bottom:20px;border:1px solid #eee;border-radius:8px;padding:14px">
-      <div style="font-weight:700;font-size:14px;margin-bottom:10px">Q${i+1}. ${escH(q.text)}</div>`;
+    const block = document.createElement('div');
+    block.className = 'result-q-block';
+    const typeLabel = q.type==='checkbox'
+      ? `<span class="badge b-pri">選択式</span>`
+      : `<span class="badge b-sec">記述式</span>`;
+    block.innerHTML=`<div class="result-q-title">${typeLabel} Q${i+1}. ${escH(q.text)}</div>
+      ${q.type==='checkbox'
+        ? `<div class="chart-wrap"><canvas id="chart_${i}"></canvas></div>`
+        : `<ul class="text-ans-list" id="textAns_${i}"></ul>`
+      }`;
+    rbody.appendChild(block);
+
     if(q.type==='checkbox'){
+      // 集計
       const counts={};
       q.options.forEach(o=>{counts[o]=0;});
-      responses.forEach(r=>{const a=r.ans[`q${i}`]||[];a.forEach(v=>{if(counts[v]!==undefined)counts[v]++;});});
-      const total=responses.length||1;
-      Object.entries(counts).forEach(([opt,cnt])=>{
-        const pct=Math.round(cnt/total*100);
-        html+=`<div style="margin-bottom:8px">
-          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px"><span>${escH(opt)}</span><span>${cnt}件 (${pct}%)</span></div>
-          <div class="progress"><div class="progress-bar" style="width:${pct}%"></div></div>
-        </div>`;
+      responses.forEach(r=>{
+        const a=r.ans?.[`q${i}`]||[];
+        a.forEach(v=>{if(counts[v]!==undefined)counts[v]++;});
       });
+      const labels=Object.keys(counts);
+      const data=Object.values(counts);
+      const total=responses.length||1;
+
+      // パレット（12色循環）
+      const palette=[
+        'rgba(52,152,219,.85)','rgba(46,204,113,.85)','rgba(231,76,60,.85)',
+        'rgba(243,156,18,.85)','rgba(155,89,182,.85)','rgba(52,73,94,.85)',
+        'rgba(26,188,156,.85)','rgba(230,126,34,.85)','rgba(149,165,166,.85)',
+        'rgba(41,128,185,.85)','rgba(39,174,96,.85)','rgba(192,57,43,.85)'
+      ];
+      const colors=labels.map((_,idx)=>palette[idx%palette.length]);
+
+      // Chart.js 棒グラフ
+      const ctx=document.getElementById(`chart_${i}`).getContext('2d');
+      _chartInstances[`chart_${i}`]=new Chart(ctx,{
+        type:'bar',
+        data:{
+          labels:labels.map(l=>l.length>14?l.slice(0,13)+'…':l),
+          datasets:[{
+            label:'回答数',
+            data:data,
+            backgroundColor:colors,
+            borderColor:colors.map(c=>c.replace('.85','.99')),
+            borderWidth:1,
+            borderRadius:6,
+          }]
+        },
+        options:{
+          responsive:true,
+          maintainAspectRatio:false,
+          plugins:{
+            legend:{display:false},
+            tooltip:{
+              callbacks:{
+                label:ctx=>{
+                  const cnt=ctx.parsed.y;
+                  const pct=Math.round(cnt/total*100);
+                  return ` ${cnt}件 (${pct}%)`;
+                }
+              }
+            }
+          },
+          scales:{
+            y:{
+              beginAtZero:true,
+              ticks:{stepSize:1,font:{size:12}},
+              grid:{color:'rgba(0,0,0,.06)'}
+            },
+            x:{
+              ticks:{font:{size:12}},
+              grid:{display:false}
+            }
+          }
+        }
+      });
+
     }else{
-      const texts=responses.map(r=>r.ans[`q${i}`]).filter(Boolean);
-      if(!texts.length){html+=`<p style="color:#aaa;font-size:13px">回答なし</p>`;}
-      else{html+=`<ul style="padding-left:16px">${texts.map(t=>`<li style="font-size:13px;margin-bottom:4px">${escH(t)}</li>`).join('')}</ul>`;}
+      // テキスト回答一覧
+      const ul=block.querySelector(`#textAns_${i}`);
+      const texts=responses.map(r=>({name:r.userName,val:r.ans?.[`q${i}`]||''})).filter(x=>x.val);
+      if(!texts.length){
+        ul.innerHTML='<li style="color:#aaa;border-left-color:#ddd">回答なし</li>';
+      }else{
+        ul.innerHTML=texts.map(x=>`<li><div class="ans-who">${escH(x.name)}</div>${escH(x.val)}</li>`).join('');
+      }
     }
-    html+=`</div>`;
   });
-  document.getElementById('resultBody').innerHTML=html;
+
   document.getElementById('surveyResultModal').classList.add('active');
 }
+
+// ---- CSV エクスポート ----
+function exportResultCSV(){
+  if(!_resultSurvey){return;}
+  const qs=_resultQs;
+  const responses=_resultResponses;
+
+  // ヘッダー行
+  const headers=['回答者名','回答日時',...qs.map((q,i)=>`Q${i+1}: ${q.text}`)];
+
+  const rows=responses.map(r=>{
+    const base=[r.userName||'',r.at||''];
+    const ans=qs.map((q,i)=>{
+      const v=r.ans?.[`q${i}`];
+      if(Array.isArray(v))return v.join(' / ');
+      return v||'';
+    });
+    return[...base,...ans];
+  });
+
+  // CSV 文字列生成（UTF-8 BOM付き）
+  const escape=v=>'"'+String(v).replace(/"/g,'""')+'"';
+  const csvLines=[[...headers].map(escape).join(','),...rows.map(r=>r.map(escape).join(','))];
+  const csv='\uFEFF'+csvLines.join('\r\n');
+
+  // ダウンロード
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`アンケート_${(_resultSurvey.title||'集計').replace(/[^\w\u3000-\u9fff]/g,'_')}_${new Date().toLocaleDateString('ja-JP').replace(/\//g,'-')}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showNotif('CSVをダウンロードしました','success');
+}
+
 async function delSurvey(docId){
   if(!confirm('アンケートを削除しますか？'))return;
   await fsDel('surveys',docId);loadSurveys();showNotif('削除しました','success');
