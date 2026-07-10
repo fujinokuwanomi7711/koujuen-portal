@@ -1,663 +1,627 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>康寿園ポータル - スタッフ専用</title>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-:root{
-  --pri:#3498db;--sec:#2ecc71;--dan:#e74c3c;--war:#f39c12;
-  --dark:#2c3e50;--lbg:#ecf0f1;--txt:#34495e;--rad:12px;
-}
-body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#667eea,#764ba2);min-height:100vh;color:var(--txt)}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>康寿園ポータル 改善版</title>
 
-/* ===== LOGIN ===== */
-#loginScreen{display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px}
-.login-box{background:#fff;border-radius:20px;box-shadow:0 10px 40px rgba(0,0,0,.12);padding:40px;max-width:420px;width:100%;text-align:center;animation:fadeUp .5s ease}
-@keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
-.login-box i.hero{font-size:64px;color:var(--pri);display:block;margin-bottom:16px;animation:pulse 2s ease-in-out infinite}
-@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
-.login-box h1{font-size:26px;color:var(--dark);margin-bottom:6px}
-.login-box p.sub{color:#888;font-size:13px;margin-bottom:24px}
-.name-suggest{position:relative}
-.name-suggest input{width:100%;padding:14px 14px 14px 44px;border:2px solid #ddd;border-radius:var(--rad);font-size:15px;transition:.3s}
-.name-suggest input:focus{border-color:var(--pri);box-shadow:0 0 0 3px rgba(52,152,219,.12);outline:none}
-.name-suggest .icon-pre{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#aaa}
-.suggest-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #ddd;border-radius:0 0 8px 8px;z-index:99;max-height:180px;overflow-y:auto;display:none}
-.suggest-item{padding:10px 14px;cursor:pointer;font-size:14px;transition:.2s}
-.suggest-item:hover{background:var(--lbg)}
-.login-btn{width:100%;margin-top:16px;padding:14px;background:linear-gradient(135deg,var(--pri),#2980b9);color:#fff;border:none;border-radius:var(--rad);font-size:15px;font-weight:700;cursor:pointer;transition:.3s;display:flex;align-items:center;justify-content:center;gap:8px}
-.login-btn:hover{transform:translateY(-2px);box-shadow:0 5px 16px rgba(52,152,219,.35)}
-.login-note{margin-top:18px;font-size:12px;color:#aaa}
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-/* ===== MAIN ===== */
-#mainApp{display:none}
-.container{max-width:1400px;margin:0 auto;padding:20px}
+  <style>
+    :root{
+      --pri:#2f80ed;
+      --sec:#27ae60;
+      --warn:#f39c12;
+      --dan:#e74c3c;
+      --dark:#22313f;
+      --mut:#6b7b8c;
+      --bg:#eef3fb;
+      --card:#fff;
+      --line:#dfe7f0;
+      --rad:16px;
+      --shadow:0 8px 26px rgba(0,0,0,.08)
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family:"Segoe UI","Hiragino Sans","Yu Gothic UI",sans-serif;
+      background:linear-gradient(135deg,#6a82fb,#7f53ac);
+      min-height:100vh;
+      color:var(--dark)
+    }
+    .hide{display:none!important}
+    .wrap{max-width:1320px;margin:auto;padding:18px}
+    .panel,.card{background:var(--card);border-radius:var(--rad);box-shadow:var(--shadow)}
+    .center{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+    .login{width:min(460px,100%);padding:34px}
+    .login h1{font-size:28px;margin-bottom:8px}
+    .muted{color:var(--mut)}
+    .tiny{font-size:12px;color:var(--mut)}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .grow{flex:1 1 240px}
+    .stack{display:grid;gap:14px}
+    .inp,select,textarea{
+      width:100%;
+      padding:12px 14px;
+      border:1.8px solid var(--line);
+      border-radius:12px;
+      font:inherit;
+      background:#fff
+    }
+    .inp:focus,select:focus,textarea:focus{
+      outline:none;
+      border-color:var(--pri);
+      box-shadow:0 0 0 3px rgba(47,128,237,.14)
+    }
+    textarea{min-height:96px;resize:vertical}
+    .btn{
+      border:none;
+      border-radius:12px;
+      padding:11px 16px;
+      font:inherit;
+      font-weight:700;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      transition:.2s
+    }
+    .btn:hover{transform:translateY(-1px)}
+    .pri{background:var(--pri);color:#fff}
+    .sec{background:var(--sec);color:#fff}
+    .warn{background:var(--warn);color:#fff}
+    .dan{background:var(--dan);color:#fff}
+    .out{background:#fff;color:var(--pri);border:1.6px solid var(--pri)}
+    .sm{padding:7px 11px;font-size:12px}
+    .hdr{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      padding:16px 20px;
+      margin-bottom:18px
+    }
+    .brand{display:flex;align-items:center;gap:12px}
+    .brand i{font-size:28px;color:var(--pri)}
+    .avatar{
+      width:42px;
+      height:42px;
+      border-radius:50%;
+      display:grid;
+      place-items:center;
+      color:#fff;
+      background:linear-gradient(135deg,#2f80ed,#27ae60);
+      font-weight:700
+    }
+    .tabs{display:flex;gap:8px;overflow:auto;padding-bottom:8px;margin-bottom:18px}
+    .tab{
+      background:#fff;
+      border:none;
+      border-radius:999px;
+      padding:10px 16px;
+      white-space:nowrap;
+      cursor:pointer;
+      color:var(--dark)
+    }
+    .tab.active,.tab:hover{background:var(--pri);color:#fff}
+    .screen{display:none}
+    .screen.active{display:block}
+    .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px}
+    .stat{padding:18px;display:flex;gap:12px;align-items:center}
+    .stat i{
+      width:52px;
+      height:52px;
+      border-radius:14px;
+      display:grid;
+      place-items:center;
+      color:#fff;
+      font-size:22px
+    }
+    .stat b{font-size:28px;display:block}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+    .card{padding:18px;margin-bottom:16px}
+    .card h3{font-size:18px}
+    .cardHd{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
+    .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800}
+    .b1{background:var(--pri);color:#fff}
+    .b2{background:var(--sec);color:#fff}
+    .b3{background:var(--warn);color:#fff}
+    .b4{background:var(--dan);color:#fff}
+    .list{display:grid;gap:10px}
+    .item{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}
+    .itemTop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+    .title{font-weight:800}
+    .meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;color:var(--mut);font-size:12px}
+    .files{display:grid;gap:8px;margin-top:10px}
+    .file{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:8px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px;
+      background:#f8fbff
+    }
+    .roomBtn{cursor:pointer}
+    .msgBox{
+      max-height:420px;
+      overflow:auto;
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:#f7fbff;
+      padding:12px;
+      display:grid;
+      gap:10px
+    }
+    .msg{display:flex;gap:10px}
+    .bubble{
+      background:#fff;
+      border-radius:14px;
+      padding:10px 12px;
+      box-shadow:0 2px 8px rgba(0,0,0,.05);
+      flex:1
+    }
+    .bubble .meta{margin-top:2px;margin-bottom:6px}
+    .modal{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.45);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+      z-index:50
+    }
+    .modal.show{display:flex}
+    .modal .box{
+      width:min(840px,100%);
+      max-height:90vh;
+      overflow:auto;
+      background:#fff;
+      border-radius:18px;
+      padding:22px;
+      box-shadow:0 14px 40px rgba(0,0,0,.16)
+    }
+    .close{background:none;border:none;font-size:22px;cursor:pointer}
+    .toast{
+      position:fixed;
+      right:18px;
+      top:18px;
+      z-index:70;
+      background:#fff;
+      padding:12px 14px;
+      border-radius:14px;
+      box-shadow:var(--shadow);
+      border-left:5px solid var(--pri);
+      display:flex;
+      gap:9px;
+      max-width:340px
+    }
+    .empty{text-align:center;color:var(--mut);padding:28px 10px}
+    .banner img{width:100%;max-height:290px;object-fit:cover;border-radius:16px}
+    .q{border:1px solid var(--line);border-radius:14px;padding:12px;background:#fbfdff;margin-bottom:10px}
+    .chartWrap{position:relative;height:270px;margin-top:10px}
+    .table{width:100%;border-collapse:collapse}
+    .table th,.table td{padding:10px;border-bottom:1px solid var(--line);text-align:left;font-size:13px}
+    .table tr:hover{background:#fafcff}
+    .right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .w100{width:100%}
 
-/* header */
-header{background:#fff;padding:16px 24px;border-radius:var(--rad);box-shadow:0 2px 10px rgba(0,0,0,.08);margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
-.hdr-left{display:flex;align-items:center;gap:12px}
-.hdr-left>.fa-hospital-user{font-size:30px;color:var(--pri)}
-.hdr-left h1{font-size:22px;color:var(--dark)}
-.hdr-left small{font-size:11px;color:#aaa}
-.hdr-right{display:flex;align-items:center;gap:12px}
-.avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--pri),var(--sec));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:17px}
-.uname{font-weight:700;color:var(--dark);font-size:14px}
-.urole{font-size:11px;color:#aaa}
-.btn-logout{padding:7px 14px;background:var(--dan);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;transition:.3s}
-.btn-logout:hover{background:#c0392b}
-.admin-badge{background:#e74c3c;color:#fff;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:6px;font-weight:700}
-
-/* nav */
-.nav-tabs{display:flex;gap:8px;margin-bottom:24px;overflow-x:auto;padding-bottom:6px}
-.nav-tab{padding:10px 20px;background:#fff;border:none;border-radius:var(--rad);cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:7px;font-size:13px;color:var(--txt);transition:.3s}
-.nav-tab:hover{background:var(--pri);color:#fff;transform:translateY(-2px)}
-.nav-tab.active{background:var(--pri);color:#fff;box-shadow:0 4px 12px rgba(52,152,219,.3)}
-
-/* screens */
-.screen{display:none}
-.screen.active{display:block;animation:fadeIn .3s ease}
-@keyframes fadeIn{from{opacity:0}to{opacity:1}}
-
-/* cards */
-.card{background:#fff;border-radius:var(--rad);padding:20px;box-shadow:0 2px 10px rgba(0,0,0,.08);transition:.3s;margin-bottom:20px}
-.card:hover{transform:translateY(-3px);box-shadow:0 6px 18px rgba(0,0,0,.12)}
-.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:18px;margin-bottom:20px}
-.card-hdr{display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:12px;border-bottom:2px solid var(--lbg)}
-.card-icon{width:46px;height:46px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff}
-.card-title{font-size:16px;font-weight:700;color:var(--dark)}
-.card-sub{font-size:11px;color:#aaa}
-.card-foot{margin-top:14px;padding-top:12px;border-top:1px solid var(--lbg);display:flex;gap:8px;flex-wrap:wrap}
-
-/* stats */
-.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px}
-.stat-card{background:#fff;border-radius:var(--rad);padding:18px;box-shadow:0 2px 10px rgba(0,0,0,.08);display:flex;align-items:center;gap:14px}
-.stat-icon{width:54px;height:54px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff}
-.stat-info h3{font-size:26px;font-weight:700;color:var(--dark);margin-bottom:4px}
-.stat-info p{font-size:13px;color:#aaa}
-
-/* buttons */
-.btn{padding:9px 18px;border:none;border-radius:8px;cursor:pointer;font-size:13px;transition:.3s;display:inline-flex;align-items:center;gap:7px}
-.btn-pri{background:var(--pri);color:#fff}.btn-pri:hover{background:#2980b9;transform:translateY(-1px)}
-.btn-sec{background:var(--sec);color:#fff}.btn-sec:hover{background:#27ae60}
-.btn-dan{background:var(--dan);color:#fff}.btn-dan:hover{background:#c0392b}
-.btn-war{background:var(--war);color:#fff}.btn-war:hover{background:#d68910}
-.btn-out{background:#fff;border:2px solid var(--pri);color:var(--pri)}.btn-out:hover{background:var(--pri);color:#fff}
-.btn-sm{padding:6px 12px;font-size:12px}
-
-/* forms */
-.fg{margin-bottom:16px}
-.fg label{display:block;margin-bottom:6px;font-weight:600;color:var(--dark);font-size:13px}
-.fg input,.fg textarea,.fg select{width:100%;padding:10px 12px;border:2px solid #ddd;border-radius:8px;font-size:13px;transition:.3s;font-family:inherit}
-.fg input:focus,.fg textarea:focus,.fg select:focus{outline:none;border-color:var(--pri);box-shadow:0 0 0 3px rgba(52,152,219,.1)}
-.fg textarea{min-height:90px;resize:vertical}
-.fg .hint{font-size:11px;color:#aaa;margin-top:4px}
-
-/* badges */
-.badge{padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700;display:inline-block}
-.b-pri{background:var(--pri);color:#fff}.b-sec{background:var(--sec);color:#fff}
-.b-dan{background:var(--dan);color:#fff}.b-war{background:var(--war);color:#fff}
-.b-grey{background:#95a5a6;color:#fff}
-
-/* list */
-.list-item{padding:16px;border-bottom:1px solid var(--lbg);display:flex;justify-content:space-between;align-items:flex-start;gap:10px;transition:.2s}
-.list-item:last-child{border-bottom:none}
-.list-item:hover{background:var(--lbg)}
-.li-content{flex:1;min-width:0}
-.li-title{font-weight:700;color:var(--dark);margin-bottom:4px;font-size:14px}
-.li-sub{font-size:12px;color:#888}
-.li-meta{font-size:11px;color:#aaa;margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.li-actions{display:flex;gap:6px;flex-shrink:0}
-
-/* modal */
-.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;justify-content:center;align-items:center;padding:20px}
-.modal.active{display:flex;animation:fadeIn .3s ease}
-.modal-body{background:#fff;border-radius:var(--rad);padding:28px;max-width:640px;width:100%;max-height:92vh;overflow-y:auto;animation:slideUp .3s ease}
-@keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
-.modal-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid var(--lbg)}
-.modal-title{font-size:20px;font-weight:700;color:var(--dark)}
-.modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:#aaa;transition:.3s}
-.modal-close:hover{color:var(--dan);transform:rotate(90deg)}
-
-/* notification */
-.notif{position:fixed;top:20px;right:20px;padding:14px 18px;background:#fff;border-radius:var(--rad);box-shadow:0 4px 14px rgba(0,0,0,.14);z-index:1100;display:flex;align-items:center;gap:10px;animation:slideRight .3s ease;max-width:320px;font-size:13px}
-@keyframes slideRight{from{transform:translateX(360px);opacity:0}to{transform:translateX(0);opacity:1}}
-.notif.success{border-left:4px solid var(--sec)}
-.notif.error{border-left:4px solid var(--dan)}
-.notif.warning{border-left:4px solid var(--war)}
-
-/* progress */
-.progress{height:7px;background:var(--lbg);border-radius:4px;overflow:hidden;margin:8px 0}
-.progress-bar{height:100%;background:linear-gradient(90deg,var(--pri),var(--sec));transition:.4s}
-
-/* empty */
-.empty{text-align:center;padding:50px 20px;color:#ccc}
-.empty i{font-size:54px;margin-bottom:16px;display:block}
-.empty p{font-size:15px;color:#aaa}
-
-/* chat */
-.msg-list{max-height:440px;overflow-y:auto;padding:16px;background:var(--lbg);border-radius:var(--rad);margin-bottom:14px}
-.msg{margin-bottom:14px;display:flex;gap:10px}
-.msg-av{width:38px;height:38px;border-radius:50%;background:var(--pri);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;flex-shrink:0;font-size:15px}
-.msg-body{flex:1}
-.msg-meta{display:flex;align-items:center;gap:8px;margin-bottom:4px}
-.msg-name{font-weight:700;color:var(--dark);font-size:13px}
-.msg-time{font-size:11px;color:#aaa}
-.msg-text{background:#fff;padding:10px 12px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.08);font-size:13px;line-height:1.5}
-
-/* table */
-.tbl-wrap{background:#fff;border-radius:var(--rad);overflow:auto;box-shadow:0 2px 10px rgba(0,0,0,.08)}
-table{width:100%;border-collapse:collapse}
-thead{background:var(--lbg)}
-th{padding:12px 14px;text-align:left;font-weight:700;color:var(--dark);font-size:13px;white-space:nowrap}
-td{padding:12px 14px;border-bottom:1px solid var(--lbg);font-size:13px;vertical-align:middle}
-tbody tr:last-child td{border-bottom:none}
-tbody tr:hover{background:#f8f9fa}
-
-/* spinner */
-.spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top:2px solid #fff;border-radius:50%;animation:spinning .8s linear infinite;vertical-align:middle}
-@keyframes spinning{to{transform:rotate(360deg)}}
-
-/* survey builder */
-.q-block{background:#f8f9fa;border-radius:8px;padding:14px;margin-bottom:10px;border:1px solid #e0e0e0}
-.q-block .q-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.q-label{font-weight:600;font-size:13px;color:var(--dark)}
-.opt-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
-.opt-row input[type=text]{flex:1;padding:7px 10px;border:1px solid #ddd;border-radius:6px;font-size:12px}
-.opt-row button{padding:4px 8px;font-size:11px}
-
-/* answer modal */
-.ans-q{margin-bottom:18px}
-.ans-q .ans-title{font-weight:700;font-size:14px;color:var(--dark);margin-bottom:8px}
-.ans-q .check-row{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;cursor:pointer}
-.ans-q .check-row input{width:15px;height:15px;accent-color:var(--pri)}
-
-/* attachment */
-.attach-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid #e0e0e0;border-radius:8px;margin-bottom:8px;background:#f8f9fa}
-.attach-icon{font-size:22px}
-.attach-info{flex:1;min-width:0}
-.attach-name{font-weight:600;font-size:13px;color:var(--dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.attach-type{font-size:11px;color:#aaa}
-
-/* staff card */
-.staff-card{display:flex;align-items:center;gap:12px;padding:14px;border-bottom:1px solid var(--lbg);transition:.2s}
-.staff-card:hover{background:var(--lbg)}
-.staff-av{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--pri),var(--sec));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:16px;flex-shrink:0}
-.staff-info{flex:1}
-.staff-name{font-weight:700;color:var(--dark);font-size:14px}
-.staff-dept{font-size:12px;color:#888}
-
-/* file/pdf embed */
-.file-embed{width:100%;height:480px;border:none;border-radius:8px}
-
-/* announce card */
-.ann-card{background:#fff;border-radius:var(--rad);padding:16px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,.07);border-left:4px solid var(--pri);transition:.2s}
-.ann-card.urgent{border-left-color:var(--dan)}
-.ann-card.important{border-left-color:var(--war)}
-.ann-title{font-weight:700;font-size:15px;color:var(--dark);margin-bottom:4px}
-.ann-content{font-size:13px;color:#555;line-height:1.6;margin-bottom:6px;white-space:pre-wrap;word-break:break-word}
-.ann-footer{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:11px;color:#aaa}
-
-/* ===== SURVEY RESULT CHART ===== */
-.result-q-block{background:#fff;border:1px solid #e8e8e8;border-radius:10px;padding:18px;margin-bottom:18px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
-.result-q-title{font-weight:700;font-size:14px;color:var(--dark);margin-bottom:14px;display:flex;align-items:center;gap:8px}
-.result-q-type{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:700}
-.chart-wrap{position:relative;width:100%;height:260px}
-.text-ans-list{list-style:none;padding:0;margin:0}
-.text-ans-list li{padding:8px 12px;border-left:3px solid var(--pri);background:#f8f9fa;border-radius:0 6px 6px 0;margin-bottom:6px;font-size:13px;line-height:1.5}
-.text-ans-list li .ans-who{font-size:11px;color:#aaa;margin-bottom:2px}
-.result-stat-item{text-align:center;min-width:90px;padding:8px 12px;background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
-.result-stat-item .num{font-size:28px;font-weight:700;color:var(--dark);line-height:1.1}
-.result-stat-item .lbl{font-size:11px;color:#aaa;margin-top:2px}
-
-/* responsive */
-@media(max-width:768px){
-  .container{padding:10px}
-  header{flex-direction:column;align-items:flex-start}
-  .hdr-right{width:100%;justify-content:space-between}
-  .card-grid{grid-template-columns:1fr}
-  .stats-grid{grid-template-columns:repeat(2,1fr)}
-  .modal-body{padding:18px}
-}
-
-/* ===== 集計グラフ ===== */
-.result-q-block{background:#fff;border:1px solid #e8e8e8;border-radius:10px;padding:18px;margin-bottom:18px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
-.result-q-title{font-weight:700;font-size:14px;color:var(--dark);margin-bottom:14px;display:flex;align-items:center;gap:8px}
-.chart-wrap{position:relative;width:100%;height:260px}
-.text-ans-list{list-style:none;padding:0;margin:0}
-.text-ans-list li{padding:8px 12px;border-left:3px solid var(--pri);background:#f8f9fa;border-radius:0 6px 6px 0;margin-bottom:6px;font-size:13px;color:#444;line-height:1.5}
-.result-stat-item{text-align:center;min-width:90px}
-.result-stat-item .num{font-size:28px;font-weight:700;color:var(--dark)}
-.result-stat-item .lbl{font-size:11px;color:#aaa;margin-top:2px}
-</style>
+    @media(max-width:768px){
+      .hdr{align-items:flex-start;flex-direction:column}
+      .wrap{padding:10px}
+      .login{padding:24px}
+      .stats{grid-template-columns:1fr 1fr}
+      .itemTop{flex-direction:column}
+      .modal .box{padding:16px}
+    }
+  </style>
 </head>
 <body>
 
-<!-- ===== LOGIN ===== -->
-<div id="loginScreen">
-  <div class="login-box">
-    <i class="fas fa-hospital-user hero"></i>
-    <h1>康寿園ポータル</h1>
-    <p class="sub">スタッフのお名前を入力してください</p>
-    <div class="name-suggest">
-      <i class="fas fa-user icon-pre"></i>
-      <input type="text" id="userName" placeholder="名前を入力（例：山田太郎）" autocomplete="off">
-      <div class="suggest-list" id="suggestList"></div>
+<div id="loginScreen" class="center">
+  <div class="panel login stack">
+    <div style="text-align:center">
+      <i class="fas fa-hospital-user" style="font-size:56px;color:var(--pri);margin-bottom:12px"></i>
+      <h1>康寿園ポータル</h1>
+      <p class="muted">IDは名前・パスワードはメールアドレスでログイン</p>
     </div>
-    <button class="login-btn" onclick="handleNameEntry()">
-      <i class="fas fa-sign-in-alt"></i> 入室する
+
+    <div id="loginFields" class="stack">
+      <input id="loginName" class="inp" list="staffNames" placeholder="名前">
+      <datalist id="staffNames"></datalist>
+      <input id="loginEmail" class="inp" type="email" placeholder="メールアドレス">
+      <button class="btn pri w100" onclick="login()">
+        <i class="fas fa-sign-in-alt"></i> ログイン
+      </button>
+    </div>
+
+    <div id="firstSetupBox" class="stack hide" style="padding:14px;border:1px solid var(--line);border-radius:14px;background:#f8fbff">
+      <div>
+        <b>初回セットアップ</b>
+        <div class="tiny">最初の1人目の管理者をここから作成できます</div>
+      </div>
+      <input id="setupName" class="inp" placeholder="管理者名">
+      <input id="setupEmail" class="inp" type="email" placeholder="メールアドレス">
+      <select id="setupDept">
+        <option>事務</option>
+        <option>介護</option>
+        <option>看護</option>
+        <option>リハビリ</option>
+        <option>栄養</option>
+      </select>
+      <input id="setupExt" class="inp" placeholder="内線番号（任意）">
+      <button class="btn sec w100" onclick="createInitialAdmin()">
+        <i class="fas fa-user-shield"></i> 初期管理者を作成
+      </button>
+    </div>
+
+    <p class="tiny">※ ご要望どおりの認証方式です。運用上は将来的に本パスワード認証へ変更推奨です。</p>
+  </div>
+</div>
+
+<div id="app" class="hide">
+  <div class="wrap">
+    <header class="panel hdr">
+      <div class="brand">
+        <i class="fas fa-hospital-user"></i>
+        <div>
+          <h2>康寿園ポータル</h2>
+          <div class="tiny">掲示板・タスク・部署チャット・アンケート</div>
+        </div>
+      </div>
+      <div class="right">
+        <button id="notifyBtn" class="btn out sm" onclick="requestNotify()">
+          <i class="fas fa-bell"></i> 通知OFF
+        </button>
+        <div class="avatar" id="av">?</div>
+        <div>
+          <div id="meName" style="font-weight:800">-</div>
+          <div id="meRole" class="tiny">-</div>
+        </div>
+        <button class="btn dan sm" onclick="logout()">
+          <i class="fas fa-sign-out-alt"></i>
+        </button>
+      </div>
+    </header>
+
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-id="dashboard" onclick="showTab('dashboard',this)">
+        <i class="fas fa-house"></i> ダッシュボード
+      </button>
+      <button class="tab" data-id="profile" onclick="showTab('profile',this)">
+        <i class="fas fa-user"></i> プロフィール
+      </button>
+      <button class="tab" data-id="tasks" onclick="showTab('tasks',this)">
+        <i class="fas fa-list-check"></i> タスク
+      </button>
+      <button class="tab" data-id="training" onclick="showTab('training',this)">
+        <i class="fas fa-graduation-cap"></i> 研修
+      </button>
+      <button class="tab" data-id="rooms" onclick="showTab('rooms',this)">
+        <i class="fas fa-comments"></i> 部署ルーム
+      </button>
+      <button class="tab" data-id="survey" onclick="showTab('survey',this)">
+        <i class="fas fa-poll"></i> アンケート
+      </button>
+      <button class="tab hide" id="adminTab" data-id="admin" onclick="showTab('admin',this)">
+        <i class="fas fa-shield-alt"></i> 管理者
+      </button>
+    </nav>
+
+    <section id="dashboard" class="screen active">
+      <div id="bannerArea" class="banner hide card"></div>
+
+      <div class="stats">
+        <div class="card stat">
+          <i class="fas fa-list-check" style="background:linear-gradient(135deg,#2f80ed,#56ccf2)"></i>
+          <div><b id="stTask">0</b><span class="muted">未完了タスク</span></div>
+        </div>
+        <div class="card stat">
+          <i class="fas fa-book-open" style="background:linear-gradient(135deg,#9b51e0,#f2994a)"></i>
+          <div><b id="stTrain">0</b><span class="muted">未完了研修</span></div>
+        </div>
+        <div class="card stat">
+          <i class="fas fa-comments" style="background:linear-gradient(135deg,#27ae60,#6fcf97)"></i>
+          <div><b id="stRoom">5</b><span class="muted">部署チャット数</span></div>
+        </div>
+        <div class="card stat">
+          <i class="fas fa-poll" style="background:linear-gradient(135deg,#eb5757,#f2994a)"></i>
+          <div><b id="stSurvey">0</b><span class="muted">未回答アンケート</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="cardHd">
+          <div>
+            <h3>掲示板</h3>
+            <div class="tiny">複数ファイルをアップロード可能</div>
+          </div>
+          <button id="addBoardBtn" class="btn pri sm hide" onclick="openBoardModal()">
+            <i class="fas fa-plus"></i> 投稿
+          </button>
+        </div>
+        <div id="boardList" class="list"></div>
+      </div>
+    </section>
+
+    <section id="profile" class="screen">
+      <div class="card stack">
+        <div>
+          <h3>マイプロフィール</h3>
+          <div class="tiny">ログイン情報・所属情報</div>
+        </div>
+        <div class="row">
+          <div class="grow">
+            <label class="tiny">名前</label>
+            <input id="pName" class="inp" readonly>
+          </div>
+          <div class="grow">
+            <label class="tiny">メールアドレス</label>
+            <input id="pEmail" class="inp" readonly>
+          </div>
+        </div>
+        <div class="row">
+          <div class="grow">
+            <label class="tiny">所属部署</label>
+            <select id="pDept">
+              <option>介護</option>
+              <option>看護</option>
+              <option>リハビリ</option>
+              <option>栄養</option>
+              <option>事務</option>
+            </select>
+          </div>
+          <div class="grow">
+            <label class="tiny">内線番号</label>
+            <input id="pExt" class="inp">
+          </div>
+        </div>
+        <div>
+          <label class="tiny">自己紹介</label>
+          <textarea id="pBio"></textarea>
+        </div>
+        <div>
+          <button class="btn pri" onclick="saveProfile()">
+            <i class="fas fa-save"></i> 保存
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="tasks" class="screen">
+      <div class="grid">
+        <div class="card stack">
+          <h3>タスク追加</h3>
+          <input id="taskTitle" class="inp" placeholder="タスク名">
+          <select id="taskPri">
+            <option value="low">低</option>
+            <option value="medium">中</option>
+            <option value="high">高</option>
+          </select>
+          <button class="btn pri" onclick="addTask()">
+            <i class="fas fa-plus"></i> 追加
+          </button>
+        </div>
+        <div class="card">
+          <div class="cardHd"><h3>マイタスク</h3></div>
+          <div id="taskList" class="list"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="training" class="screen">
+      <div class="grid">
+        <div class="card">
+          <h3>オンライン研修</h3>
+          <p class="muted" style="margin-top:8px">動画・資料をまとめて確認できます。</p>
+          <div style="height:8px;background:#eef2f7;border-radius:999px;margin:14px 0">
+            <div style="width:60%;height:100%;background:linear-gradient(90deg,#2f80ed,#27ae60);border-radius:999px"></div>
+          </div>
+          <span class="tiny">完了率 60%</span>
+        </div>
+        <div class="card">
+          <h3>マニュアル</h3>
+          <p class="muted" style="margin-top:8px">掲示板の添付ファイルやPDFを業務資料として運用できます。</p>
+        </div>
+        <div class="card">
+          <h3>資格情報</h3>
+          <p class="muted" style="margin-top:8px">必要に応じて拡張可能です。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="rooms" class="screen">
+      <div class="grid" id="roomCards"></div>
+    </section>
+
+    <section id="survey" class="screen">
+      <div class="card">
+        <div class="cardHd">
+          <div>
+            <h3>アンケート</h3>
+            <div class="tiny">選択式・記述式 / パスワード付き集計</div>
+          </div>
+          <button class="btn pri sm" onclick="openSurveyModal()">
+            <i class="fas fa-plus"></i> 作成
+          </button>
+        </div>
+        <div id="surveyList" class="list"></div>
+      </div>
+    </section>
+
+    <section id="admin" class="screen">
+      <div class="grid">
+        <div class="card">
+          <div class="cardHd">
+            <div>
+              <h3>スタッフ管理</h3>
+              <div class="tiny">ログインは 名前 + メールアドレス</div>
+            </div>
+            <button class="btn pri sm" onclick="openStaffModal()">
+              <i class="fas fa-user-plus"></i> 追加
+            </button>
+          </div>
+          <div id="staffList"></div>
+        </div>
+
+        <div class="card stack">
+          <div>
+            <h3>システム設定</h3>
+            <div class="tiny">バナーと統計</div>
+          </div>
+          <div id="bannerStatus" class="muted">未設定</div>
+          <div class="row">
+            <button class="btn pri" onclick="openBannerModal()">
+              <i class="fas fa-image"></i> バナー変更
+            </button>
+            <button class="btn warn" onclick="cleanupExpiredData(false)">
+              <i class="fas fa-broom"></i> 1か月超データ整理
+            </button>
+          </div>
+          <div id="adminStats" class="muted"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div id="boardModal" class="modal">
+  <div class="box stack">
+    <div class="cardHd">
+      <h3>掲示板投稿</h3>
+      <button class="close" onclick="closeModal('boardModal')">×</button>
+    </div>
+    <input id="bTitle" class="inp" placeholder="タイトル">
+    <textarea id="bBody" placeholder="本文"></textarea>
+    <select id="bPri">
+      <option value="normal">通常</option>
+      <option value="important">重要</option>
+      <option value="urgent">緊急</option>
+    </select>
+    <div>
+      <label class="tiny">添付ファイル（複数可 / PDF・Excel・Word・画像など）</label>
+      <input id="bFiles" class="inp" type="file" multiple>
+    </div>
+    <input id="bUrl" class="inp" placeholder="外部共有URL（任意）">
+    <button class="btn pri" onclick="createBoard()">
+      <i class="fas fa-paper-plane"></i> 投稿する
     </button>
-    <p class="login-note"><i class="fas fa-info-circle"></i> 管理者が登録したスタッフのみ入室できます</p>
   </div>
 </div>
 
-<!-- ===== MAIN APP ===== -->
-<div id="mainApp">
-<div class="container">
-
-  <!-- header -->
-  <header>
-    <div class="hdr-left">
-      <i class="fas fa-hospital-user"></i>
-      <div>
-        <h1>康寿園ポータル <span id="adminBadge" class="admin-badge" style="display:none">管理者</span></h1>
-        <small>スタッフ専用システム</small>
-      </div>
-    </div>
-    <div class="hdr-right">
-      <div class="avatar" id="hdAvatar">?</div>
-      <div>
-        <div class="uname" id="hdName">ゲスト</div>
-        <div class="urole" id="hdRole">スタッフ</div>
-      </div>
-      <button class="btn-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i></button>
-    </div>
-  </header>
-
-  <!-- nav -->
-  <nav class="nav-tabs" id="navTabs">
-    <button class="nav-tab active" onclick="showScreen('dashboard',this)"><i class="fas fa-home"></i> ダッシュボード</button>
-    <button class="nav-tab" onclick="showScreen('profile',this)"><i class="fas fa-user"></i> プロフィール</button>
-    <button class="nav-tab" onclick="showScreen('tasks',this)"><i class="fas fa-tasks"></i> タスク管理</button>
-    <button class="nav-tab" onclick="showScreen('training',this)"><i class="fas fa-graduation-cap"></i> 研修</button>
-    <button class="nav-tab" onclick="showScreen('rooms',this)"><i class="fas fa-comments"></i> 部署ルーム</button>
-    <button class="nav-tab" onclick="showScreen('survey',this)"><i class="fas fa-poll"></i> アンケート</button>
-    <button class="nav-tab" id="adminTab" style="display:none" onclick="showScreen('admin',this)"><i class="fas fa-shield-alt"></i> 管理者</button>
-  </nav>
-
-  <!-- ===== DASHBOARD ===== -->
-  <div id="dashboard" class="screen active">
-    <div id="bannerArea" style="display:none;margin-bottom:20px">
-      <img id="bannerImg" src="" alt="バナー" style="width:100%;max-height:280px;object-fit:cover;border-radius:var(--rad);box-shadow:0 4px 12px rgba(0,0,0,.12)">
-    </div>
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-icon" style="background:linear-gradient(135deg,#667eea,#764ba2)"><i class="fas fa-tasks"></i></div>
-        <div class="stat-info"><h3 id="statTask">0</h3><p>未完了タスク</p></div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon" style="background:linear-gradient(135deg,#f093fb,#f5576c)"><i class="fas fa-graduation-cap"></i></div>
-        <div class="stat-info"><h3 id="statTraining">0</h3><p>未完了研修</p></div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon" style="background:linear-gradient(135deg,#4facfe,#00f2fe)"><i class="fas fa-comments"></i></div>
-        <div class="stat-info"><h3 id="statMsg">0</h3><p>未読メッセージ</p></div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon" style="background:linear-gradient(135deg,#43e97b,#38f9d7)"><i class="fas fa-poll"></i></div>
-        <div class="stat-info"><h3 id="statSurvey">0</h3><p>回答待ちアンケート</p></div>
-      </div>
-    </div>
-
-    <!-- お知らせ -->
-    <div class="card">
-      <div class="card-hdr">
-        <div class="card-icon" style="background:linear-gradient(135deg,#667eea,#764ba2)"><i class="fas fa-bullhorn"></i></div>
-        <div style="flex:1">
-          <div class="card-title">お知らせ</div>
-          <div class="card-sub">最新情報・ファイル共有</div>
-        </div>
-        <button class="btn btn-pri btn-sm" id="addAnnBtn" style="display:none" onclick="openAnnModal()">
-          <i class="fas fa-plus"></i> 追加
-        </button>
-      </div>
-      <div id="annList"><div class="empty"><i class="fas fa-inbox"></i><p>お知らせはありません</p></div></div>
-    </div>
-  </div>
-
-  <!-- ===== PROFILE ===== -->
-  <div id="profile" class="screen">
-    <div class="card">
-      <div class="card-hdr">
-        <div class="card-icon" style="background:linear-gradient(135deg,#667eea,#764ba2)"><i class="fas fa-id-card"></i></div>
-        <div><div class="card-title">マイプロフィール</div><div class="card-sub">基本情報</div></div>
-      </div>
-      <div class="fg"><label><i class="fas fa-user"></i> 名前</label><input type="text" id="pName" readonly style="background:#f5f5f5"></div>
-      <div class="fg">
-        <label><i class="fas fa-briefcase"></i> 所属部署</label>
-        <select id="pDept"><option>介護</option><option>看護</option><option>リハビリ</option><option>栄養</option><option>事務</option></select>
-      </div>
-      <div class="fg"><label><i class="fas fa-phone"></i> 内線番号</label><input type="text" id="pExt" placeholder="1234"></div>
-      <div class="fg"><label><i class="fas fa-info-circle"></i> 自己紹介</label><textarea id="pBio" placeholder="ひと言どうぞ"></textarea></div>
-      <button class="btn btn-pri" onclick="saveProfile()"><i class="fas fa-save"></i> 保存</button>
-    </div>
-  </div>
-
-  <!-- ===== TASKS ===== -->
-  <div id="tasks" class="screen">
-    <div class="card" style="margin-bottom:18px">
-      <div class="card-hdr">
-        <div class="card-icon" style="background:linear-gradient(135deg,#f093fb,#f5576c)"><i class="fas fa-plus"></i></div>
-        <div><div class="card-title">タスクを追加</div></div>
-      </div>
-      <div class="fg"><label>タスク名</label><input type="text" id="newTaskTitle" placeholder="タスクを入力"></div>
-      <div class="fg">
-        <label>優先度</label>
-        <select id="newTaskPri">
-          <option value="low">低</option><option value="medium">中</option><option value="high">高</option>
-        </select>
-      </div>
-      <button class="btn btn-pri" onclick="addTask()"><i class="fas fa-plus"></i> 追加</button>
-    </div>
-    <div class="card">
-      <div class="card-hdr">
-        <div class="card-icon" style="background:linear-gradient(135deg,#4facfe,#00f2fe)"><i class="fas fa-list"></i></div>
-        <div><div class="card-title">タスク一覧</div></div>
-      </div>
-      <div id="taskList"><div class="empty"><i class="fas fa-clipboard-check"></i><p>タスクがありません</p></div></div>
-    </div>
-  </div>
-
-  <!-- ===== TRAINING ===== -->
-  <div id="training" class="screen">
-    <div class="card-grid">
-      <div class="card">
-        <div class="card-hdr">
-          <div class="card-icon" style="background:linear-gradient(135deg,#667eea,#764ba2)"><i class="fas fa-video"></i></div>
-          <div><div class="card-title">オンライン研修</div><div class="card-sub">動画・資料</div></div>
-        </div>
-        <p style="font-size:13px;margin-bottom:8px">最新の研修動画と資料をチェックしましょう。</p>
-        <div class="progress"><div class="progress-bar" style="width:60%"></div></div>
-        <small style="color:#aaa">完了率 60%</small>
-        <div class="card-foot"><button class="btn btn-pri"><i class="fas fa-play"></i> 続きから</button></div>
-      </div>
-      <div class="card">
-        <div class="card-hdr">
-          <div class="card-icon" style="background:linear-gradient(135deg,#f093fb,#f5576c)"><i class="fas fa-book"></i></div>
-          <div><div class="card-title">マニュアル</div><div class="card-sub">業務手順書</div></div>
-        </div>
-        <p style="font-size:13px">各種業務マニュアルを確認できます。</p>
-        <div class="card-foot"><button class="btn btn-pri"><i class="fas fa-folder-open"></i> 開く</button></div>
-      </div>
-      <div class="card">
-        <div class="card-hdr">
-          <div class="card-icon" style="background:linear-gradient(135deg,#4facfe,#00f2fe)"><i class="fas fa-certificate"></i></div>
-          <div><div class="card-title">資格情報</div><div class="card-sub">更新状況</div></div>
-        </div>
-        <p style="font-size:13px">保有資格と更新時期を管理します。</p>
-        <div class="card-foot"><button class="btn btn-pri"><i class="fas fa-edit"></i> 編集</button></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== ROOMS ===== -->
-  <div id="rooms" class="screen">
-    <div class="card-grid">
-      <div class="card" style="cursor:pointer" onclick="openRoom('care')">
-        <div class="card-hdr">
-          <div class="card-icon" style="background:linear-gradient(135deg,#667eea,#764ba2)"><i class="fas fa-hands-helping"></i></div>
-          <div><div class="card-title">介護部署</div><div class="card-sub"><span class="badge b-sec">介護チーム</span></div></div>
-        </div>
-        <p style="font-size:13px">介護スタッフの情報共有スペース</p>
-      </div>
-      <div class="card" style="cursor:pointer" onclick="openRoom('nurse')">
-        <div class="card-hdr">
-          <div class="card-icon" style="background:linear-gradient(135deg,#f093fb,#f5576c)"><i class="fas fa-user-nurse"></i></div>
-          <div><div class="card-title">看護部署</div><div class="card-sub"><span class="badge b-sec">看護チーム</span></div></div>
-        </div>
-        <p style="font-size:13px">看護スタッフの情報共有スペース</p>
-      </div>
-      <div class="card" style="cursor:pointer" onclick="openRoom('rehab')">
-        <div class="card-hdr">
-          <div class="card-icon" style="background:linear-gradient(135deg,#4facfe,#00f2fe)"><i class="fas fa-dumbbell"></i></div>
-          <div><div class="card-title">リハビリ部署</div><div class="card-sub"><span class="badge b-sec">リハビリチーム</span></div></div>
-        </div>
-        <p style="font-size:13px">リハビリスタッフの情報共有スペース</p>
-      </div>
-      <div class="card" style="cursor:pointer" onclick="openRoom('nutrition')">
-        <div class="card-hdr">
-          <div class="card-icon" style="background:linear-gradient(135deg,#43e97b,#38f9d7)"><i class="fas fa-utensils"></i></div>
-          <div><div class="card-title">栄養部署</div><div class="card-sub"><span class="badge b-sec">栄養チーム</span></div></div>
-        </div>
-        <p style="font-size:13px">栄養スタッフの情報共有スペース</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== SURVEY ===== -->
-  <div id="survey" class="screen">
-    <div class="card" style="margin-bottom:18px">
-      <div class="card-hdr">
-        <div class="card-icon" style="background:linear-gradient(135deg,#667eea,#764ba2)"><i class="fas fa-plus"></i></div>
-        <div><div class="card-title">アンケート作成</div><div class="card-sub">チェックボックス形式・テキスト入力対応</div></div>
-      </div>
-      <button class="btn btn-pri" onclick="openSurveyCreateModal()"><i class="fas fa-plus"></i> 新規作成</button>
-    </div>
-    <div class="card">
-      <div class="card-hdr">
-        <div class="card-icon" style="background:linear-gradient(135deg,#4facfe,#00f2fe)"><i class="fas fa-poll"></i></div>
-        <div><div class="card-title">アンケート一覧</div></div>
-      </div>
-      <div id="surveyList"><div class="empty"><i class="fas fa-clipboard-list"></i><p>アンケートはありません</p></div></div>
-    </div>
-  </div>
-
-  <!-- ===== ADMIN ===== -->
-  <div id="admin" class="screen">
-    <div class="card" style="margin-bottom:18px">
-      <div class="card-hdr">
-        <div class="card-icon" style="background:linear-gradient(135deg,#667eea,#764ba2)"><i class="fas fa-users-cog"></i></div>
-        <div><div class="card-title">職員管理</div><div class="card-sub">スタッフの登録・編集・削除</div></div>
-        <button class="btn btn-pri btn-sm" onclick="openStaffModal(null)"><i class="fas fa-user-plus"></i> 職員追加</button>
-      </div>
-      <div id="staffList"><div class="empty"><i class="fas fa-users"></i><p>スタッフがいません</p></div></div>
-    </div>
-    <div class="card-grid">
-      <div class="card">
-        <div class="card-hdr">
-          <div class="card-icon" style="background:linear-gradient(135deg,#43e97b,#38f9d7)"><i class="fas fa-image"></i></div>
-          <div><div class="card-title">バナー画像</div></div>
-        </div>
-        <div id="bannerStatus" style="margin-bottom:10px;font-size:12px;color:#aaa">未設定</div>
-        <button class="btn btn-pri" onclick="openBannerModal()"><i class="fas fa-upload"></i> 変更</button>
-        <button class="btn btn-dan" style="margin-left:6px" onclick="removeBanner()"><i class="fas fa-trash"></i> 削除</button>
-      </div>
-      <div class="card">
-        <div class="card-hdr">
-          <div class="card-icon" style="background:linear-gradient(135deg,#f093fb,#f5576c)"><i class="fas fa-chart-bar"></i></div>
-          <div><div class="card-title">システム統計</div></div>
-        </div>
-        <div id="adminStats" style="font-size:13px;color:#555;line-height:2"></div>
-      </div>
-    </div>
-  </div>
-
-</div><!-- /container -->
-</div><!-- /mainApp -->
-
-<!-- ===== MODALS ===== -->
-
-<!-- お知らせ追加モーダル -->
-<div id="annModal" class="modal">
-  <div class="modal-body" style="max-width:680px">
-    <div class="modal-hdr">
-      <span class="modal-title"><i class="fas fa-bullhorn"></i> お知らせ追加</span>
-      <button class="modal-close" onclick="closeModal('annModal')"><i class="fas fa-times"></i></button>
-    </div>
-    <div class="fg"><label>タイトル <span style="color:red">*</span></label><input type="text" id="annTitle" placeholder="お知らせタイトル"></div>
-    <div class="fg"><label>内容 <span style="color:red">*</span></label><textarea id="annContent" placeholder="内容を入力してください" style="min-height:110px"></textarea></div>
-    <div class="fg">
-      <label>重要度</label>
-      <select id="annPri"><option value="normal">通常</option><option value="important">重要</option><option value="urgent">緊急</option></select>
-    </div>
-    <div class="fg">
-      <label><i class="fas fa-paperclip"></i> ファイル添付（PDF / Office / 画像）</label>
-      <p style="font-size:12px;color:#888;margin-bottom:8px">URLを入力するか、ファイルをアップロードしてください。</p>
-      <input type="text" id="annFileUrl" placeholder="https://... （OneDrive共有リンク / Google Drive / 直接URLなど）" style="margin-bottom:8px">
-      <input type="text" id="annFileName" placeholder="ファイル表示名（例：5月シフト.pdf）">
-      <div class="fg" style="margin-top:8px">
-        <label>または直接アップロード（最大10MB）</label>
-        <input type="file" id="annFileUpload" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg">
-        <p class="hint">PDF・Word・Excel・PowerPoint・画像ファイルに対応</p>
-      </div>
-    </div>
-    <button class="btn btn-pri" onclick="createAnn()"><i class="fas fa-paper-plane"></i> 配信する</button>
-  </div>
-</div>
-
-<!-- お知らせ詳細モーダル -->
-<div id="annDetailModal" class="modal">
-  <div class="modal-body" style="max-width:700px">
-    <div class="modal-hdr">
-      <span class="modal-title" id="annDetailTitle"></span>
-      <button class="modal-close" onclick="closeModal('annDetailModal')"><i class="fas fa-times"></i></button>
-    </div>
-    <div id="annDetailBody"></div>
-  </div>
-</div>
-
-<!-- アンケート作成モーダル -->
-<div id="surveyCreateModal" class="modal">
-  <div class="modal-body" style="max-width:700px">
-    <div class="modal-hdr">
-      <span class="modal-title"><i class="fas fa-poll"></i> アンケート作成</span>
-      <button class="modal-close" onclick="closeModal('surveyCreateModal')"><i class="fas fa-times"></i></button>
-    </div>
-    <div class="fg"><label>タイトル <span style="color:red">*</span></label><input type="text" id="svTitle" placeholder="例：職場環境アンケート"></div>
-    <div class="fg"><label>説明</label><textarea id="svDesc" placeholder="このアンケートの目的や注意事項"></textarea></div>
-    <div class="fg"><label>集計パスワード（作成者のみ結果を閲覧）<span style="color:red">*</span></label><input type="password" id="svPass" placeholder="4桁以上"></div>
-    <div style="margin-bottom:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <strong style="font-size:14px">質問項目</strong>
-        <div style="display:flex;gap:6px">
-          <button class="btn btn-out btn-sm" onclick="addSvQuestion('checkbox')"><i class="fas fa-check-square"></i> チェックボックス</button>
-          <button class="btn btn-out btn-sm" onclick="addSvQuestion('text')"><i class="fas fa-font"></i> テキスト</button>
-        </div>
-      </div>
-      <div id="svQuestions"></div>
-    </div>
-    <button class="btn btn-pri" onclick="createSurvey()"><i class="fas fa-check"></i> 作成する</button>
-  </div>
-</div>
-
-<!-- アンケート回答モーダル -->
-<div id="surveyAnswerModal" class="modal">
-  <div class="modal-body" style="max-width:640px">
-    <div class="modal-hdr">
-      <span class="modal-title" id="answerSurveyTitle"><i class="fas fa-pen"></i> 回答</span>
-      <button class="modal-close" onclick="closeModal('surveyAnswerModal')"><i class="fas fa-times"></i></button>
-    </div>
-    <div id="answerBody"></div>
-    <button class="btn btn-pri" style="margin-top:10px" onclick="submitAnswer()"><i class="fas fa-paper-plane"></i> 回答を送信</button>
-  </div>
-</div>
-
-<!-- アンケート集計モーダル -->
-<div id="surveyResultModal" class="modal">
-  <div class="modal-body" style="max-width:820px">
-    <div class="modal-hdr">
-      <span class="modal-title"><i class="fas fa-chart-bar"></i> 集計結果</span>
-      <div style="display:flex;gap:8px;align-items:center">
-        <button class="btn btn-sec btn-sm" id="csvExportBtn" onclick="exportResultCSV()">
-          <i class="fas fa-file-csv"></i> CSVダウンロード
-        </button>
-        <button class="modal-close" onclick="closeModal('surveyResultModal')"><i class="fas fa-times"></i></button>
-      </div>
-    </div>
-    <!-- サマリーバー -->
-    <div id="resultSummary" style="display:flex;gap:16px;flex-wrap:wrap;background:var(--lbg);border-radius:10px;padding:14px 18px;margin-bottom:18px"></div>
-    <div id="resultBody"></div>
-  </div>
-</div>
-
-<!-- 職員管理モーダル -->
-<div id="staffModal" class="modal">
-  <div class="modal-body">
-    <div class="modal-hdr">
-      <span class="modal-title" id="staffModalTitle"><i class="fas fa-user-plus"></i> 職員追加</span>
-      <button class="modal-close" onclick="closeModal('staffModal')"><i class="fas fa-times"></i></button>
-    </div>
-    <div class="fg"><label>氏名 <span style="color:red">*</span></label><input type="text" id="sfName" placeholder="山田太郎"></div>
-    <div class="fg">
-      <label>所属部署</label>
-      <select id="sfDept"><option>介護</option><option>看護</option><option>リハビリ</option><option>栄養</option><option>事務</option></select>
-    </div>
-    <div class="fg">
-      <label>権限</label>
-      <select id="sfRole"><option value="staff">スタッフ</option><option value="admin">管理者</option></select>
-    </div>
-    <div class="fg"><label>内線番号</label><input type="text" id="sfExt" placeholder="1234"></div>
-    <div class="fg"><label>メモ</label><textarea id="sfNote" placeholder="備考など"></textarea></div>
-    <input type="hidden" id="sfDocId">
-    <button class="btn btn-pri" onclick="saveStaff()"><i class="fas fa-save"></i> 保存</button>
-  </div>
-</div>
-
-<!-- 部署ルームモーダル -->
 <div id="roomModal" class="modal">
-  <div class="modal-body" style="max-width:760px">
-    <div class="modal-hdr">
-      <span class="modal-title" id="roomTitle"><i class="fas fa-comments"></i> 部署ルーム</span>
-      <button class="modal-close" onclick="closeModal('roomModal')"><i class="fas fa-times"></i></button>
+  <div class="box stack">
+    <div class="cardHd">
+      <h3 id="roomTitle">部署ルーム</h3>
+      <button class="close" onclick="closeModal('roomModal')">×</button>
     </div>
-    <div class="msg-list" id="roomMsgs"></div>
-    <div class="fg">
-      <input type="text" id="roomMsgInput" placeholder="メッセージを入力…" style="margin-bottom:8px">
-      <button class="btn btn-pri" style="width:100%" onclick="sendRoomMsg()"><i class="fas fa-paper-plane"></i> 送信</button>
+    <div id="roomMsgs" class="msgBox"></div>
+    <div class="row">
+      <input id="roomInput" class="inp grow" placeholder="メッセージ">
+      <button class="btn pri" onclick="sendRoomMsg()">
+        <i class="fas fa-paper-plane"></i> 送信
+      </button>
     </div>
   </div>
 </div>
 
-<!-- バナーアップロードモーダル -->
+<div id="staffModal" class="modal">
+  <div class="box stack">
+    <div class="cardHd">
+      <h3 id="staffModalTitle">スタッフ追加</h3>
+      <button class="close" onclick="closeModal('staffModal')">×</button>
+    </div>
+    <input type="hidden" id="sfId">
+    <input id="sfName" class="inp" placeholder="氏名">
+    <input id="sfEmail" class="inp" type="email" placeholder="メールアドレス">
+    <div class="row">
+      <select id="sfDept" class="grow">
+        <option>介護</option>
+        <option>看護</option>
+        <option>リハビリ</option>
+        <option>栄養</option>
+        <option>事務</option>
+      </select>
+      <select id="sfRole" class="grow">
+        <option value="staff">スタッフ</option>
+        <option value="admin">管理者</option>
+      </select>
+    </div>
+    <input id="sfExt" class="inp" placeholder="内線番号">
+    <textarea id="sfNote" placeholder="メモ"></textarea>
+    <button class="btn pri" onclick="saveStaff()">
+      <i class="fas fa-save"></i> 保存
+    </button>
+  </div>
+</div>
+
 <div id="bannerModal" class="modal">
-  <div class="modal-body">
-    <div class="modal-hdr">
-      <span class="modal-title"><i class="fas fa-image"></i> バナー画像</span>
-      <button class="modal-close" onclick="closeModal('bannerModal')"><i class="fas fa-times"></i></button>
+  <div class="box stack">
+    <div class="cardHd">
+      <h3>バナー画像</h3>
+      <button class="close" onclick="closeModal('bannerModal')">×</button>
     </div>
-    <div class="fg">
-      <label>画像ファイルを選択（最大5MB）</label>
-      <input type="file" id="bannerFile" accept="image/*">
-    </div>
-    <div id="bannerPreview" style="display:none;margin-bottom:12px">
-      <img id="previewImg" src="" alt="preview" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px">
-    </div>
-    <button class="btn btn-pri" id="uploadBannerBtn" onclick="uploadBanner()"><i class="fas fa-cloud-upload-alt"></i> アップロード</button>
+    <input id="bannerFile" class="inp" type="file" accept="image/*">
+    <div id="bannerPreview" class="hide"></div>
+    <button class="btn pri" onclick="uploadBanner()">
+      <i class="fas fa-cloud-upload-alt"></i> アップロード
+    </button>
   </div>
 </div>
 
-<!-- ファイル表示モーダル -->
-<div id="fileViewModal" class="modal">
-  <div class="modal-body" style="max-width:900px">
-    <div class="modal-hdr">
-      <span class="modal-title" id="fileViewTitle"><i class="fas fa-file"></i> ファイル表示</span>
-      <button class="modal-close" onclick="closeModal('fileViewModal')"><i class="fas fa-times"></i></button>
+<div id="surveyModal" class="modal">
+  <div class="box stack">
+    <div class="cardHd">
+      <h3>アンケート作成</h3>
+      <button class="close" onclick="closeModal('surveyModal')">×</button>
     </div>
-    <div id="fileViewContent"></div>
+    <input id="svTitle" class="inp" placeholder="タイトル">
+    <textarea id="svDesc" placeholder="説明"></textarea>
+    <input id="svPass" class="inp" type="password" placeholder="集計パスワード（4文字以上）">
+    <div class="cardHd">
+      <h4>質問</h4>
+      <div class="right">
+        <button class="btn out sm" onclick="addQ('checkbox')">選択式</button>
+        <button class="btn out sm" onclick="addQ('text')">記述式</button>
+      </div>
+    </div>
+    <div id="svQuestions"></div>
+    <button class="btn pri" onclick="createSurvey()">
+      <i class="fas fa-check"></i> 作成
+    </button>
+  </div>
+</div>
+
+<div id="surveyAnswerModal" class="modal">
+  <div class="box stack">
+    <div class="cardHd">
+      <h3 id="ansTitle">回答</h3>
+      <button class="close" onclick="closeModal('surveyAnswerModal')">×</button>
+    </div>
+    <div id="ansBody"></div>
+    <button class="btn pri" onclick="submitSurvey()">
+      <i class="fas fa-paper-plane"></i> 送信
+    </button>
+  </div>
+</div>
+
+<div id="surveyResultModal" class="modal">
+  <div class="box stack">
+    <div class="cardHd">
+      <h3>集計結果</h3>
+      <button class="close" onclick="closeModal('surveyResultModal')">×</button>
+    </div>
+    <div id="svSummary" class="row"></div>
+    <div id="svResult"></div>
   </div>
 </div>
 
 <script>
-// ============================================================
-// Firebase
-// ============================================================
 const firebaseConfig = {
   apiKey:"AIzaSyB7WyB8qLVOtpYWDrTUyVi6q1f1MPmIEqI",
   authDomain:"tokuyou-portal.firebaseapp.com",
@@ -666,843 +630,1071 @@ const firebaseConfig = {
   messagingSenderId:"628140097543",
   appId:"1:628140097543:web:03f3cf9ef15a767dbdaaa2"
 };
+
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const storage = firebase.storage();
 
-// ============================================================
-// Firestore CRUD
-// ============================================================
-async function fsGet(col){
-  try{
-    const s=await db.collection(col).orderBy('createdAt','asc').get();
-    return s.docs.map(d=>({docId:d.id,...d.data()}));
-  }catch{
-    const s=await db.collection(col).get();
-    return s.docs.map(d=>({docId:d.id,...d.data()}));
-  }
-}
-async function fsAdd(col,data){
-  const r=await db.collection(col).add({...data,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-  return r.id;
-}
-async function fsUpdate(col,id,data){
-  await db.collection(col).doc(id).update({...data,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
-}
-async function fsDel(col,id){await db.collection(col).doc(id).delete();}
+const ROOMS = {
+  care:'介護部署',
+  nurse:'看護部署',
+  rehab:'リハビリ部署',
+  nutrition:'栄養部署',
+  office:'事務所'
+};
 
-// ============================================================
-// Session
-// ============================================================
-const getUser=()=>{const s=localStorage.getItem('ku_user');return s?JSON.parse(s):null;};
-const isAdmin=()=>{const u=getUser();return u&&u.role==='admin';};
+const DEPT_ROOM = {
+  '介護':'care',
+  '看護':'nurse',
+  'リハビリ':'rehab',
+  '栄養':'nutrition',
+  '事務':'office'
+};
 
-// ============================================================
-// 名前予測入力 & ログイン
-// ============================================================
-let allStaff=[];
-async function loadStaffSuggestions(){
-  try{
-    allStaff=await fsGet('users');
-    const input=document.getElementById('userName');
-    const list=document.getElementById('suggestList');
-    input.addEventListener('input',()=>{
-      const v=input.value.trim().toLowerCase();
-      if(!v){list.style.display='none';return;}
-      const matched=allStaff.filter(s=>s.name&&s.name.toLowerCase().includes(v));
-      if(matched.length===0){list.style.display='none';return;}
-      list.innerHTML=matched.map(s=>`<div class="suggest-item" onclick="selectName('${escH(s.name)}')">${escH(s.name)} <span style="font-size:11px;color:#aaa">${escH(s.department||'')}</span></div>`).join('');
-      list.style.display='block';
-    });
-    document.addEventListener('click',e=>{if(!e.target.closest('.name-suggest'))list.style.display='none';});
-  }catch(e){console.warn('staff suggestion error',e);}
+let staffCache = [];
+let activeRoom = '';
+let activeSurveyId = '';
+let svQuestions = [];
+let watchers = [];
+let charts = {};
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({
+  '&':'&amp;',
+  '<':'&lt;',
+  '>':'&gt;',
+  '"':'&quot;',
+  "'":'&#39;'
+}[m]));
+const me = () => JSON.parse(localStorage.getItem('ku_user') || 'null');
+const saveMe = u => localStorage.setItem('ku_user', JSON.stringify(u));
+const admin = () => me()?.role === 'admin';
+
+function ms(v){
+  if(typeof v === 'number') return v;
+  if(v?.toDate) return v.toDate().getTime();
+  if(v) return new Date(v).getTime();
+  return 0;
 }
-function selectName(name){
-  document.getElementById('userName').value=name;
-  document.getElementById('suggestList').style.display='none';
+
+function fmt(v){
+  const d = v?.toDate ? v.toDate() : new Date(v);
+  if(!d || isNaN(d)) return '';
+  const diff = Date.now() - d.getTime();
+  if(diff < 6e4) return 'たった今';
+  if(diff < 36e5) return Math.floor(diff / 6e4) + '分前';
+  if(diff < 864e5) return Math.floor(diff / 36e5) + '時間前';
+  return d.toLocaleString('ja-JP', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
 }
-async function handleNameEntry(){
-  const name=document.getElementById('userName').value.trim();
-  if(!name){showNotif('お名前を入力してください','error');return;}
+
+function toast(msg, type='info'){
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.style.borderLeftColor = type === 'error' ? 'var(--dan)' : type === 'ok' ? 'var(--sec)' : 'var(--pri)';
+  el.innerHTML = `<i class="fas fa-${type==='error'?'circle-exclamation':type==='ok'?'circle-check':'circle-info'}"></i><div>${esc(msg)}</div>`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+
+async function list(col){
   try{
-    const list=await fsGet('users');
-    const found=list.find(u=>u.name===name);
-    if(!found){showNotif('登録されていないお名前です。管理者に追加を依頼してください。','error');return;}
-    localStorage.setItem('ku_user',JSON.stringify(found));
-    bootApp(found);
+    const s = await db.collection(col).orderBy('createdAt','desc').get();
+    return s.docs.map(d => ({docId:d.id, ...d.data()}));
   }catch(e){
-    showNotif('接続エラー: '+e.message,'error');
+    const s = await db.collection(col).get();
+    return s.docs.map(d => ({docId:d.id, ...d.data()}));
   }
 }
-function bootApp(user){
-  document.getElementById('loginScreen').style.display='none';
-  document.getElementById('mainApp').style.display='block';
-  document.getElementById('hdAvatar').textContent=user.name.charAt(0);
-  document.getElementById('hdName').textContent=user.name;
-  document.getElementById('hdRole').textContent=user.role==='admin'?'管理者':'スタッフ ('+(user.department||'未設定')+')';
-  if(user.role==='admin'){
-    document.getElementById('adminBadge').style.display='inline';
-    document.getElementById('adminTab').style.display='flex';
-    document.getElementById('addAnnBtn').style.display='flex';
+
+async function add(col, data){
+  return (await db.collection(col).add({
+    ...data,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    createdAtMs: Date.now()
+  })).id;
+}
+
+async function upd(col, id, data){
+  await db.collection(col).doc(id).update({
+    ...data,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAtMs: Date.now()
+  });
+}
+
+async function del(col, id){
+  await db.collection(col).doc(id).delete();
+}
+
+async function uploadMany(fileList, folder){
+  const files = [...fileList || []];
+  const out = [];
+  for(const f of files){
+    if(f.size > 20 * 1024 * 1024) throw new Error('20MBを超えるファイルがあります');
+    const ref = storage.ref(`${folder}/${Date.now()}_${f.name}`);
+    const snap = await ref.put(f);
+    out.push({
+      name:f.name,
+      url:await snap.ref.getDownloadURL(),
+      size:f.size,
+      type:f.type || ''
+    });
   }
-  showScreen('dashboard',document.querySelector('.nav-tab'));
-}
-function logout(){if(confirm('ログアウトしますか？')){localStorage.removeItem('ku_user');location.reload();}}
-
-// ============================================================
-// Screen
-// ============================================================
-function showScreen(id,el){
-  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
-  if(el)el.classList.add('active');
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  const m={dashboard:loadDashboard,profile:loadProfile,tasks:loadTasks,survey:loadSurveys,admin:loadAdmin};
-  if(m[id])m[id]();
+  return out;
 }
 
-// ============================================================
-// Dashboard
-// ============================================================
-async function loadDashboard(){
-  const user=getUser();if(!user)return;
-  loadBannerDash();
-  try{
-    const [tasks,trainings,surveys]=await Promise.all([fsGet('tasks'),fsGet('trainings'),fsGet('surveys')]);
-    document.getElementById('statTask').textContent=tasks.filter(t=>!t.completed&&t.userId===user.id).length;
-    document.getElementById('statTraining').textContent=trainings.filter(t=>!t.completed).length;
-    document.getElementById('statSurvey').textContent=surveys.length;
-    loadAnnList();
-  }catch(e){console.error(e);}
-}
-async function loadAnnList(){
-  try{
-    const anns=await fsGet('announcements');
-    const el=document.getElementById('annList');
-    if(!anns.length){el.innerHTML='<div class="empty"><i class="fas fa-inbox"></i><p>お知らせはありません</p></div>';return;}
-    el.innerHTML=anns.slice().reverse().slice(0,10).map(a=>`
-      <div class="ann-card ${a.priority==='urgent'?'urgent':a.priority==='important'?'important':''}">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">
-          <div>
-            <div class="ann-title">${escH(a.title)}</div>
-            <div class="ann-content">${escH((a.content||'').substring(0,120)+(a.content&&a.content.length>120?'…':''))}</div>
-          </div>
-          <span class="badge ${a.priority==='urgent'?'b-dan':a.priority==='important'?'b-war':'b-pri'}">${a.priority==='urgent'?'緊急':a.priority==='important'?'重要':'通常'}</span>
-        </div>
-        <div class="ann-footer">
-          <span><i class="fas fa-user"></i> ${escH(a.creatorName||'不明')}</span>
-          <span><i class="fas fa-clock"></i> ${formatDate(a.createdAt)}</span>
-          ${a.fileUrl?`<span style="cursor:pointer;color:var(--pri)" onclick="openFileView('${escH(a.fileUrl)}','${escH(a.fileName||'ファイル')}')"><i class="fas fa-paperclip"></i> ${escH(a.fileName||'添付ファイル')}</span>`:''}
-          <button class="btn btn-out btn-sm" onclick="openAnnDetail('${a.docId}')"><i class="fas fa-expand-alt"></i> 詳細</button>
-          ${isAdmin()?`<button class="btn btn-dan btn-sm" onclick="deleteAnn('${a.docId}')"><i class="fas fa-trash"></i></button>`:''}
-        </div>
-      </div>
-    `).join('');
-  }catch(e){console.error(e);}
-}
-async function openAnnDetail(docId){
-  try{
-    const anns=await fsGet('announcements');
-    const a=anns.find(x=>x.docId===docId);if(!a)return;
-    document.getElementById('annDetailTitle').innerHTML=`<span class="badge ${a.priority==='urgent'?'b-dan':a.priority==='important'?'b-war':'b-pri'}" style="margin-right:8px">${a.priority==='urgent'?'緊急':a.priority==='important'?'重要':'通常'}</span>${escH(a.title)}`;
-    let html=`<div class="ann-content" style="font-size:14px;margin-bottom:16px">${escH(a.content||'')}</div>`;
-    html+=`<div class="ann-footer" style="font-size:13px;margin-bottom:12px"><span><i class="fas fa-user"></i> 作成者：${escH(a.creatorName||'不明')}</span><span><i class="fas fa-clock"></i> ${formatDate(a.createdAt)}</span></div>`;
-    if(a.fileUrl){
-      html+=`<div class="attach-item">
-        <span class="attach-icon">${getFileIcon(a.fileName||'')}</span>
-        <div class="attach-info"><div class="attach-name">${escH(a.fileName||'添付ファイル')}</div><div class="attach-type">添付ファイル</div></div>
-        <button class="btn btn-pri btn-sm" onclick="openFileView('${escH(a.fileUrl)}','${escH(a.fileName||'ファイル')}')"><i class="fas fa-eye"></i> 表示</button>
-        <a href="${escH(a.fileUrl)}" target="_blank" class="btn btn-out btn-sm"><i class="fas fa-external-link-alt"></i> 開く</a>
-      </div>`;
-    }
-    document.getElementById('annDetailBody').innerHTML=html;
-    document.getElementById('annDetailModal').classList.add('active');
-  }catch(e){console.error(e);}
-}
-function getFileIcon(name){
-  const ext=(name.split('.').pop()||'').toLowerCase();
-  if(['pdf'].includes(ext))return'<i class="fas fa-file-pdf" style="color:#e74c3c"></i>';
-  if(['doc','docx'].includes(ext))return'<i class="fas fa-file-word" style="color:#2980b9"></i>';
-  if(['xls','xlsx'].includes(ext))return'<i class="fas fa-file-excel" style="color:#27ae60"></i>';
-  if(['ppt','pptx'].includes(ext))return'<i class="fas fa-file-powerpoint" style="color:#e67e22"></i>';
-  if(['png','jpg','jpeg','gif','webp'].includes(ext))return'<i class="fas fa-file-image" style="color:#9b59b6"></i>';
-  return'<i class="fas fa-file" style="color:#7f8c8d"></i>';
-}
-function openFileView(url,name){
-  closeModal('annDetailModal');
-  const ext=(name.split('.').pop()||'').toLowerCase();
-  let html='';
-  if(['png','jpg','jpeg','gif','webp'].includes(ext)){
-    html=`<img src="${escH(url)}" alt="${escH(name)}" style="width:100%;border-radius:8px">`;
-  }else if(ext==='pdf'){
-    html=`<iframe src="${escH(url)}" class="file-embed"></iframe>`;
-  }else{
-    html=`<div style="text-align:center;padding:30px">
-      <p style="font-size:14px;margin-bottom:16px">このファイル形式はブラウザ内で直接表示できません。</p>
-      <a href="${escH(url)}" target="_blank" class="btn btn-pri"><i class="fas fa-download"></i> ダウンロード / 外部で開く</a>
-      <p style="font-size:12px;color:#aaa;margin-top:12px">OneDrive・Google Drive の共有リンクの場合はそちらで開いてください。</p>
-    </div>`;
-  }
-  document.getElementById('fileViewTitle').innerHTML=`<i class="fas fa-file"></i> ${escH(name)}`;
-  document.getElementById('fileViewContent').innerHTML=html;
-  document.getElementById('fileViewModal').classList.add('active');
+function closeModal(id){
+  $(id).classList.remove('show');
 }
 
-// ===== お知らせ作成 =====
-function openAnnModal(){
-  document.getElementById('annTitle').value='';
-  document.getElementById('annContent').value='';
-  document.getElementById('annPri').value='normal';
-  document.getElementById('annFileUrl').value='';
-  document.getElementById('annFileName').value='';
-  document.getElementById('annFileUpload').value='';
-  document.getElementById('annModal').classList.add('active');
+function openModal(id){
+  $(id).classList.add('show');
 }
-async function createAnn(){
-  const user=getUser();
-  const title=document.getElementById('annTitle').value.trim();
-  const content=document.getElementById('annContent').value.trim();
-  const priority=document.getElementById('annPri').value;
-  if(!title||!content){showNotif('タイトルと内容は必須です','error');return;}
-  let fileUrl=document.getElementById('annFileUrl').value.trim();
-  let fileName=document.getElementById('annFileName').value.trim();
-  const fileInput=document.getElementById('annFileUpload');
-  // ファイルアップロード処理
-  if(fileInput.files[0]){
-    const f=fileInput.files[0];
-    if(f.size>10*1024*1024){showNotif('ファイルサイズは10MB以下にしてください','error');return;}
+
+function setNotifyBtn(){
+  const t = ('Notification' in window) ? Notification.permission : 'unsupported';
+  $('notifyBtn').innerHTML = `<i class="fas fa-bell"></i> ${t==='granted'?'通知ON':t==='denied'?'通知拒否':'通知OFF'}`;
+}
+
+async function requestNotify(){
+  if(!('Notification' in window)) return toast('このブラウザは通知に未対応です','error');
+  const p = await Notification.requestPermission();
+  setNotifyBtn();
+  toast(p==='granted' ? 'ブラウザ通知を有効化しました' : '通知が許可されませんでした', p==='granted' ? 'ok' : 'error');
+}
+
+function browserNotify(title, body){
+  toast(`${title}：${body}`);
+  if('Notification' in window && Notification.permission === 'granted'){
     try{
-      showNotif('ファイルをアップロード中…','warning');
-      const ref=storage.ref(`announcements/${Date.now()}_${f.name}`);
-      const task=await ref.put(f);
-      fileUrl=await task.ref.getDownloadURL();
-      if(!fileName)fileName=f.name;
-    }catch(e){showNotif('ファイルアップロード失敗: '+e.message,'error');return;}
+      new Notification(title, {body, tag:title});
+    }catch(e){}
   }
-  try{
-    await fsAdd('announcements',{title,content,priority,creatorId:user.id,creatorName:user.name,fileUrl:fileUrl||'',fileName:fileName||''});
-    closeModal('annModal');
-    loadAnnList();
-    showNotif('お知らせを配信しました','success');
-  }catch(e){showNotif('配信失敗: '+e.message,'error');}
-}
-async function deleteAnn(docId){
-  if(!confirm('このお知らせを削除しますか？'))return;
-  try{await fsDel('announcements',docId);loadAnnList();showNotif('削除しました','success');}
-  catch(e){showNotif('削除失敗','error');}
+  if(navigator.vibrate){
+    try{ navigator.vibrate([120,40,120]); }catch(e){}
+  }
 }
 
-// ============================================================
-// Profile
-// ============================================================
-function loadProfile(){
-  const u=getUser();if(!u)return;
-  document.getElementById('pName').value=u.name||'';
-  document.getElementById('pDept').value=u.department||'介護';
-  document.getElementById('pExt').value=u.extension||'';
-  document.getElementById('pBio').value=u.bio||'';
-}
-async function saveProfile(){
-  const u=getUser();if(!u)return;
-  const upd={department:document.getElementById('pDept').value,extension:document.getElementById('pExt').value,bio:document.getElementById('pBio').value};
-  try{
-    if(u.docId)await fsUpdate('users',u.docId,upd);
-    localStorage.setItem('ku_user',JSON.stringify({...u,...upd}));
-    showNotif('保存しました','success');
-  }catch(e){showNotif('保存失敗','error');}
+function fileIcon(n=''){
+  const e = (n.split('.').pop() || '').toLowerCase();
+  if(['pdf'].includes(e)) return 'fa-file-pdf';
+  if(['xls','xlsx','csv'].includes(e)) return 'fa-file-excel';
+  if(['doc','docx'].includes(e)) return 'fa-file-word';
+  if(['ppt','pptx'].includes(e)) return 'fa-file-powerpoint';
+  if(['jpg','jpeg','png','gif','webp'].includes(e)) return 'fa-file-image';
+  return 'fa-file-lines';
 }
 
-// ============================================================
-// Tasks
-// ============================================================
-async function loadTasks(){
-  const u=getUser();
-  const all=await fsGet('tasks');
-  const mine=all.filter(t=>t.userId===u.id);
-  const el=document.getElementById('taskList');
-  if(!mine.length){el.innerHTML='<div class="empty"><i class="fas fa-clipboard-check"></i><p>タスクがありません</p></div>';return;}
-  el.innerHTML=mine.map(t=>`
-    <div class="list-item">
-      <div class="li-content">
-        <div class="li-title" style="${t.completed?'text-decoration:line-through;color:#bbb':''}">${escH(t.title)}</div>
-        <div class="li-meta">
-          <span class="badge ${t.priority==='high'?'b-dan':t.priority==='medium'?'b-war':'b-pri'}">${t.priority==='high'?'高':t.priority==='medium'?'中':'低'}</span>
+function getAnnFiles(a){
+  let files = [];
+  if(Array.isArray(a.attachments)) files = a.attachments;
+  else if(typeof a.attachments === 'string'){
+    try{ files = JSON.parse(a.attachments) || []; }catch(e){}
+  }
+  if(a.fileUrl && !files.length) files = [{name:a.fileName || '添付ファイル', url:a.fileUrl}];
+  if(a.externalUrl) files.push({name:'外部リンク', url:a.externalUrl, external:true});
+  return files;
+}
+
+async function deleteAnnFiles(a){
+  for(const f of getAnnFiles(a).filter(x => x.url && !x.external)){
+    try{
+      await storage.refFromURL(f.url).delete();
+    }catch(e){}
+  }
+}
+
+async function loadStaffHints(){
+  staffCache = await list('users');
+  $('staffNames').innerHTML = staffCache.map(s => `<option value="${esc(s.name || '')}"></option>`).join('');
+  const empty = staffCache.length === 0;
+  $('firstSetupBox').classList.toggle('hide', !empty);
+  $('loginFields').classList.toggle('hide', empty);
+}
+
+async function login(){
+  const name = $('loginName').value.trim();
+  const email = $('loginEmail').value.trim().toLowerCase();
+  if(!name || !email) return toast('名前とメールアドレスを入力してください','error');
+
+  const users = staffCache.length ? staffCache : await list('users');
+  const user = users.find(u => (u.name || '') === name && String(u.email || '').toLowerCase() === email);
+  if(!user) return toast('ログイン情報が一致しません','error');
+
+  saveMe(user);
+  boot();
+}
+
+async function createInitialAdmin(){
+  const name = $('setupName').value.trim();
+  const email = $('setupEmail').value.trim().toLowerCase();
+  const department = $('setupDept').value;
+  const extension = $('setupExt').value.trim();
+
+  if(!name || !email) return toast('管理者名とメールアドレスを入力してください','error');
+
+  const now = await list('users');
+  if(now.length) return toast('すでにスタッフが登録されています','error');
+
+  const user = {
+    id:'u_admin_' + Date.now(),
+    name,
+    email,
+    department,
+    extension,
+    role:'admin',
+    note:'初期管理者'
+  };
+
+  await add('users', user);
+  await loadStaffHints();
+  $('loginName').value = name;
+  $('loginEmail').value = email;
+  toast('初期管理者を作成しました。そのままログインできます','ok');
+}
+
+function logout(){
+  if(confirm('ログアウトしますか？')){
+    localStorage.removeItem('ku_user');
+    watchers.forEach(u => u && u());
+    location.reload();
+  }
+}
+
+async function boot(){
+  const u = me();
+  if(!u){
+    $('loginScreen').classList.remove('hide');
+    $('app').classList.add('hide');
+    await loadStaffHints();
+    return;
+  }
+
+  $('loginScreen').classList.add('hide');
+  $('app').classList.remove('hide');
+  $('av').textContent = (u.name || '?').slice(0,1);
+  $('meName').textContent = u.name || '';
+  $('meRole').textContent = (u.role==='admin' ? '管理者' : 'スタッフ') + ' / ' + (u.department || '未設定');
+  $('adminTab').classList.toggle('hide', !admin());
+  $('addBoardBtn').classList.toggle('hide', !admin());
+  setNotifyBtn();
+  renderRoomCards();
+
+  await Promise.all([
+    loadDashboard(),
+    loadProfile(),
+    loadTasks(),
+    loadSurveys()
+  ]);
+
+  if(admin()){
+    await Promise.all([
+      loadAdmin(),
+      loadStaffHints()
+    ]);
+  }
+
+  setupRealtimeWatch();
+  cleanupExpiredData(true);
+  setInterval(() => cleanupExpiredData(true), 12 * 60 * 60 * 1000);
+}
+
+function showTab(id, btn){
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(id).classList.add('active');
+
+  ({
+    dashboard:loadDashboard,
+    profile:loadProfile,
+    tasks:loadTasks,
+    survey:loadSurveys,
+    admin:loadAdmin
+  }[id] || (()=>{}))();
+}
+
+async function loadDashboard(){
+  const u = me();
+  const [tasks, surveys, anns, settings] = await Promise.all([
+    list('tasks'),
+    list('surveys'),
+    list('announcements'),
+    list('settings')
+  ]);
+
+  $('stTask').textContent = tasks.filter(t => t.userId === u.id && !t.completed).length;
+  $('stTrain').textContent = 1;
+  $('stSurvey').textContent = surveys.filter(s => {
+    let r = [];
+    try{ r = JSON.parse(s.responses || '[]'); }catch(e){}
+    return !r.some(x => x.userId === u.id);
+  }).length;
+
+  const b = settings.find(x => x.type === 'banner');
+  if(b?.imageUrl){
+    $('bannerArea').innerHTML = `<img src="${esc(b.imageUrl)}" alt="banner">`;
+    $('bannerArea').classList.remove('hide');
+  }else{
+    $('bannerArea').classList.add('hide');
+  }
+
+  renderBoard(anns);
+}
+
+function renderBoard(anns){
+  const el = $('boardList');
+  if(!anns.length){
+    el.innerHTML = '<div class="empty">掲示板はまだありません</div>';
+    return;
+  }
+
+  el.innerHTML = anns
+    .sort((a,b) => ms(b.createdAtMs || b.createdAt) - ms(a.createdAtMs || a.createdAt))
+    .map(a => {
+      const files = getAnnFiles(a);
+      const badge = a.priority === 'urgent' ? 'b4' : a.priority === 'important' ? 'b3' : 'b1';
+      const label = a.priority === 'urgent' ? '緊急' : a.priority === 'important' ? '重要' : '通常';
+
+      return `
+        <div class="item">
+          <div class="itemTop">
+            <div>
+              <div class="title">${esc(a.title)}</div>
+              <div class="meta">
+                <span>${esc(a.creatorName || '')}</span>
+                <span>${fmt(a.createdAt)}</span>
+                <span>${files.length ? files.length + '件添付' : '添付なし'}</span>
+              </div>
+            </div>
+            <span class="badge ${badge}">${label}</span>
+          </div>
+
+          <div style="margin-top:10px;white-space:pre-wrap;line-height:1.6">${esc(a.content || '')}</div>
+
+          ${files.length ? `
+            <div class="files">
+              ${files.map(f => `
+                <div class="file">
+                  <div><i class="fas ${fileIcon(f.name || '')}"></i> ${esc(f.name || '添付ファイル')}</div>
+                  <div class="right">
+                    <a class="btn out sm" href="${esc(f.url)}" target="_blank">
+                      <i class="fas fa-arrow-up-right-from-square"></i> 開く
+                    </a>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+
+          ${admin() ? `
+            <div style="margin-top:10px">
+              <button class="btn dan sm" onclick="deleteBoard('${a.docId}')">
+                <i class="fas fa-trash"></i> 削除
+              </button>
+            </div>
+          ` : ''}
         </div>
-      </div>
-      <div class="li-actions">
-        <button class="btn btn-sm ${t.completed?'btn-sec':'btn-pri'}" onclick="toggleTask('${t.docId}',${!t.completed})" title="${t.completed?'未完了に戻す':'完了'}">
-          <i class="fas fa-${t.completed?'undo':'check'}"></i>
-        </button>
-        <button class="btn btn-dan btn-sm" onclick="delTask('${t.docId}')"><i class="fas fa-trash"></i></button>
+      `;
+    }).join('');
+}
+
+function openBoardModal(){
+  $('bTitle').value = '';
+  $('bBody').value = '';
+  $('bPri').value = 'normal';
+  $('bFiles').value = '';
+  $('bUrl').value = '';
+  openModal('boardModal');
+}
+
+async function createBoard(){
+  const u = me();
+  const title = $('bTitle').value.trim();
+  const content = $('bBody').value.trim();
+
+  if(!title || !content) return toast('タイトルと本文は必須です','error');
+
+  try{
+    const attachments = await uploadMany($('bFiles').files, 'announcements');
+    await add('announcements', {
+      title,
+      content,
+      priority:$('bPri').value,
+      creatorId:u.id,
+      creatorName:u.name,
+      attachments,
+      externalUrl:$('bUrl').value.trim()
+    });
+
+    closeModal('boardModal');
+    await loadDashboard();
+    toast('掲示板に投稿しました','ok');
+  }catch(e){
+    toast('投稿エラー: ' + e.message, 'error');
+  }
+}
+
+async function deleteBoard(id){
+  if(!confirm('掲示板を削除しますか？')) return;
+  const ann = (await list('announcements')).find(x => x.docId === id);
+  if(ann) await deleteAnnFiles(ann);
+  await del('announcements', id);
+  await loadDashboard();
+  toast('削除しました','ok');
+}
+
+function loadProfile(){
+  const u = me();
+  $('pName').value = u.name || '';
+  $('pEmail').value = u.email || '';
+  $('pDept').value = u.department || '介護';
+  $('pExt').value = u.extension || '';
+  $('pBio').value = u.bio || '';
+}
+
+async function saveProfile(){
+  const u = me();
+  const patch = {
+    department:$('pDept').value,
+    extension:$('pExt').value.trim(),
+    bio:$('pBio').value.trim()
+  };
+
+  if(u.docId) await upd('users', u.docId, patch);
+
+  const nu = {...u, ...patch};
+  saveMe(nu);
+  $('meRole').textContent = (nu.role==='admin'?'管理者':'スタッフ') + ' / ' + (nu.department || '未設定');
+  toast('プロフィールを保存しました','ok');
+}
+
+async function loadTasks(){
+  const u = me();
+  const rows = (await list('tasks'))
+    .filter(t => t.userId === u.id)
+    .sort((a,b) => Number(!!a.completed) - Number(!!b.completed));
+
+  const el = $('taskList');
+  if(!rows.length){
+    el.innerHTML = '<div class="empty">タスクはありません</div>';
+    return;
+  }
+
+  el.innerHTML = rows.map(t => `
+    <div class="item">
+      <div class="itemTop">
+        <div>
+          <div class="title" style="${t.completed ? 'text-decoration:line-through;color:#889' : ''}">${esc(t.title)}</div>
+          <div class="meta">
+            <span class="badge ${t.priority==='high'?'b4':t.priority==='medium'?'b3':'b1'}">
+              ${t.priority==='high'?'高':t.priority==='medium'?'中':'低'}
+            </span>
+          </div>
+        </div>
+        <div class="right">
+          <button class="btn ${t.completed?'sec':'pri'} sm" onclick="toggleTask('${t.docId}',${!t.completed})">
+            <i class="fas fa-${t.completed?'rotate-left':'check'}"></i>
+          </button>
+          <button class="btn dan sm" onclick="removeTask('${t.docId}')">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
       </div>
     </div>
   `).join('');
 }
+
 async function addTask(){
-  const u=getUser();
-  const title=document.getElementById('newTaskTitle').value.trim();
-  const priority=document.getElementById('newTaskPri').value;
-  if(!title){showNotif('タスク名を入力してください','error');return;}
-  await fsAdd('tasks',{userId:u.id,title,priority,completed:false});
-  document.getElementById('newTaskTitle').value='';
-  document.getElementById('newTaskPri').value='low';
-  loadTasks();showNotif('追加しました','success');
-}
-async function toggleTask(docId,completed){
-  await fsUpdate('tasks',docId,{completed});loadTasks();
-}
-async function delTask(docId){
-  if(!confirm('削除しますか？'))return;
-  await fsDel('tasks',docId);loadTasks();showNotif('削除しました','success');
+  const u = me();
+  const title = $('taskTitle').value.trim();
+  if(!title) return toast('タスク名を入力してください','error');
+
+  await add('tasks', {
+    userId:u.id,
+    title,
+    priority:$('taskPri').value,
+    completed:false
+  });
+
+  $('taskTitle').value = '';
+  $('taskPri').value = 'low';
+  await loadTasks();
+  await loadDashboard();
+  toast('タスクを追加しました','ok');
 }
 
-// ============================================================
-// Survey
-// ============================================================
-let svQList=[];
-let activeSurveyId=null;
+async function toggleTask(id, completed){
+  await upd('tasks', id, {completed});
+  await loadTasks();
+  await loadDashboard();
+}
 
-function openSurveyCreateModal(){
-  svQList=[];
-  document.getElementById('svTitle').value='';
-  document.getElementById('svDesc').value='';
-  document.getElementById('svPass').value='';
-  document.getElementById('svQuestions').innerHTML='';
-  document.getElementById('surveyCreateModal').classList.add('active');
+async function removeTask(id){
+  if(!confirm('削除しますか？')) return;
+  await del('tasks', id);
+  await loadTasks();
+  await loadDashboard();
+  toast('削除しました','ok');
 }
-function addSvQuestion(type){
-  const idx=svQList.length;
-  svQList.push({type,text:'',options:type==='checkbox'?['選択肢1']:[]});
-  renderSvQuestions();
+
+function renderRoomCards(){
+  const el = $('roomCards');
+  el.innerHTML = Object.entries(ROOMS).map(([k,v]) => `
+    <div class="card roomBtn" onclick="openRoom('${k}')">
+      <h3>${esc(v)}</h3>
+      <p class="muted" style="margin-top:8px">${k==='office' ? '事務所ルームを追加済みです。' : '部署内の情報共有ができます。'}</p>
+    </div>
+  `).join('');
 }
-function renderSvQuestions(){
-  const el=document.getElementById('svQuestions');
-  if(!svQList.length){el.innerHTML='<p style="color:#aaa;font-size:13px;text-align:center">質問を追加してください</p>';return;}
-  el.innerHTML=svQList.map((q,i)=>`
-    <div class="q-block">
-      <div class="q-hdr">
-        <span class="q-label">質問 ${i+1}：<span class="badge ${q.type==='checkbox'?'b-pri':'b-sec'}">${q.type==='checkbox'?'チェックボックス':'テキスト'}</span></span>
-        <button class="btn btn-dan btn-sm" onclick="removeSvQ(${i})"><i class="fas fa-times"></i></button>
+
+async function openRoom(key){
+  activeRoom = key;
+  $('roomTitle').textContent = ROOMS[key];
+  openModal('roomModal');
+  await loadRoomMsgs();
+  $('roomInput').focus();
+}
+
+async function loadRoomMsgs(){
+  if(!activeRoom) return;
+
+  const msgs = (await list('rooms_' + activeRoom))
+    .sort((a,b) => ms(a.createdAtMs || a.createdAt) - ms(b.createdAtMs || b.createdAt));
+
+  const el = $('roomMsgs');
+  if(!msgs.length){
+    el.innerHTML = '<div class="empty">まだメッセージがありません</div>';
+    return;
+  }
+
+  el.innerHTML = msgs.map(m => `
+    <div class="msg">
+      <div class="avatar" style="width:36px;height:36px;font-size:13px">${esc((m.userName || '?').slice(0,1))}</div>
+      <div class="bubble">
+        <div class="meta"><b>${esc(m.userName || '')}</b> <span>${fmt(m.createdAt)}</span></div>
+        <div style="white-space:pre-wrap">${esc(m.text || '')}</div>
       </div>
-      <div class="fg" style="margin-bottom:8px">
-        <input type="text" value="${escH(q.text)}" placeholder="質問文を入力" oninput="svQList[${i}].text=this.value" style="font-size:13px">
+    </div>
+  `).join('');
+
+  el.scrollTop = el.scrollHeight;
+}
+
+async function sendRoomMsg(){
+  const text = $('roomInput').value.trim();
+  const u = me();
+  if(!text || !activeRoom) return;
+
+  await add('rooms_' + activeRoom, {
+    userId:u.id,
+    userName:u.name,
+    text,
+    room:activeRoom
+  });
+
+  $('roomInput').value = '';
+  await loadRoomMsgs();
+}
+
+function openSurveyModal(){
+  svQuestions = [];
+  $('svTitle').value = '';
+  $('svDesc').value = '';
+  $('svPass').value = '';
+  renderQuestions();
+  openModal('surveyModal');
+}
+
+function addQ(type){
+  svQuestions.push({
+    type,
+    text:'',
+    options:type==='checkbox' ? ['選択肢1'] : []
+  });
+  renderQuestions();
+}
+
+function renderQuestions(){
+  const el = $('svQuestions');
+  if(!svQuestions.length){
+    el.innerHTML = '<div class="empty">質問を追加してください</div>';
+    return;
+  }
+
+  el.innerHTML = svQuestions.map((q,i) => `
+    <div class="q">
+      <div class="cardHd">
+        <b>Q${i+1} ${q.type==='checkbox'?'選択式':'記述式'}</b>
+        <button class="btn dan sm" onclick="removeQ(${i})">削除</button>
       </div>
-      ${q.type==='checkbox'?`
-        <div id="opts_${i}">
-          ${q.options.map((o,oi)=>`
-            <div class="opt-row">
-              <input type="text" value="${escH(o)}" placeholder="選択肢" oninput="svQList[${i}].options[${oi}]=this.value">
-              <button class="btn btn-dan btn-sm" onclick="removeOpt(${i},${oi})"><i class="fas fa-minus"></i></button>
+      <input class="inp" value="${esc(q.text)}" oninput="svQuestions[${i}].text=this.value" placeholder="質問文">
+      ${q.type==='checkbox' ? `
+        <div style="margin-top:10px">
+          ${q.options.map((o,oi) => `
+            <div class="row" style="margin-bottom:8px">
+              <input class="inp grow" value="${esc(o)}" oninput="svQuestions[${i}].options[${oi}]=this.value">
+              <button class="btn dan sm" onclick="removeOpt(${i},${oi})">-</button>
             </div>
           `).join('')}
+          <button class="btn out sm" onclick="addOpt(${i})">選択肢追加</button>
         </div>
-        <button class="btn btn-out btn-sm" onclick="addOpt(${i})" style="margin-top:4px"><i class="fas fa-plus"></i> 選択肢を追加</button>
-      `:''}
+      ` : ''}
     </div>
   `).join('');
 }
-function removeSvQ(i){svQList.splice(i,1);renderSvQuestions();}
-function addOpt(qi){svQList[qi].options.push('新しい選択肢');renderSvQuestions();}
-function removeOpt(qi,oi){svQList[qi].options.splice(oi,1);renderSvQuestions();}
-async function createSurvey(){
-  const u=getUser();
-  const title=document.getElementById('svTitle').value.trim();
-  const desc=document.getElementById('svDesc').value.trim();
-  const pass=document.getElementById('svPass').value.trim();
-  if(!title||!pass){showNotif('タイトルとパスワードは必須です','error');return;}
-  if(pass.length<4){showNotif('パスワードは4文字以上','error');return;}
-  if(!svQList.length){showNotif('質問を1つ以上追加してください','error');return;}
-  for(const q of svQList){if(!q.text.trim()){showNotif('質問文を入力してください','error');return;}}
-  try{
-    await fsAdd('surveys',{title,desc,password:pass,questions:JSON.stringify(svQList),creatorId:u.id,creatorName:u.name,responses:'[]'});
-    closeModal('surveyCreateModal');loadSurveys();showNotif('アンケートを作成しました','success');
-  }catch(e){showNotif('作成失敗: '+e.message,'error');}
+
+function removeQ(i){
+  svQuestions.splice(i,1);
+  renderQuestions();
 }
+
+function addOpt(i){
+  svQuestions[i].options.push('新しい選択肢');
+  renderQuestions();
+}
+
+function removeOpt(i,j){
+  svQuestions[i].options.splice(j,1);
+  renderQuestions();
+}
+
+async function createSurvey(){
+  const u = me();
+  const title = $('svTitle').value.trim();
+  const desc = $('svDesc').value.trim();
+  const password = $('svPass').value.trim();
+
+  if(!title || password.length < 4 || !svQuestions.length){
+    return toast('タイトル・4文字以上のパスワード・質問が必要です','error');
+  }
+
+  if(svQuestions.some(q => !q.text.trim())){
+    return toast('未入力の質問があります','error');
+  }
+
+  await add('surveys', {
+    title,
+    desc,
+    password,
+    questions:JSON.stringify(svQuestions),
+    creatorId:u.id,
+    creatorName:u.name,
+    responses:'[]'
+  });
+
+  closeModal('surveyModal');
+  await loadSurveys();
+  await loadDashboard();
+  toast('アンケートを作成しました','ok');
+}
+
 async function loadSurveys(){
-  const surveys=await fsGet('surveys');
-  const el=document.getElementById('surveyList');
-  if(!surveys.length){el.innerHTML='<div class="empty"><i class="fas fa-clipboard-list"></i><p>アンケートがありません</p></div>';return;}
-  const u=getUser();
-  el.innerHTML=surveys.map(s=>{
-    let responses=[];try{responses=JSON.parse(s.responses||'[]');}catch{}
-    const myAns=responses.find(r=>r.userId===u.id);
-    return`<div class="list-item">
-      <div class="li-content">
-        <div class="li-title">${escH(s.title)}</div>
-        <div class="li-meta">
-          <span><i class="fas fa-user"></i> ${escH(s.creatorName||'不明')}</span>
-          <span><i class="fas fa-users"></i> ${responses.length}件回答</span>
-          ${myAns?'<span class="badge b-sec"><i class="fas fa-check"></i> 回答済</span>':'<span class="badge b-war">未回答</span>'}
+  const u = me();
+  const rows = await list('surveys');
+  const el = $('surveyList');
+
+  if(!rows.length){
+    el.innerHTML = '<div class="empty">アンケートはありません</div>';
+    return;
+  }
+
+  el.innerHTML = rows.map(s => {
+    let responses = [];
+    try{ responses = JSON.parse(s.responses || '[]'); }catch(e){}
+    const answered = responses.some(r => r.userId === u.id);
+
+    return `
+      <div class="item">
+        <div class="itemTop">
+          <div>
+            <div class="title">${esc(s.title)}</div>
+            <div class="meta">
+              <span>${esc(s.creatorName || '')}</span>
+              <span>${responses.length}件回答</span>
+              <span>${answered?'<span class="badge b2">回答済</span>':'<span class="badge b3">未回答</span>'}</span>
+            </div>
+          </div>
+          <div class="right">
+            ${answered ? '' : `<button class="btn pri sm" onclick="openSurveyAnswer('${s.docId}')">回答</button>`}
+            <button class="btn out sm" onclick="openSurveyResult('${s.docId}')">集計</button>
+            ${admin() ? `<button class="btn dan sm" onclick="deleteSurvey('${s.docId}')">削除</button>` : ''}
+          </div>
         </div>
       </div>
-      <div class="li-actions">
-        ${!myAns?`<button class="btn btn-pri btn-sm" onclick="openAnswerModal('${s.docId}')"><i class="fas fa-pen"></i> 回答</button>`:''}
-        <button class="btn btn-out btn-sm" onclick="openResultModal('${s.docId}')"><i class="fas fa-chart-bar"></i> 集計</button>
-        ${isAdmin()?`<button class="btn btn-dan btn-sm" onclick="delSurvey('${s.docId}')"><i class="fas fa-trash"></i></button>`:''}
-      </div>
-    </div>`;
+    `;
   }).join('');
 }
-async function openAnswerModal(surveyId){
-  activeSurveyId=surveyId;
-  const surveys=await fsGet('surveys');
-  const s=surveys.find(x=>x.docId===surveyId);if(!s)return;
-  let qs=[];try{qs=JSON.parse(s.questions||'[]');}catch{}
-  document.getElementById('answerSurveyTitle').innerHTML=`<i class="fas fa-pen"></i> ${escH(s.title)}`;
-  document.getElementById('answerBody').innerHTML=qs.map((q,i)=>`
-    <div class="ans-q">
-      <div class="ans-title">Q${i+1}. ${escH(q.text)}</div>
-      ${q.type==='checkbox'?
-        q.options.map((o,oi)=>`<label class="ans-q check-row"><input type="checkbox" name="q${i}" value="${escH(o)}"> ${escH(o)}</label>`).join('')
-        :`<div class="fg" style="margin:0"><input type="text" id="ans_text_${i}" placeholder="回答を入力してください"></div>`
+
+async function openSurveyAnswer(id){
+  activeSurveyId = id;
+  const survey = (await list('surveys')).find(s => s.docId === id);
+  if(!survey) return;
+
+  let qs = [];
+  try{ qs = JSON.parse(survey.questions || '[]'); }catch(e){}
+
+  $('ansTitle').textContent = survey.title;
+  $('ansBody').innerHTML = qs.map((q,i) => `
+    <div class="q">
+      <div style="font-weight:800;margin-bottom:8px">Q${i+1}. ${esc(q.text)}</div>
+      ${q.type==='checkbox'
+        ? q.options.map(o => `
+          <label class="row" style="margin-bottom:6px">
+            <input type="checkbox" name="q${i}" value="${esc(o)}"> <span>${esc(o)}</span>
+          </label>
+        `).join('')
+        : `<input id="ans_${i}" class="inp" placeholder="回答">`
       }
     </div>
   `).join('');
-  document.getElementById('surveyAnswerModal').classList.add('active');
+
+  openModal('surveyAnswerModal');
 }
-async function submitAnswer(){
-  if(!activeSurveyId)return;
-  const u=getUser();
-  const surveys=await fsGet('surveys');
-  const s=surveys.find(x=>x.docId===activeSurveyId);if(!s)return;
-  let qs=[];try{qs=JSON.parse(s.questions||'[]');}catch{}
-  let responses=[];try{responses=JSON.parse(s.responses||'[]');}catch{}
-  if(responses.find(r=>r.userId===u.id)){showNotif('すでに回答済みです','warning');return;}
-  const ans={};
-  qs.forEach((q,i)=>{
-    if(q.type==='checkbox'){
-      const checked=Array.from(document.querySelectorAll(`input[name="q${i}"]:checked`)).map(c=>c.value);
-      ans[`q${i}`]=checked;
-    }else{
-      ans[`q${i}`]=document.getElementById(`ans_text_${i}`)?.value.trim()||'';
-    }
+
+async function submitSurvey(){
+  const u = me();
+  if(!activeSurveyId) return;
+
+  const survey = (await list('surveys')).find(s => s.docId === activeSurveyId);
+  let qs = [];
+  try{ qs = JSON.parse(survey.questions || '[]'); }catch(e){}
+  let responses = [];
+  try{ responses = JSON.parse(survey.responses || '[]'); }catch(e){}
+
+  if(responses.some(r => r.userId === u.id)) return toast('すでに回答済みです','error');
+
+  const ans = {};
+  qs.forEach((q,i) => {
+    ans['q' + i] = q.type==='checkbox'
+      ? [...document.querySelectorAll(`input[name=q${i}]:checked`)].map(x => x.value)
+      : ($('ans_' + i)?.value.trim() || '');
   });
-  responses.push({userId:u.id,userName:u.name,ans,at:new Date().toISOString()});
-  try{
-    await fsUpdate('surveys',activeSurveyId,{responses:JSON.stringify(responses)});
-    closeModal('surveyAnswerModal');loadSurveys();showNotif('回答を送信しました','success');
-  }catch(e){showNotif('送信失敗: '+e.message,'error');}
+
+  responses.push({
+    userId:u.id,
+    userName:u.name,
+    ans,
+    at:new Date().toISOString()
+  });
+
+  await upd('surveys', activeSurveyId, {responses:JSON.stringify(responses)});
+  closeModal('surveyAnswerModal');
+  await loadSurveys();
+  await loadDashboard();
+  toast('回答を送信しました','ok');
 }
-// ---- 集計結果グローバル保持（CSV用） ----
-let _resultSurvey = null;
-let _resultResponses = [];
-let _resultQs = [];
-// Chart.js インスタンスを管理（再描画時に破棄）
-const _chartInstances = {};
 
-async function openResultModal(surveyId){
-  const pass=prompt('集計パスワードを入力してください');
-  if(pass===null)return;
-  const surveys=await fsGet('surveys');
-  const s=surveys.find(x=>x.docId===surveyId);
-  if(!s)return;
-  if(s.password!==pass){showNotif('パスワードが違います','error');return;}
+async function openSurveyResult(id){
+  const pw = prompt('集計パスワード');
+  if(pw === null) return;
 
-  let qs=[];  try{qs=JSON.parse(s.questions||'[]');}catch{}
-  let responses=[]; try{responses=JSON.parse(s.responses||'[]');}catch{}
+  const survey = (await list('surveys')).find(s => s.docId === id);
+  if(!survey || survey.password !== pw) return toast('パスワードが違います','error');
 
-  // グローバル保持
-  _resultSurvey=s; _resultResponses=responses; _resultQs=qs;
+  let qs = [], res = [];
+  try{ qs = JSON.parse(survey.questions || '[]'); }catch(e){}
+  try{ res = JSON.parse(survey.responses || '[]'); }catch(e){}
 
-  // ---- サマリーバー ----
-  const answeredUsers=[...new Set(responses.map(r=>r.userName))];
-  document.getElementById('resultSummary').innerHTML=`
-    <div class="result-stat-item"><div class="num">${responses.length}</div><div class="lbl">総回答数</div></div>
-    <div class="result-stat-item"><div class="num">${answeredUsers.length}</div><div class="lbl">回答者数</div></div>
-    <div class="result-stat-item"><div class="num">${qs.length}</div><div class="lbl">質問数</div></div>
-    <div class="result-stat-item"><div class="num">${qs.filter(q=>q.type==='checkbox').length}</div><div class="lbl">選択式</div></div>
-    <div class="result-stat-item"><div class="num">${qs.filter(q=>q.type==='text').length}</div><div class="lbl">記述式</div></div>
+  Object.values(charts).forEach(c => c.destroy());
+  charts = {};
+
+  $('svSummary').innerHTML = `
+    <div class="card"><b>${res.length}</b><div class="tiny">総回答数</div></div>
+    <div class="card"><b>${qs.length}</b><div class="tiny">質問数</div></div>
   `;
 
-  // ---- 質問ブロック生成 ----
-  // 既存 Chart インスタンスを全破棄
-  Object.values(_chartInstances).forEach(c=>c.destroy());
-  Object.keys(_chartInstances).forEach(k=>delete _chartInstances[k]);
-
-  const rbody = document.getElementById('resultBody');
-  rbody.innerHTML = '';
-
-  qs.forEach((q,i)=>{
-    const block = document.createElement('div');
-    block.className = 'result-q-block';
-    const typeLabel = q.type==='checkbox'
-      ? `<span class="badge b-pri">選択式</span>`
-      : `<span class="badge b-sec">記述式</span>`;
-    block.innerHTML=`<div class="result-q-title">${typeLabel} Q${i+1}. ${escH(q.text)}</div>
+  $('svResult').innerHTML = qs.map((q,i) => `
+    <div class="q">
+      <div style="font-weight:800">Q${i+1}. ${esc(q.text)}</div>
       ${q.type==='checkbox'
-        ? `<div class="chart-wrap"><canvas id="chart_${i}"></canvas></div>`
-        : `<ul class="text-ans-list" id="textAns_${i}"></ul>`
-      }`;
-    rbody.appendChild(block);
+        ? `<div class="chartWrap"><canvas id="c${i}"></canvas></div>`
+        : `<div class="files">${res.map(r => r.ans?.['q'+i]).filter(Boolean).map(v => `<div class="file">${esc(v)}</div>`).join('') || '<div class="empty">回答なし</div>'}</div>`
+      }
+    </div>
+  `).join('');
 
-    if(q.type==='checkbox'){
-      // 集計
-      const counts={};
-      q.options.forEach(o=>{counts[o]=0;});
-      responses.forEach(r=>{
-        const a=r.ans?.[`q${i}`]||[];
-        a.forEach(v=>{if(counts[v]!==undefined)counts[v]++;});
-      });
-      const labels=Object.keys(counts);
-      const data=Object.values(counts);
-      const total=responses.length||1;
+  openModal('surveyResultModal');
 
-      // パレット（12色循環）
-      const palette=[
-        'rgba(52,152,219,.85)','rgba(46,204,113,.85)','rgba(231,76,60,.85)',
-        'rgba(243,156,18,.85)','rgba(155,89,182,.85)','rgba(52,73,94,.85)',
-        'rgba(26,188,156,.85)','rgba(230,126,34,.85)','rgba(149,165,166,.85)',
-        'rgba(41,128,185,.85)','rgba(39,174,96,.85)','rgba(192,57,43,.85)'
-      ];
-      const colors=labels.map((_,idx)=>palette[idx%palette.length]);
+  qs.forEach((q,i) => {
+    if(q.type !== 'checkbox') return;
+    const count = {};
+    q.options.forEach(o => count[o] = 0);
+    res.forEach(r => (r.ans?.['q'+i] || []).forEach(v => count[v] = (count[v] || 0) + 1));
 
-      // Chart.js 棒グラフ
-      const ctx=document.getElementById(`chart_${i}`).getContext('2d');
-      _chartInstances[`chart_${i}`]=new Chart(ctx,{
-        type:'bar',
-        data:{
-          labels:labels.map(l=>l.length>14?l.slice(0,13)+'…':l),
-          datasets:[{
-            label:'回答数',
-            data:data,
-            backgroundColor:colors,
-            borderColor:colors.map(c=>c.replace('.85','.99')),
-            borderWidth:1,
-            borderRadius:6,
-          }]
-        },
-        options:{
-          responsive:true,
-          maintainAspectRatio:false,
-          plugins:{
-            legend:{display:false},
-            tooltip:{
-              callbacks:{
-                label:ctx=>{
-                  const cnt=ctx.parsed.y;
-                  const pct=Math.round(cnt/total*100);
-                  return ` ${cnt}件 (${pct}%)`;
-                }
-              }
-            }
-          },
-          scales:{
-            y:{
-              beginAtZero:true,
-              ticks:{stepSize:1,font:{size:12}},
-              grid:{color:'rgba(0,0,0,.06)'}
-            },
-            x:{
-              ticks:{font:{size:12}},
-              grid:{display:false}
-            }
-          }
+    const ctx = $('c' + i).getContext('2d');
+    charts['c' + i] = new Chart(ctx, {
+      type:'bar',
+      data:{
+        labels:Object.keys(count),
+        datasets:[{
+          data:Object.values(count),
+          backgroundColor:['#2f80ed','#27ae60','#f39c12','#e74c3c','#9b51e0','#56ccf2']
+        }]
+      },
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{
+          y:{beginAtZero:true,ticks:{stepSize:1}}
         }
-      });
+      }
+    });
+  });
+}
 
-    }else{
-      // テキスト回答一覧
-      const ul=block.querySelector(`#textAns_${i}`);
-      const texts=responses.map(r=>({name:r.userName,val:r.ans?.[`q${i}`]||''})).filter(x=>x.val);
-      if(!texts.length){
-        ul.innerHTML='<li style="color:#aaa;border-left-color:#ddd">回答なし</li>';
-      }else{
-        ul.innerHTML=texts.map(x=>`<li><div class="ans-who">${escH(x.name)}</div>${escH(x.val)}</li>`).join('');
+async function deleteSurvey(id){
+  if(!confirm('アンケートを削除しますか？')) return;
+  await del('surveys', id);
+  await loadSurveys();
+  await loadDashboard();
+  toast('削除しました','ok');
+}
+
+async function loadAdmin(){
+  if(!admin()) return;
+
+  const [users, tasks, surveys, anns, settings] = await Promise.all([
+    list('users'),
+    list('tasks'),
+    list('surveys'),
+    list('announcements'),
+    list('settings')
+  ]);
+
+  $('staffList').innerHTML = !users.length
+    ? '<div class="empty">スタッフがいません</div>'
+    : `
+      <table class="table">
+        <thead>
+          <tr>
+            <th>氏名</th>
+            <th>メール</th>
+            <th>部署</th>
+            <th>権限</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${users.map(u => `
+            <tr>
+              <td>${esc(u.name || '')}</td>
+              <td>${esc(u.email || '')}</td>
+              <td>${esc(u.department || '')}</td>
+              <td>${u.role==='admin'?'管理者':'スタッフ'}</td>
+              <td>
+                <div class="right">
+                  <button class="btn out sm" onclick="editStaff('${u.docId}')">編集</button>
+                  <button class="btn dan sm" onclick="deleteStaff('${u.docId}','${esc(u.name || '')}')">削除</button>
+                </div>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+
+  $('adminStats').innerHTML = `
+    登録スタッフ: <b>${users.length}</b> 名<br>
+    タスク: <b>${tasks.length}</b> 件<br>
+    アンケート: <b>${surveys.length}</b> 件<br>
+    掲示板: <b>${anns.length}</b> 件
+  `;
+
+  const b = settings.find(x => x.type === 'banner');
+  $('bannerStatus').innerHTML = b?.imageUrl
+    ? `<span class="badge b2">設定済み</span> ${esc(b.fileName || '')}`
+    : '未設定';
+}
+
+function openStaffModal(){
+  $('staffModalTitle').textContent = 'スタッフ追加';
+  $('sfId').value = '';
+  $('sfName').value = '';
+  $('sfEmail').value = '';
+  $('sfDept').value = '介護';
+  $('sfRole').value = 'staff';
+  $('sfExt').value = '';
+  $('sfNote').value = '';
+  openModal('staffModal');
+}
+
+async function editStaff(id){
+  const u = (await list('users')).find(x => x.docId === id);
+  if(!u) return;
+
+  $('staffModalTitle').textContent = 'スタッフ編集';
+  $('sfId').value = id;
+  $('sfName').value = u.name || '';
+  $('sfEmail').value = u.email || '';
+  $('sfDept').value = u.department || '介護';
+  $('sfRole').value = u.role || 'staff';
+  $('sfExt').value = u.extension || '';
+  $('sfNote').value = u.note || '';
+  openModal('staffModal');
+}
+
+async function saveStaff(){
+  const id = $('sfId').value;
+  const name = $('sfName').value.trim();
+  const email = $('sfEmail').value.trim().toLowerCase();
+
+  if(!name || !email) return toast('氏名とメールアドレスは必須です','error');
+
+  const data = {
+    name,
+    email,
+    department:$('sfDept').value,
+    role:$('sfRole').value,
+    extension:$('sfExt').value.trim(),
+    note:$('sfNote').value.trim()
+  };
+
+  if(id) await upd('users', id, data);
+  else await add('users', {...data, id:'u_' + Date.now()});
+
+  closeModal('staffModal');
+  await Promise.all([loadAdmin(), loadStaffHints()]);
+  toast('保存しました','ok');
+}
+
+async function deleteStaff(id, name){
+  if(!confirm(`「${name}」を削除しますか？`)) return;
+  await del('users', id);
+  await Promise.all([loadAdmin(), loadStaffHints()]);
+  toast('削除しました','ok');
+}
+
+function openBannerModal(){
+  $('bannerFile').value = '';
+  $('bannerPreview').innerHTML = '';
+  $('bannerPreview').classList.add('hide');
+  openModal('bannerModal');
+}
+
+$('bannerFile').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if(!f) return;
+  const r = new FileReader();
+  r.onload = x => {
+    $('bannerPreview').innerHTML = `<img src="${x.target.result}" style="width:100%;max-height:240px;object-fit:cover;border-radius:14px">`;
+    $('bannerPreview').classList.remove('hide');
+  };
+  r.readAsDataURL(f);
+});
+
+async function uploadBanner(){
+  const f = $('bannerFile').files[0];
+  if(!f) return toast('画像を選択してください','error');
+
+  const ref = storage.ref(`banners/${Date.now()}_${f.name}`);
+  const snap = await ref.put(f);
+  const imageUrl = await snap.ref.getDownloadURL();
+
+  const settings = await list('settings');
+  const cur = settings.find(x => x.type === 'banner');
+
+  if(cur){
+    await upd('settings', cur.docId, {type:'banner', imageUrl, fileName:f.name});
+  }else{
+    await add('settings', {type:'banner', imageUrl, fileName:f.name});
+  }
+
+  closeModal('bannerModal');
+  await Promise.all([loadDashboard(), loadAdmin()]);
+  toast('バナーを更新しました','ok');
+}
+
+function clearWatchers(){
+  watchers.forEach(u => u && u());
+  watchers = [];
+}
+
+function watchLatest(col, key, handler){
+  const unsub = db.collection(col).orderBy('createdAt','desc').limit(1).onSnapshot(s => {
+    if(s.empty) return;
+    const d = s.docs[0];
+    const k = 'watch_' + key;
+    const prev = localStorage.getItem(k);
+
+    if(!prev){
+      localStorage.setItem(k, d.id);
+      return;
+    }
+
+    if(prev !== d.id){
+      localStorage.setItem(k, d.id);
+      handler({docId:d.id, ...d.data()});
+    }
+  });
+
+  watchers.push(unsub);
+}
+
+function setupRealtimeWatch(){
+  clearWatchers();
+  const u = me();
+  if(!u) return;
+
+  watchLatest('announcements','ann', d => {
+    if(d.creatorId !== u.id){
+      browserNotify('新しい掲示板', d.title || '投稿がありました');
+      loadDashboard();
+    }
+  });
+
+  const roomTargets = admin() ? Object.keys(ROOMS) : [DEPT_ROOM[u.department] || 'office', 'office'];
+
+  [...new Set(roomTargets)].forEach(r => {
+    watchLatest('rooms_' + r, 'room_' + r, d => {
+      if(d.userId !== u.id){
+        browserNotify(ROOMS[r], `${d.userName || ''}: ${String(d.text || '').slice(0,40)}`);
+        if(activeRoom === r && $('roomModal').classList.contains('show')) loadRoomMsgs();
+      }
+    });
+  });
+}
+
+async function cleanupExpiredData(silent=true){
+  try{
+    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    let removed = 0;
+
+    const anns = await list('announcements');
+    for(const a of anns.filter(x => ms(x.createdAtMs || x.createdAt) && ms(x.createdAtMs || x.createdAt) < cutoff)){
+      await deleteAnnFiles(a);
+      await del('announcements', a.docId);
+      removed++;
+    }
+
+    for(const r of Object.keys(ROOMS)){
+      const rows = await list('rooms_' + r);
+      for(const m of rows.filter(x => ms(x.createdAtMs || x.createdAt) && ms(x.createdAtMs || x.createdAt) < cutoff)){
+        await del('rooms_' + r, m.docId);
+        removed++;
       }
     }
-  });
 
-  document.getElementById('surveyResultModal').classList.add('active');
-}
-
-// ---- CSV エクスポート ----
-function exportResultCSV(){
-  if(!_resultSurvey){return;}
-  const qs=_resultQs;
-  const responses=_resultResponses;
-
-  // ヘッダー行
-  const headers=['回答者名','回答日時',...qs.map((q,i)=>`Q${i+1}: ${q.text}`)];
-
-  const rows=responses.map(r=>{
-    const base=[r.userName||'',r.at||''];
-    const ans=qs.map((q,i)=>{
-      const v=r.ans?.[`q${i}`];
-      if(Array.isArray(v))return v.join(' / ');
-      return v||'';
-    });
-    return[...base,...ans];
-  });
-
-  // CSV 文字列生成（UTF-8 BOM付き）
-  const escape=v=>'"'+String(v).replace(/"/g,'""')+'"';
-  const csvLines=[[...headers].map(escape).join(','),...rows.map(r=>r.map(escape).join(','))];
-  const csv='\uFEFF'+csvLines.join('\r\n');
-
-  // ダウンロード
-  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;
-  a.download=`アンケート_${(_resultSurvey.title||'集計').replace(/[^\w\u3000-\u9fff]/g,'_')}_${new Date().toLocaleDateString('ja-JP').replace(/\//g,'-')}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-  showNotif('CSVをダウンロードしました','success');
-}
-
-async function delSurvey(docId){
-  if(!confirm('アンケートを削除しますか？'))return;
-  await fsDel('surveys',docId);loadSurveys();showNotif('削除しました','success');
-}
-
-// ============================================================
-// Rooms
-// ============================================================
-let activeRoom=null;
-const rNames={care:'介護部署',nurse:'看護部署',rehab:'リハビリ部署',nutrition:'栄養部署'};
-function openRoom(id){
-  activeRoom=id;
-  document.getElementById('roomTitle').innerHTML=`<i class="fas fa-comments"></i> ${rNames[id]||id}`;
-  document.getElementById('roomModal').classList.add('active');
-  loadRoomMsgs(id);
-}
-async function loadRoomMsgs(id){
-  const msgs=await fsGet(`rooms_${id}`);
-  const el=document.getElementById('roomMsgs');
-  if(!msgs.length){el.innerHTML='<div class="empty" style="padding:20px"><i class="fas fa-comment-slash"></i><p>まだメッセージがありません</p></div>';return;}
-  el.innerHTML=msgs.map(m=>`
-    <div class="msg">
-      <div class="msg-av">${escH((m.userName||'?').charAt(0))}</div>
-      <div class="msg-body">
-        <div class="msg-meta"><span class="msg-name">${escH(m.userName||'')}</span><span class="msg-time">${formatDate(m.createdAt)}</span></div>
-        <div class="msg-text">${escH(m.text)}</div>
-      </div>
-    </div>
-  `).join('');
-  el.scrollTop=el.scrollHeight;
-}
-async function sendRoomMsg(){
-  const input=document.getElementById('roomMsgInput');
-  const text=input.value.trim();
-  const u=getUser();
-  if(!text||!activeRoom)return;
-  await fsAdd(`rooms_${activeRoom}`,{userId:u.id,userName:u.name,text});
-  input.value='';
-  loadRoomMsgs(activeRoom);
-}
-
-// ============================================================
-// Admin – Staff Management
-// ============================================================
-async function loadAdmin(){
-  await loadStaffList();
-  loadAdminStats();
-  loadBannerStatus();
-}
-async function loadStaffList(){
-  const staff=await fsGet('users');
-  const el=document.getElementById('staffList');
-  if(!staff.length){el.innerHTML='<div class="empty"><i class="fas fa-users"></i><p>スタッフがいません</p></div>';return;}
-  el.innerHTML=staff.map(s=>`
-    <div class="staff-card">
-      <div class="staff-av">${(s.name||'?').charAt(0)}</div>
-      <div class="staff-info">
-        <div class="staff-name">${escH(s.name||'')} ${s.role==='admin'?'<span class="admin-badge">管理者</span>':''}</div>
-        <div class="staff-dept">${escH(s.department||'未設定')} ${s.extension?'/ 内線:'+escH(s.extension):''}</div>
-      </div>
-      <div style="display:flex;gap:6px">
-        <button class="btn btn-out btn-sm" onclick="openStaffModal('${s.docId}')"><i class="fas fa-edit"></i></button>
-        <button class="btn btn-dan btn-sm" onclick="deleteStaff('${s.docId}','${escH(s.name||'')}')"><i class="fas fa-trash"></i></button>
-      </div>
-    </div>
-  `).join('');
-}
-async function loadAdminStats(){
-  try{
-    const [users,tasks,surveys,anns]=await Promise.all([fsGet('users'),fsGet('tasks'),fsGet('surveys'),fsGet('announcements')]);
-    document.getElementById('adminStats').innerHTML=`
-      <div>👤 登録スタッフ数：<b>${users.length}</b> 名</div>
-      <div>✅ 全タスク数：<b>${tasks.length}</b> 件</div>
-      <div>📋 アンケート数：<b>${surveys.length}</b> 件</div>
-      <div>📢 お知らせ数：<b>${anns.length}</b> 件</div>
-    `;
-  }catch(e){console.error(e);}
-}
-async function openStaffModal(docId){
-  document.getElementById('sfDocId').value='';
-  document.getElementById('sfName').value='';
-  document.getElementById('sfDept').value='介護';
-  document.getElementById('sfRole').value='staff';
-  document.getElementById('sfExt').value='';
-  document.getElementById('sfNote').value='';
-  document.getElementById('staffModalTitle').innerHTML='<i class="fas fa-user-plus"></i> 職員追加';
-  if(docId){
-    document.getElementById('staffModalTitle').innerHTML='<i class="fas fa-user-edit"></i> 職員編集';
-    const staff=await fsGet('users');
-    const s=staff.find(x=>x.docId===docId);
-    if(s){
-      document.getElementById('sfDocId').value=docId;
-      document.getElementById('sfName').value=s.name||'';
-      document.getElementById('sfDept').value=s.department||'介護';
-      document.getElementById('sfRole').value=s.role||'staff';
-      document.getElementById('sfExt').value=s.extension||'';
-      document.getElementById('sfNote').value=s.note||'';
-    }
+    if(!silent && removed) toast(`1か月超の掲示板・チャット ${removed} 件を整理しました`, 'ok');
+    if(admin()) loadAdmin();
+    loadDashboard();
+  }catch(e){
+    if(!silent) toast('自動整理で一部エラーがありました','error');
   }
-  document.getElementById('staffModal').classList.add('active');
-}
-async function saveStaff(){
-  const docId=document.getElementById('sfDocId').value;
-  const name=document.getElementById('sfName').value.trim();
-  const department=document.getElementById('sfDept').value;
-  const role=document.getElementById('sfRole').value;
-  const extension=document.getElementById('sfExt').value.trim();
-  const note=document.getElementById('sfNote').value.trim();
-  if(!name){showNotif('氏名は必須です','error');return;}
-  const data={name,department,role,extension,note};
-  try{
-    if(docId){
-      await fsUpdate('users',docId,data);
-    }else{
-      const uid='u_'+Date.now()+'_'+Math.random().toString(36).substr(2,8);
-      await fsAdd('users',{...data,id:uid});
-    }
-    closeModal('staffModal');loadStaffList();loadAdminStats();
-    showNotif('保存しました','success');
-    // 名前予測リスト更新
-    allStaff=await fsGet('users');
-  }catch(e){showNotif('保存失敗: '+e.message,'error');}
-}
-async function deleteStaff(docId,name){
-  if(!confirm(`「${name}」を削除しますか？この操作は取り消せません。`))return;
-  await fsDel('users',docId);loadStaffList();loadAdminStats();showNotif('削除しました','success');
 }
 
-// ============================================================
-// Banner
-// ============================================================
-async function loadBannerDash(){
-  try{
-    const s=await fsGet('settings');
-    const b=s.find(x=>x.type==='banner');
-    if(b&&b.imageUrl){document.getElementById('bannerImg').src=b.imageUrl;document.getElementById('bannerArea').style.display='block';}
-  }catch(e){}
-}
-async function loadBannerStatus(){
-  try{
-    const s=await fsGet('settings');
-    const b=s.find(x=>x.type==='banner');
-    document.getElementById('bannerStatus').innerHTML=b&&b.imageUrl?'<span style="color:var(--sec)"><i class="fas fa-check-circle"></i> 設定済み</span>':'未設定';
-  }catch(e){}
-}
-function openBannerModal(){
-  document.getElementById('bannerFile').value='';
-  document.getElementById('bannerPreview').style.display='none';
-  document.getElementById('bannerModal').classList.add('active');
-}
-async function uploadBanner(){
-  const f=document.getElementById('bannerFile').files[0];
-  if(!f){showNotif('画像を選択してください','error');return;}
-  if(f.size>5*1024*1024){showNotif('5MB以下の画像を選択してください','error');return;}
-  const btn=document.getElementById('uploadBannerBtn');
-  btn.disabled=true;btn.innerHTML='<span class="spin"></span> アップロード中…';
-  try{
-    const ref=storage.ref(`banners/${Date.now()}_${f.name}`);
-    const task=await ref.put(f);
-    const url=await task.ref.getDownloadURL();
-    const settings=await fsGet('settings');
-    const existing=settings.find(s=>s.type==='banner');
-    if(existing)await fsUpdate('settings',existing.docId,{imageUrl:url,fileName:f.name});
-    else await fsAdd('settings',{type:'banner',imageUrl:url,fileName:f.name});
-    document.getElementById('bannerImg').src=url;
-    document.getElementById('bannerArea').style.display='block';
-    document.getElementById('bannerStatus').innerHTML='<span style="color:var(--sec)"><i class="fas fa-check-circle"></i> 設定済み</span>';
-    closeModal('bannerModal');showNotif('バナーを設定しました','success');
-  }catch(e){showNotif('アップロード失敗: '+e.message,'error');}
-  finally{btn.disabled=false;btn.innerHTML='<i class="fas fa-cloud-upload-alt"></i> アップロード';}
-}
-async function removeBanner(){
-  if(!confirm('バナー画像を削除しますか？'))return;
-  try{
-    const s=await fsGet('settings');
-    const b=s.find(x=>x.type==='banner');
-    if(b){
-      try{if(b.fileName)await storage.ref(`banners/${b.fileName}`).delete();}catch{}
-      await fsDel('settings',b.docId);
-    }
-    document.getElementById('bannerArea').style.display='none';
-    document.getElementById('bannerStatus').textContent='未設定';
-    showNotif('削除しました','success');
-  }catch(e){showNotif('削除失敗','error');}
-}
+document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => {
+  if(e.target === m) m.classList.remove('show');
+}));
 
-// ============================================================
-// Modal util
-// ============================================================
-function closeModal(id){document.getElementById(id).classList.remove('active');}
+$('loginName').addEventListener('keypress', e => e.key === 'Enter' && login());
+$('loginEmail').addEventListener('keypress', e => e.key === 'Enter' && login());
+$('setupName').addEventListener('keypress', e => e.key === 'Enter' && createInitialAdmin());
+$('setupEmail').addEventListener('keypress', e => e.key === 'Enter' && createInitialAdmin());
+$('roomInput').addEventListener('keypress', e => e.key === 'Enter' && sendRoomMsg());
 
-// ============================================================
-// Notification
-// ============================================================
-function showNotif(msg,type='success'){
-  const icons={success:'check-circle',error:'exclamation-circle',warning:'exclamation-triangle'};
-  const el=document.createElement('div');
-  el.className=`notif ${type}`;
-  el.innerHTML=`<i class="fas fa-${icons[type]||'info-circle'}" style="color:${type==='success'?'var(--sec)':type==='error'?'var(--dan)':'var(--war)'}"></i><span>${escH(msg)}</span>`;
-  document.body.appendChild(el);
-  setTimeout(()=>{el.style.animation='slideRight .3s ease reverse';setTimeout(()=>el.remove(),280);},3200);
-}
-
-// ============================================================
-// Util
-// ============================================================
-function escH(s){
-  if(typeof s!=='string')return String(s??'');
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
-}
-function formatDate(ts){
-  if(!ts)return'';
-  const d=ts&&ts.toDate?ts.toDate():new Date(ts);
-  const diff=Date.now()-d.getTime();
-  if(isNaN(diff))return'';
-  if(diff<60000)return'たった今';
-  if(diff<3600000)return Math.floor(diff/60000)+'分前';
-  if(diff<86400000)return Math.floor(diff/3600000)+'時間前';
-  return d.toLocaleDateString('ja-JP',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
-}
-
-// ============================================================
-// DOMContentLoaded
-// ============================================================
-document.addEventListener('DOMContentLoaded',function(){
-  // ログイン Enter
-  document.getElementById('userName').addEventListener('keypress',e=>{if(e.key==='Enter')handleNameEntry();});
-  // ルームメッセージ Enter
-  document.getElementById('roomMsgInput').addEventListener('keypress',e=>{if(e.key==='Enter')sendRoomMsg();});
-  // バナープレビュー
-  document.getElementById('bannerFile').addEventListener('change',function(){
-    const f=this.files[0];if(!f)return;
-    const r=new FileReader();
-    r.onload=ev=>{document.getElementById('previewImg').src=ev.target.result;document.getElementById('bannerPreview').style.display='block';};
-    r.readAsDataURL(f);
-  });
-  // モーダル外クリックで閉じる
-  document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',function(e){if(e.target===this)this.classList.remove('active');}));
-});
-
-// ============================================================
-// App Boot
-// ============================================================
-window.addEventListener('load',function(){
-  loadStaffSuggestions();
-  const user=getUser();
-  if(user){
-    bootApp(user);
-  }else{
-    document.getElementById('loginScreen').style.display='flex';
-    document.getElementById('mainApp').style.display='none';
-  }
-});
+window.addEventListener('load', boot);
 </script>
 </body>
 </html>
