@@ -1,1700 +1,3088 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>康寿園ポータル 改善版</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>康寿園ポータル 改善版</title>
 
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="manifest" href="./manifest.json" />
+    <meta name="theme-color" content="#2f80ed" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="康寿園ポータル" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.png" />
 
-  <style>
-    :root{
-      --pri:#2f80ed;
-      --sec:#27ae60;
-      --warn:#f39c12;
-      --dan:#e74c3c;
-      --dark:#22313f;
-      --mut:#6b7b8c;
-      --bg:#eef3fb;
-      --card:#fff;
-      --line:#dfe7f0;
-      --rad:16px;
-      --shadow:0 8px 26px rgba(0,0,0,.08)
-    }
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{
-      font-family:"Segoe UI","Hiragino Sans","Yu Gothic UI",sans-serif;
-      background:linear-gradient(135deg,#6a82fb,#7f53ac);
-      min-height:100vh;
-      color:var(--dark)
-    }
-    .hide{display:none!important}
-    .wrap{max-width:1320px;margin:auto;padding:18px}
-    .panel,.card{background:var(--card);border-radius:var(--rad);box-shadow:var(--shadow)}
-    .center{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-    .login{width:min(460px,100%);padding:34px}
-    .login h1{font-size:28px;margin-bottom:8px}
-    .muted{color:var(--mut)}
-    .tiny{font-size:12px;color:var(--mut)}
-    .row{display:flex;gap:12px;flex-wrap:wrap}
-    .grow{flex:1 1 240px}
-    .stack{display:grid;gap:14px}
-    .inp,select,textarea{
-      width:100%;
-      padding:12px 14px;
-      border:1.8px solid var(--line);
-      border-radius:12px;
-      font:inherit;
-      background:#fff
-    }
-    .inp:focus,select:focus,textarea:focus{
-      outline:none;
-      border-color:var(--pri);
-      box-shadow:0 0 0 3px rgba(47,128,237,.14)
-    }
-    textarea{min-height:96px;resize:vertical}
-    .btn{
-      border:none;
-      border-radius:12px;
-      padding:11px 16px;
-      font:inherit;
-      font-weight:700;
-      cursor:pointer;
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      transition:.2s
-    }
-    .btn:hover{transform:translateY(-1px)}
-    .pri{background:var(--pri);color:#fff}
-    .sec{background:var(--sec);color:#fff}
-    .warn{background:var(--warn);color:#fff}
-    .dan{background:var(--dan);color:#fff}
-    .out{background:#fff;color:var(--pri);border:1.6px solid var(--pri)}
-    .sm{padding:7px 11px;font-size:12px}
-    .hdr{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:12px;
-      padding:16px 20px;
-      margin-bottom:18px
-    }
-    .brand{display:flex;align-items:center;gap:12px}
-    .brand i{font-size:28px;color:var(--pri)}
-    .avatar{
-      width:42px;
-      height:42px;
-      border-radius:50%;
-      display:grid;
-      place-items:center;
-      color:#fff;
-      background:linear-gradient(135deg,#2f80ed,#27ae60);
-      font-weight:700
-    }
-    .tabs{display:flex;gap:8px;overflow:auto;padding-bottom:8px;margin-bottom:18px}
-    .tab{
-      background:#fff;
-      border:none;
-      border-radius:999px;
-      padding:10px 16px;
-      white-space:nowrap;
-      cursor:pointer;
-      color:var(--dark)
-    }
-    .tab.active,.tab:hover{background:var(--pri);color:#fff}
-    .screen{display:none}
-    .screen.active{display:block}
-    .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px}
-    .stat{padding:18px;display:flex;gap:12px;align-items:center}
-    .stat i{
-      width:52px;
-      height:52px;
-      border-radius:14px;
-      display:grid;
-      place-items:center;
-      color:#fff;
-      font-size:22px
-    }
-    .stat b{font-size:28px;display:block}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
-    .card{padding:18px;margin-bottom:16px}
-    .card h3{font-size:18px}
-    .cardHd{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
-    .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800}
-    .b1{background:var(--pri);color:#fff}
-    .b2{background:var(--sec);color:#fff}
-    .b3{background:var(--warn);color:#fff}
-    .b4{background:var(--dan);color:#fff}
-    .list{display:grid;gap:10px}
-    .item{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}
-    .itemTop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
-    .title{font-weight:800}
-    .meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;color:var(--mut);font-size:12px}
-    .files{display:grid;gap:8px;margin-top:10px}
-    .file{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:8px;
-      border:1px solid var(--line);
-      border-radius:12px;
-      padding:10px;
-      background:#f8fbff
-    }
-    .roomBtn{cursor:pointer}
-    .msgBox{
-      max-height:420px;
-      overflow:auto;
-      border:1px solid var(--line);
-      border-radius:14px;
-      background:#f7fbff;
-      padding:12px;
-      display:grid;
-      gap:10px
-    }
-    .msg{display:flex;gap:10px}
-    .bubble{
-      background:#fff;
-      border-radius:14px;
-      padding:10px 12px;
-      box-shadow:0 2px 8px rgba(0,0,0,.05);
-      flex:1
-    }
-    .bubble .meta{margin-top:2px;margin-bottom:6px}
-    .modal{
-      position:fixed;
-      inset:0;
-      background:rgba(0,0,0,.45);
-      display:none;
-      align-items:center;
-      justify-content:center;
-      padding:18px;
-      z-index:50
-    }
-    .modal.show{display:flex}
-    .modal .box{
-      width:min(840px,100%);
-      max-height:90vh;
-      overflow:auto;
-      background:#fff;
-      border-radius:18px;
-      padding:22px;
-      box-shadow:0 14px 40px rgba(0,0,0,.16)
-    }
-    .close{background:none;border:none;font-size:22px;cursor:pointer}
-    .toast{
-      position:fixed;
-      right:18px;
-      top:18px;
-      z-index:70;
-      background:#fff;
-      padding:12px 14px;
-      border-radius:14px;
-      box-shadow:var(--shadow);
-      border-left:5px solid var(--pri);
-      display:flex;
-      gap:9px;
-      max-width:340px
-    }
-    .empty{text-align:center;color:var(--mut);padding:28px 10px}
-    .banner img{width:100%;max-height:290px;object-fit:cover;border-radius:16px}
-    .q{border:1px solid var(--line);border-radius:14px;padding:12px;background:#fbfdff;margin-bottom:10px}
-    .chartWrap{position:relative;height:270px;margin-top:10px}
-    .table{width:100%;border-collapse:collapse}
-    .table th,.table td{padding:10px;border-bottom:1px solid var(--line);text-align:left;font-size:13px}
-    .table tr:hover{background:#fafcff}
-    .right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .w100{width:100%}
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
 
-    @media(max-width:768px){
-      .hdr{align-items:flex-start;flex-direction:column}
-      .wrap{padding:10px}
-      .login{padding:24px}
-      .stats{grid-template-columns:1fr 1fr}
-      .itemTop{flex-direction:column}
-      .modal .box{padding:16px}
-    }
-  </style>
-</head>
-<body>
-
-<div id="loginScreen" class="center">
-  <div class="panel login stack">
-    <div style="text-align:center">
-      <i class="fas fa-hospital-user" style="font-size:56px;color:var(--pri);margin-bottom:12px"></i>
-      <h1>康寿園ポータル</h1>
-      <p class="muted">IDは名前・パスワードはメールアドレスでログイン</p>
-    </div>
-
-    <div id="loginFields" class="stack">
-      <input id="loginName" class="inp" list="staffNames" placeholder="名前">
-      <datalist id="staffNames"></datalist>
-      <input id="loginEmail" class="inp" type="email" placeholder="メールアドレス">
-      <button class="btn pri w100" onclick="login()">
-        <i class="fas fa-sign-in-alt"></i> ログイン
-      </button>
-    </div>
-
-    <div id="firstSetupBox" class="stack hide" style="padding:14px;border:1px solid var(--line);border-radius:14px;background:#f8fbff">
-      <div>
-        <b>初回セットアップ</b>
-        <div class="tiny">最初の1人目の管理者をここから作成できます</div>
-      </div>
-      <input id="setupName" class="inp" placeholder="管理者名">
-      <input id="setupEmail" class="inp" type="email" placeholder="メールアドレス">
-      <select id="setupDept">
-        <option>事務</option>
-        <option>介護</option>
-        <option>看護</option>
-        <option>リハビリ</option>
-        <option>栄養</option>
-      </select>
-      <input id="setupExt" class="inp" placeholder="内線番号（任意）">
-      <button class="btn sec w100" onclick="createInitialAdmin()">
-        <i class="fas fa-user-shield"></i> 初期管理者を作成
-      </button>
-    </div>
-
-    <p class="tiny">※ ご要望どおりの認証方式です。運用上は将来的に本パスワード認証へ変更推奨です。</p>
-  </div>
-</div>
-
-<div id="app" class="hide">
-  <div class="wrap">
-    <header class="panel hdr">
-      <div class="brand">
-        <i class="fas fa-hospital-user"></i>
-        <div>
-          <h2>康寿園ポータル</h2>
-          <div class="tiny">掲示板・タスク・部署チャット・アンケート</div>
+    <style>
+      :root {
+        --pri: #2f80ed;
+        --sec: #27ae60;
+        --warn: #f39c12;
+        --dan: #e74c3c;
+        --dark: #22313f;
+        --mut: #6b7b8c;
+        --bg: #eef3fb;
+        --card: #fff;
+        --line: #dfe7f0;
+        --rad: 16px;
+        --shadow: 0 8px 26px rgba(0, 0, 0, 0.08);
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+        background: linear-gradient(135deg, #6a82fb, #7f53ac);
+        min-height: 100vh;
+        color: var(--dark);
+      }
+      .hide {
+        display: none !important;
+      }
+      .wrap {
+        max-width: 1320px;
+        margin: auto;
+        padding: 18px;
+      }
+      .panel,
+      .card {
+        background: var(--card);
+        border-radius: var(--rad);
+        box-shadow: var(--shadow);
+      }
+      .center {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      .login {
+        width: min(460px, 100%);
+        padding: 34px;
+      }
+      .login h1 {
+        font-size: 28px;
+        margin-bottom: 8px;
+      }
+      .muted {
+        color: var(--mut);
+      }
+      .tiny {
+        font-size: 12px;
+        color: var(--mut);
+      }
+      .helper {
+        font-size: 12px;
+        color: var(--mut);
+        line-height: 1.6;
+      }
+      .row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .grow {
+        flex: 1 1 240px;
+      }
+      .stack {
+        display: grid;
+        gap: 14px;
+      }
+      .inp,
+      select,
+      textarea {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1.8px solid var(--line);
+        border-radius: 12px;
+        font: inherit;
+        background: #fff;
+      }
+      .inp:focus,
+      select:focus,
+      textarea:focus {
+        outline: none;
+        border-color: var(--pri);
+        box-shadow: 0 0 0 3px rgba(47, 128, 237, 0.14);
+      }
+      textarea {
+        min-height: 96px;
+        resize: vertical;
+      }
+      .btn {
+        border: none;
+        border-radius: 12px;
+        padding: 11px 16px;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: 0.2s;
+      }
+      .btn:hover {
+        transform: translateY(-1px);
+      }
+      .pri {
+        background: var(--pri);
+        color: #fff;
+      }
+      .sec {
+        background: var(--sec);
+        color: #fff;
+      }
+      .warn {
+        background: var(--warn);
+        color: #fff;
+      }
+      .dan {
+        background: var(--dan);
+        color: #fff;
+      }
+      .out {
+        background: #fff;
+        color: var(--pri);
+        border: 1.6px solid var(--pri);
+      }
+      .sm {
+        padding: 7px 11px;
+        font-size: 12px;
+      }
+      .hdr {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 20px;
+        margin-bottom: 18px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .brand i {
+        font-size: 28px;
+        color: var(--pri);
+      }
+      .avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        color: #fff;
+        background: linear-gradient(135deg, #2f80ed, #27ae60);
+        font-weight: 700;
+      }
+      .tabs {
+        display: flex;
+        gap: 8px;
+        overflow: auto;
+        padding-bottom: 8px;
+        margin-bottom: 18px;
+      }
+      .tab {
+        background: #fff;
+        border: none;
+        border-radius: 999px;
+        padding: 10px 16px;
+        white-space: nowrap;
+        cursor: pointer;
+        color: var(--dark);
+      }
+      .tab.active,
+      .tab:hover {
+        background: var(--pri);
+        color: #fff;
+      }
+      .screen {
+        display: none;
+      }
+      .screen.active {
+        display: block;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 14px;
+        margin-bottom: 18px;
+      }
+      .stat {
+        padding: 18px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+      .stat i {
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        display: grid;
+        place-items: center;
+        color: #fff;
+        font-size: 22px;
+      }
+      .stat b {
+        font-size: 28px;
+        display: block;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 16px;
+      }
+      .card {
+        padding: 18px;
+        margin-bottom: 16px;
+      }
+      .card h3 {
+        font-size: 18px;
+      }
+      .cardHd {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      .badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 800;
+      }
+      .b1 {
+        background: var(--pri);
+        color: #fff;
+      }
+      .b2 {
+        background: var(--sec);
+        color: #fff;
+      }
+      .b3 {
+        background: var(--warn);
+        color: #fff;
+      }
+      .b4 {
+        background: var(--dan);
+        color: #fff;
+      }
+      .list {
+        display: grid;
+        gap: 10px;
+      }
+      .item {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 14px;
+        background: #fff;
+      }
+      .itemTop {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        align-items: flex-start;
+      }
+      .title {
+        font-weight: 800;
+      }
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 6px;
+        color: var(--mut);
+        font-size: 12px;
+      }
+      .files {
+        display: grid;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .file {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px;
+        background: #f8fbff;
+      }
+      .roomBtn {
+        cursor: pointer;
+      }
+      .msgBox {
+        max-height: 420px;
+        overflow: auto;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #f7fbff;
+        padding: 12px;
+        display: grid;
+        gap: 10px;
+      }
+      .msg {
+        display: flex;
+        gap: 10px;
+      }
+      .bubble {
+        background: #fff;
+        border-radius: 14px;
+        padding: 10px 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        flex: 1;
+      }
+      .bubble .meta {
+        margin-top: 2px;
+        margin-bottom: 6px;
+      }
+      .modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 18px;
+        z-index: 50;
+      }
+      .modal.show {
+        display: flex;
+      }
+      .modal .box {
+        width: min(980px, 100%);
+        max-height: 90vh;
+        overflow: auto;
+        background: #fff;
+        border-radius: 18px;
+        padding: 22px;
+        box-shadow: 0 14px 40px rgba(0, 0, 0, 0.16);
+      }
+      .close {
+        background: none;
+        border: none;
+        font-size: 22px;
+        cursor: pointer;
+      }
+      .toast {
+        position: fixed;
+        right: 18px;
+        top: 18px;
+        z-index: 70;
+        background: #fff;
+        padding: 12px 14px;
+        border-radius: 14px;
+        box-shadow: var(--shadow);
+        border-left: 5px solid var(--pri);
+        display: flex;
+        gap: 9px;
+        max-width: 340px;
+      }
+      .empty {
+        text-align: center;
+        color: var(--mut);
+        padding: 28px 10px;
+      }
+      .banner img {
+        width: 100%;
+        max-height: 290px;
+        object-fit: cover;
+        border-radius: 16px;
+      }
+      .q {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 12px;
+        background: #fbfdff;
+        margin-bottom: 10px;
+      }
+      .qCard {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 14px;
+        background: #fbfdff;
+      }
+      .qHead {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .chartWrap {
+        position: relative;
+        height: 270px;
+        margin-top: 10px;
+      }
+      .table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .table th,
+      .table td {
+        padding: 10px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        font-size: 13px;
+      }
+      .table tr:hover {
+        background: #fafcff;
+      }
+      .right {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .w100 {
+        width: 100%;
+      }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #eef5ff;
+        color: #205bb3;
+        border: 1px solid #cfe0ff;
+        border-radius: 999px;
+        padding: 6px 10px;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .kw {
+        display: inline-block;
+        margin: 4px 6px 0 0;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #f0f7ff;
+        border: 1px solid #d9e8ff;
+        font-size: 12px;
+        color: #2a5db0;
+      }
+      .optRow {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-top: 8px;
+      }
+      .scale {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .scale label,
+      .pick label {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px;
+        text-align: center;
+        background: #fff;
+        cursor: pointer;
+        display: block;
+      }
+      .pick {
+        display: grid;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .resultStat {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 14px;
+        background: #fff;
+      }
+      .surveyTopGrid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      .miniStat {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 14px;
+      }
+      .miniStat b {
+        display: block;
+        font-size: 24px;
+        margin-bottom: 4px;
+      }
+      .aiBox {
+        border: 1px dashed #bcd3ff;
+        background: #f5f9ff;
+        border-radius: 14px;
+        padding: 14px;
+      }
+      .stickyFoot {
+        position: sticky;
+        bottom: 0;
+        background: #fff;
+        padding-top: 10px;
+      }
+      .soft {
+        background: #f8fbff;
+      }
+      .noteBox {
+        background: #fffdf5;
+        border: 1px solid #f4e5b3;
+        color: #7a5a00;
+        padding: 10px 12px;
+        border-radius: 12px;
+        font-size: 13px;
+      }
+      .flashTarget {
+        animation: flashBoard 2.2s ease;
+      }
+      @keyframes flashBoard {
+        0% {
+          box-shadow: 0 0 0 0 rgba(47, 128, 237, 0.6);
+          background: #eef6ff;
+        }
+        100% {
+          box-shadow: 0 0 0 12px rgba(47, 128, 237, 0);
+          background: #fff;
+        }
+      }
+      @media (max-width: 768px) {
+        .hdr {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+        .wrap {
+          padding: 10px;
+        }
+        .login {
+          padding: 24px;
+        }
+        .stats {
+          grid-template-columns: 1fr 1fr;
+        }
+        .itemTop {
+          flex-direction: column;
+        }
+        .modal .box {
+          padding: 16px;
+        }
+        .scale {
+          grid-template-columns: repeat(3, 1fr);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="loginScreen" class="center">
+      <div class="panel login stack">
+        <div style="text-align: center">
+          <i
+            class="fas fa-hospital-user"
+            style="font-size: 56px; color: var(--pri); margin-bottom: 12px"
+          ></i>
+          <h1>康寿園ポータル</h1>
+          <p class="muted">IDは名前・パスワードはメールアドレスでログイン</p>
         </div>
-      </div>
-      <div class="right">
-        <button id="notifyBtn" class="btn out sm" onclick="requestNotify()">
-          <i class="fas fa-bell"></i> 通知OFF
-        </button>
-        <div class="avatar" id="av">?</div>
-        <div>
-          <div id="meName" style="font-weight:800">-</div>
-          <div id="meRole" class="tiny">-</div>
+        <div id="loginFields" class="stack">
+          <input
+            id="loginName"
+            class="inp"
+            list="staffNames"
+            placeholder="名前"
+          />
+          <datalist id="staffNames"></datalist>
+          <input
+            id="loginEmail"
+            class="inp"
+            type="email"
+            placeholder="メールアドレス"
+          />
+          <button class="btn pri w100" onclick="login()">
+            <i class="fas fa-sign-in-alt"></i> ログイン
+          </button>
         </div>
-        <button class="btn dan sm" onclick="logout()">
-          <i class="fas fa-sign-out-alt"></i>
-        </button>
-      </div>
-    </header>
-
-    <nav class="tabs" id="tabs">
-      <button class="tab active" data-id="dashboard" onclick="showTab('dashboard',this)">
-        <i class="fas fa-house"></i> ダッシュボード
-      </button>
-      <button class="tab" data-id="profile" onclick="showTab('profile',this)">
-        <i class="fas fa-user"></i> プロフィール
-      </button>
-      <button class="tab" data-id="tasks" onclick="showTab('tasks',this)">
-        <i class="fas fa-list-check"></i> タスク
-      </button>
-      <button class="tab" data-id="training" onclick="showTab('training',this)">
-        <i class="fas fa-graduation-cap"></i> 研修
-      </button>
-      <button class="tab" data-id="rooms" onclick="showTab('rooms',this)">
-        <i class="fas fa-comments"></i> 部署ルーム
-      </button>
-      <button class="tab" data-id="survey" onclick="showTab('survey',this)">
-        <i class="fas fa-poll"></i> アンケート
-      </button>
-      <button class="tab hide" id="adminTab" data-id="admin" onclick="showTab('admin',this)">
-        <i class="fas fa-shield-alt"></i> 管理者
-      </button>
-    </nav>
-
-    <section id="dashboard" class="screen active">
-      <div id="bannerArea" class="banner hide card"></div>
-
-      <div class="stats">
-        <div class="card stat">
-          <i class="fas fa-list-check" style="background:linear-gradient(135deg,#2f80ed,#56ccf2)"></i>
-          <div><b id="stTask">0</b><span class="muted">未完了タスク</span></div>
-        </div>
-        <div class="card stat">
-          <i class="fas fa-book-open" style="background:linear-gradient(135deg,#9b51e0,#f2994a)"></i>
-          <div><b id="stTrain">0</b><span class="muted">未完了研修</span></div>
-        </div>
-        <div class="card stat">
-          <i class="fas fa-comments" style="background:linear-gradient(135deg,#27ae60,#6fcf97)"></i>
-          <div><b id="stRoom">5</b><span class="muted">部署チャット数</span></div>
-        </div>
-        <div class="card stat">
-          <i class="fas fa-poll" style="background:linear-gradient(135deg,#eb5757,#f2994a)"></i>
-          <div><b id="stSurvey">0</b><span class="muted">未回答アンケート</span></div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="cardHd">
+        <div
+          id="firstSetupBox"
+          class="stack hide"
+          style="
+            padding: 14px;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            background: #f8fbff;
+          "
+        >
           <div>
-            <h3>掲示板</h3>
-            <div class="tiny">複数ファイルをアップロード可能</div>
+            <b>初回セットアップ</b>
+            <div class="tiny">最初の1人目の管理者をここから作成できます</div>
           </div>
-          <button id="addBoardBtn" class="btn pri sm hide" onclick="openBoardModal()">
-            <i class="fas fa-plus"></i> 投稿
-          </button>
-        </div>
-        <div id="boardList" class="list"></div>
-      </div>
-    </section>
-
-    <section id="profile" class="screen">
-      <div class="card stack">
-        <div>
-          <h3>マイプロフィール</h3>
-          <div class="tiny">ログイン情報・所属情報</div>
-        </div>
-        <div class="row">
-          <div class="grow">
-            <label class="tiny">名前</label>
-            <input id="pName" class="inp" readonly>
-          </div>
-          <div class="grow">
-            <label class="tiny">メールアドレス</label>
-            <input id="pEmail" class="inp" readonly>
-          </div>
-        </div>
-        <div class="row">
-          <div class="grow">
-            <label class="tiny">所属部署</label>
-            <select id="pDept">
-              <option>介護</option>
-              <option>看護</option>
-              <option>リハビリ</option>
-              <option>栄養</option>
-              <option>事務</option>
-            </select>
-          </div>
-          <div class="grow">
-            <label class="tiny">内線番号</label>
-            <input id="pExt" class="inp">
-          </div>
-        </div>
-        <div>
-          <label class="tiny">自己紹介</label>
-          <textarea id="pBio"></textarea>
-        </div>
-        <div>
-          <button class="btn pri" onclick="saveProfile()">
-            <i class="fas fa-save"></i> 保存
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <section id="tasks" class="screen">
-      <div class="grid">
-        <div class="card stack">
-          <h3>タスク追加</h3>
-          <input id="taskTitle" class="inp" placeholder="タスク名">
-          <select id="taskPri">
-            <option value="low">低</option>
-            <option value="medium">中</option>
-            <option value="high">高</option>
+          <input id="setupName" class="inp" placeholder="管理者名" />
+          <input
+            id="setupEmail"
+            class="inp"
+            type="email"
+            placeholder="メールアドレス"
+          />
+          <select id="setupDept">
+            <option>事務</option>
+            <option>介護</option>
+            <option>看護</option>
+            <option>リハビリ</option>
+            <option>栄養</option>
           </select>
-          <button class="btn pri" onclick="addTask()">
-            <i class="fas fa-plus"></i> 追加
+          <input id="setupExt" class="inp" placeholder="内線番号（任意）" />
+          <button class="btn sec w100" onclick="createInitialAdmin()">
+            <i class="fas fa-user-shield"></i> 初期管理者を作成
           </button>
         </div>
-        <div class="card">
-          <div class="cardHd"><h3>マイタスク</h3></div>
-          <div id="taskList" class="list"></div>
-        </div>
+        <p class="tiny">
+          ※
+          ご要望どおりの認証方式です。運用上は将来的に本パスワード認証へ変更推奨です。
+        </p>
       </div>
-    </section>
+    </div>
 
-    <section id="training" class="screen">
-      <div class="grid">
-        <div class="card">
-          <h3>オンライン研修</h3>
-          <p class="muted" style="margin-top:8px">動画・資料をまとめて確認できます。</p>
-          <div style="height:8px;background:#eef2f7;border-radius:999px;margin:14px 0">
-            <div style="width:60%;height:100%;background:linear-gradient(90deg,#2f80ed,#27ae60);border-radius:999px"></div>
-          </div>
-          <span class="tiny">完了率 60%</span>
-        </div>
-        <div class="card">
-          <h3>マニュアル</h3>
-          <p class="muted" style="margin-top:8px">掲示板の添付ファイルやPDFを業務資料として運用できます。</p>
-        </div>
-        <div class="card">
-          <h3>資格情報</h3>
-          <p class="muted" style="margin-top:8px">必要に応じて拡張可能です。</p>
-        </div>
-      </div>
-    </section>
-
-    <section id="rooms" class="screen">
-      <div class="grid" id="roomCards"></div>
-    </section>
-
-    <section id="survey" class="screen">
-      <div class="card">
-        <div class="cardHd">
-          <div>
-            <h3>アンケート</h3>
-            <div class="tiny">選択式・記述式 / パスワード付き集計</div>
-          </div>
-          <button class="btn pri sm" onclick="openSurveyModal()">
-            <i class="fas fa-plus"></i> 作成
-          </button>
-        </div>
-        <div id="surveyList" class="list"></div>
-      </div>
-    </section>
-
-    <section id="admin" class="screen">
-      <div class="grid">
-        <div class="card">
-          <div class="cardHd">
+    <div id="app" class="hide">
+      <div class="wrap">
+        <header class="panel hdr">
+          <div class="brand">
+            <i class="fas fa-hospital-user"></i>
             <div>
-              <h3>スタッフ管理</h3>
-              <div class="tiny">ログインは 名前 + メールアドレス</div>
-            </div>
-            <button class="btn pri sm" onclick="openStaffModal()">
-              <i class="fas fa-user-plus"></i> 追加
-            </button>
-          </div>
-          <div id="staffList"></div>
-        </div>
-
-        <div class="card stack">
-          <div>
-            <h3>システム設定</h3>
-            <div class="tiny">バナーと統計</div>
-          </div>
-          <div id="bannerStatus" class="muted">未設定</div>
-          <div class="row">
-            <button class="btn pri" onclick="openBannerModal()">
-              <i class="fas fa-image"></i> バナー変更
-            </button>
-            <button class="btn warn" onclick="cleanupExpiredData(false)">
-              <i class="fas fa-broom"></i> 1か月超データ整理
-            </button>
-          </div>
-          <div id="adminStats" class="muted"></div>
-        </div>
-      </div>
-    </section>
-  </div>
-</div>
-
-<div id="boardModal" class="modal">
-  <div class="box stack">
-    <div class="cardHd">
-      <h3>掲示板投稿</h3>
-      <button class="close" onclick="closeModal('boardModal')">×</button>
-    </div>
-    <input id="bTitle" class="inp" placeholder="タイトル">
-    <textarea id="bBody" placeholder="本文"></textarea>
-    <select id="bPri">
-      <option value="normal">通常</option>
-      <option value="important">重要</option>
-      <option value="urgent">緊急</option>
-    </select>
-    <div>
-      <label class="tiny">添付ファイル（複数可 / PDF・Excel・Word・画像など）</label>
-      <input id="bFiles" class="inp" type="file" multiple>
-    </div>
-    <input id="bUrl" class="inp" placeholder="外部共有URL（任意）">
-    <button class="btn pri" onclick="createBoard()">
-      <i class="fas fa-paper-plane"></i> 投稿する
-    </button>
-  </div>
-</div>
-
-<div id="roomModal" class="modal">
-  <div class="box stack">
-    <div class="cardHd">
-      <h3 id="roomTitle">部署ルーム</h3>
-      <button class="close" onclick="closeModal('roomModal')">×</button>
-    </div>
-    <div id="roomMsgs" class="msgBox"></div>
-    <div class="row">
-      <input id="roomInput" class="inp grow" placeholder="メッセージ">
-      <button class="btn pri" onclick="sendRoomMsg()">
-        <i class="fas fa-paper-plane"></i> 送信
-      </button>
-    </div>
-  </div>
-</div>
-
-<div id="staffModal" class="modal">
-  <div class="box stack">
-    <div class="cardHd">
-      <h3 id="staffModalTitle">スタッフ追加</h3>
-      <button class="close" onclick="closeModal('staffModal')">×</button>
-    </div>
-    <input type="hidden" id="sfId">
-    <input id="sfName" class="inp" placeholder="氏名">
-    <input id="sfEmail" class="inp" type="email" placeholder="メールアドレス">
-    <div class="row">
-      <select id="sfDept" class="grow">
-        <option>介護</option>
-        <option>看護</option>
-        <option>リハビリ</option>
-        <option>栄養</option>
-        <option>事務</option>
-      </select>
-      <select id="sfRole" class="grow">
-        <option value="staff">スタッフ</option>
-        <option value="admin">管理者</option>
-      </select>
-    </div>
-    <input id="sfExt" class="inp" placeholder="内線番号">
-    <textarea id="sfNote" placeholder="メモ"></textarea>
-    <button class="btn pri" onclick="saveStaff()">
-      <i class="fas fa-save"></i> 保存
-    </button>
-  </div>
-</div>
-
-<div id="bannerModal" class="modal">
-  <div class="box stack">
-    <div class="cardHd">
-      <h3>バナー画像</h3>
-      <button class="close" onclick="closeModal('bannerModal')">×</button>
-    </div>
-    <input id="bannerFile" class="inp" type="file" accept="image/*">
-    <div id="bannerPreview" class="hide"></div>
-    <button class="btn pri" onclick="uploadBanner()">
-      <i class="fas fa-cloud-upload-alt"></i> アップロード
-    </button>
-  </div>
-</div>
-
-<div id="surveyModal" class="modal">
-  <div class="box stack">
-    <div class="cardHd">
-      <h3>アンケート作成</h3>
-      <button class="close" onclick="closeModal('surveyModal')">×</button>
-    </div>
-    <input id="svTitle" class="inp" placeholder="タイトル">
-    <textarea id="svDesc" placeholder="説明"></textarea>
-    <input id="svPass" class="inp" type="password" placeholder="集計パスワード（4文字以上）">
-    <div class="cardHd">
-      <h4>質問</h4>
-      <div class="right">
-        <button class="btn out sm" onclick="addQ('checkbox')">選択式</button>
-        <button class="btn out sm" onclick="addQ('text')">記述式</button>
-      </div>
-    </div>
-    <div id="svQuestions"></div>
-    <button class="btn pri" onclick="createSurvey()">
-      <i class="fas fa-check"></i> 作成
-    </button>
-  </div>
-</div>
-
-<div id="surveyAnswerModal" class="modal">
-  <div class="box stack">
-    <div class="cardHd">
-      <h3 id="ansTitle">回答</h3>
-      <button class="close" onclick="closeModal('surveyAnswerModal')">×</button>
-    </div>
-    <div id="ansBody"></div>
-    <button class="btn pri" onclick="submitSurvey()">
-      <i class="fas fa-paper-plane"></i> 送信
-    </button>
-  </div>
-</div>
-
-<div id="surveyResultModal" class="modal">
-  <div class="box stack">
-    <div class="cardHd">
-      <h3>集計結果</h3>
-      <button class="close" onclick="closeModal('surveyResultModal')">×</button>
-    </div>
-    <div id="svSummary" class="row"></div>
-    <div id="svResult"></div>
-  </div>
-</div>
-
-<script>
-const firebaseConfig = {
-  apiKey:"AIzaSyB7WyB8qLVOtpYWDrTUyVi6q1f1MPmIEqI",
-  authDomain:"tokuyou-portal.firebaseapp.com",
-  projectId:"tokuyou-portal",
-  storageBucket:"tokuyou-portal.firebasestorage.app",
-  messagingSenderId:"628140097543",
-  appId:"1:628140097543:web:03f3cf9ef15a767dbdaaa2"
-};
-
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const storage = firebase.storage();
-
-const ROOMS = {
-  care:'介護部署',
-  nurse:'看護部署',
-  rehab:'リハビリ部署',
-  nutrition:'栄養部署',
-  office:'事務所'
-};
-
-const DEPT_ROOM = {
-  '介護':'care',
-  '看護':'nurse',
-  'リハビリ':'rehab',
-  '栄養':'nutrition',
-  '事務':'office'
-};
-
-let staffCache = [];
-let activeRoom = '';
-let activeSurveyId = '';
-let svQuestions = [];
-let watchers = [];
-let charts = {};
-
-const $ = id => document.getElementById(id);
-const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({
-  '&':'&amp;',
-  '<':'&lt;',
-  '>':'&gt;',
-  '"':'&quot;',
-  "'":'&#39;'
-}[m]));
-const me = () => JSON.parse(localStorage.getItem('ku_user') || 'null');
-const saveMe = u => localStorage.setItem('ku_user', JSON.stringify(u));
-const admin = () => me()?.role === 'admin';
-
-function ms(v){
-  if(typeof v === 'number') return v;
-  if(v?.toDate) return v.toDate().getTime();
-  if(v) return new Date(v).getTime();
-  return 0;
-}
-
-function fmt(v){
-  const d = v?.toDate ? v.toDate() : new Date(v);
-  if(!d || isNaN(d)) return '';
-  const diff = Date.now() - d.getTime();
-  if(diff < 6e4) return 'たった今';
-  if(diff < 36e5) return Math.floor(diff / 6e4) + '分前';
-  if(diff < 864e5) return Math.floor(diff / 36e5) + '時間前';
-  return d.toLocaleString('ja-JP', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
-}
-
-function toast(msg, type='info'){
-  const el = document.createElement('div');
-  el.className = 'toast';
-  el.style.borderLeftColor = type === 'error' ? 'var(--dan)' : type === 'ok' ? 'var(--sec)' : 'var(--pri)';
-  el.innerHTML = `<i class="fas fa-${type==='error'?'circle-exclamation':type==='ok'?'circle-check':'circle-info'}"></i><div>${esc(msg)}</div>`;
-  document.body.appendChild(el);
-  setTimeout(() => el.remove(), 3200);
-}
-
-async function list(col){
-  try{
-    const s = await db.collection(col).orderBy('createdAt','desc').get();
-    return s.docs.map(d => ({docId:d.id, ...d.data()}));
-  }catch(e){
-    const s = await db.collection(col).get();
-    return s.docs.map(d => ({docId:d.id, ...d.data()}));
-  }
-}
-
-async function add(col, data){
-  return (await db.collection(col).add({
-    ...data,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-    createdAtMs: Date.now()
-  })).id;
-}
-
-async function upd(col, id, data){
-  await db.collection(col).doc(id).update({
-    ...data,
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    updatedAtMs: Date.now()
-  });
-}
-
-async function del(col, id){
-  await db.collection(col).doc(id).delete();
-}
-
-async function uploadMany(fileList, folder){
-  const files = [...fileList || []];
-  const out = [];
-  for(const f of files){
-    if(f.size > 20 * 1024 * 1024) throw new Error('20MBを超えるファイルがあります');
-    const ref = storage.ref(`${folder}/${Date.now()}_${f.name}`);
-    const snap = await ref.put(f);
-    out.push({
-      name:f.name,
-      url:await snap.ref.getDownloadURL(),
-      size:f.size,
-      type:f.type || ''
-    });
-  }
-  return out;
-}
-
-function closeModal(id){
-  $(id).classList.remove('show');
-}
-
-function openModal(id){
-  $(id).classList.add('show');
-}
-
-function setNotifyBtn(){
-  const t = ('Notification' in window) ? Notification.permission : 'unsupported';
-  $('notifyBtn').innerHTML = `<i class="fas fa-bell"></i> ${t==='granted'?'通知ON':t==='denied'?'通知拒否':'通知OFF'}`;
-}
-
-async function requestNotify(){
-  if(!('Notification' in window)) return toast('このブラウザは通知に未対応です','error');
-  const p = await Notification.requestPermission();
-  setNotifyBtn();
-  toast(p==='granted' ? 'ブラウザ通知を有効化しました' : '通知が許可されませんでした', p==='granted' ? 'ok' : 'error');
-}
-
-function browserNotify(title, body){
-  toast(`${title}：${body}`);
-  if('Notification' in window && Notification.permission === 'granted'){
-    try{
-      new Notification(title, {body, tag:title});
-    }catch(e){}
-  }
-  if(navigator.vibrate){
-    try{ navigator.vibrate([120,40,120]); }catch(e){}
-  }
-}
-
-function fileIcon(n=''){
-  const e = (n.split('.').pop() || '').toLowerCase();
-  if(['pdf'].includes(e)) return 'fa-file-pdf';
-  if(['xls','xlsx','csv'].includes(e)) return 'fa-file-excel';
-  if(['doc','docx'].includes(e)) return 'fa-file-word';
-  if(['ppt','pptx'].includes(e)) return 'fa-file-powerpoint';
-  if(['jpg','jpeg','png','gif','webp'].includes(e)) return 'fa-file-image';
-  return 'fa-file-lines';
-}
-
-function getAnnFiles(a){
-  let files = [];
-  if(Array.isArray(a.attachments)) files = a.attachments;
-  else if(typeof a.attachments === 'string'){
-    try{ files = JSON.parse(a.attachments) || []; }catch(e){}
-  }
-  if(a.fileUrl && !files.length) files = [{name:a.fileName || '添付ファイル', url:a.fileUrl}];
-  if(a.externalUrl) files.push({name:'外部リンク', url:a.externalUrl, external:true});
-  return files;
-}
-
-async function deleteAnnFiles(a){
-  for(const f of getAnnFiles(a).filter(x => x.url && !x.external)){
-    try{
-      await storage.refFromURL(f.url).delete();
-    }catch(e){}
-  }
-}
-
-async function loadStaffHints(){
-  staffCache = await list('users');
-  $('staffNames').innerHTML = staffCache.map(s => `<option value="${esc(s.name || '')}"></option>`).join('');
-  const empty = staffCache.length === 0;
-  $('firstSetupBox').classList.toggle('hide', !empty);
-  $('loginFields').classList.toggle('hide', empty);
-}
-
-async function login(){
-  const name = $('loginName').value.trim();
-  const email = $('loginEmail').value.trim().toLowerCase();
-  if(!name || !email) return toast('名前とメールアドレスを入力してください','error');
-
-  const users = staffCache.length ? staffCache : await list('users');
-  const user = users.find(u => (u.name || '') === name && String(u.email || '').toLowerCase() === email);
-  if(!user) return toast('ログイン情報が一致しません','error');
-
-  saveMe(user);
-  boot();
-}
-
-async function createInitialAdmin(){
-  const name = $('setupName').value.trim();
-  const email = $('setupEmail').value.trim().toLowerCase();
-  const department = $('setupDept').value;
-  const extension = $('setupExt').value.trim();
-
-  if(!name || !email) return toast('管理者名とメールアドレスを入力してください','error');
-
-  const now = await list('users');
-  if(now.length) return toast('すでにスタッフが登録されています','error');
-
-  const user = {
-    id:'u_admin_' + Date.now(),
-    name,
-    email,
-    department,
-    extension,
-    role:'admin',
-    note:'初期管理者'
-  };
-
-  await add('users', user);
-  await loadStaffHints();
-  $('loginName').value = name;
-  $('loginEmail').value = email;
-  toast('初期管理者を作成しました。そのままログインできます','ok');
-}
-
-function logout(){
-  if(confirm('ログアウトしますか？')){
-    localStorage.removeItem('ku_user');
-    watchers.forEach(u => u && u());
-    location.reload();
-  }
-}
-
-async function boot(){
-  const u = me();
-  if(!u){
-    $('loginScreen').classList.remove('hide');
-    $('app').classList.add('hide');
-    await loadStaffHints();
-    return;
-  }
-
-  $('loginScreen').classList.add('hide');
-  $('app').classList.remove('hide');
-  $('av').textContent = (u.name || '?').slice(0,1);
-  $('meName').textContent = u.name || '';
-  $('meRole').textContent = (u.role==='admin' ? '管理者' : 'スタッフ') + ' / ' + (u.department || '未設定');
-  $('adminTab').classList.toggle('hide', !admin());
-  $('addBoardBtn').classList.toggle('hide', !admin());
-  setNotifyBtn();
-  renderRoomCards();
-
-  await Promise.all([
-    loadDashboard(),
-    loadProfile(),
-    loadTasks(),
-    loadSurveys()
-  ]);
-
-  if(admin()){
-    await Promise.all([
-      loadAdmin(),
-      loadStaffHints()
-    ]);
-  }
-
-  setupRealtimeWatch();
-  cleanupExpiredData(true);
-  setInterval(() => cleanupExpiredData(true), 12 * 60 * 60 * 1000);
-}
-
-function showTab(id, btn){
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  if(btn) btn.classList.add('active');
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  $(id).classList.add('active');
-
-  ({
-    dashboard:loadDashboard,
-    profile:loadProfile,
-    tasks:loadTasks,
-    survey:loadSurveys,
-    admin:loadAdmin
-  }[id] || (()=>{}))();
-}
-
-async function loadDashboard(){
-  const u = me();
-  const [tasks, surveys, anns, settings] = await Promise.all([
-    list('tasks'),
-    list('surveys'),
-    list('announcements'),
-    list('settings')
-  ]);
-
-  $('stTask').textContent = tasks.filter(t => t.userId === u.id && !t.completed).length;
-  $('stTrain').textContent = 1;
-  $('stSurvey').textContent = surveys.filter(s => {
-    let r = [];
-    try{ r = JSON.parse(s.responses || '[]'); }catch(e){}
-    return !r.some(x => x.userId === u.id);
-  }).length;
-
-  const b = settings.find(x => x.type === 'banner');
-  if(b?.imageUrl){
-    $('bannerArea').innerHTML = `<img src="${esc(b.imageUrl)}" alt="banner">`;
-    $('bannerArea').classList.remove('hide');
-  }else{
-    $('bannerArea').classList.add('hide');
-  }
-
-  renderBoard(anns);
-}
-
-function renderBoard(anns){
-  const el = $('boardList');
-  if(!anns.length){
-    el.innerHTML = '<div class="empty">掲示板はまだありません</div>';
-    return;
-  }
-
-  el.innerHTML = anns
-    .sort((a,b) => ms(b.createdAtMs || b.createdAt) - ms(a.createdAtMs || a.createdAt))
-    .map(a => {
-      const files = getAnnFiles(a);
-      const badge = a.priority === 'urgent' ? 'b4' : a.priority === 'important' ? 'b3' : 'b1';
-      const label = a.priority === 'urgent' ? '緊急' : a.priority === 'important' ? '重要' : '通常';
-
-      return `
-        <div class="item">
-          <div class="itemTop">
-            <div>
-              <div class="title">${esc(a.title)}</div>
-              <div class="meta">
-                <span>${esc(a.creatorName || '')}</span>
-                <span>${fmt(a.createdAt)}</span>
-                <span>${files.length ? files.length + '件添付' : '添付なし'}</span>
-              </div>
-            </div>
-            <span class="badge ${badge}">${label}</span>
-          </div>
-
-          <div style="margin-top:10px;white-space:pre-wrap;line-height:1.6">${esc(a.content || '')}</div>
-
-          ${files.length ? `
-            <div class="files">
-              ${files.map(f => `
-                <div class="file">
-                  <div><i class="fas ${fileIcon(f.name || '')}"></i> ${esc(f.name || '添付ファイル')}</div>
-                  <div class="right">
-                    <a class="btn out sm" href="${esc(f.url)}" target="_blank">
-                      <i class="fas fa-arrow-up-right-from-square"></i> 開く
-                    </a>
-                  </div>
-                </div>
-              `).join('')}
-            </div>
-          ` : ''}
-
-          ${admin() ? `
-            <div style="margin-top:10px">
-              <button class="btn dan sm" onclick="deleteBoard('${a.docId}')">
-                <i class="fas fa-trash"></i> 削除
-              </button>
-            </div>
-          ` : ''}
-        </div>
-      `;
-    }).join('');
-}
-
-function openBoardModal(){
-  $('bTitle').value = '';
-  $('bBody').value = '';
-  $('bPri').value = 'normal';
-  $('bFiles').value = '';
-  $('bUrl').value = '';
-  openModal('boardModal');
-}
-
-async function createBoard(){
-  const u = me();
-  const title = $('bTitle').value.trim();
-  const content = $('bBody').value.trim();
-
-  if(!title || !content) return toast('タイトルと本文は必須です','error');
-
-  try{
-    const attachments = await uploadMany($('bFiles').files, 'announcements');
-    await add('announcements', {
-      title,
-      content,
-      priority:$('bPri').value,
-      creatorId:u.id,
-      creatorName:u.name,
-      attachments,
-      externalUrl:$('bUrl').value.trim()
-    });
-
-    closeModal('boardModal');
-    await loadDashboard();
-    toast('掲示板に投稿しました','ok');
-  }catch(e){
-    toast('投稿エラー: ' + e.message, 'error');
-  }
-}
-
-async function deleteBoard(id){
-  if(!confirm('掲示板を削除しますか？')) return;
-  const ann = (await list('announcements')).find(x => x.docId === id);
-  if(ann) await deleteAnnFiles(ann);
-  await del('announcements', id);
-  await loadDashboard();
-  toast('削除しました','ok');
-}
-
-function loadProfile(){
-  const u = me();
-  $('pName').value = u.name || '';
-  $('pEmail').value = u.email || '';
-  $('pDept').value = u.department || '介護';
-  $('pExt').value = u.extension || '';
-  $('pBio').value = u.bio || '';
-}
-
-async function saveProfile(){
-  const u = me();
-  const patch = {
-    department:$('pDept').value,
-    extension:$('pExt').value.trim(),
-    bio:$('pBio').value.trim()
-  };
-
-  if(u.docId) await upd('users', u.docId, patch);
-
-  const nu = {...u, ...patch};
-  saveMe(nu);
-  $('meRole').textContent = (nu.role==='admin'?'管理者':'スタッフ') + ' / ' + (nu.department || '未設定');
-  toast('プロフィールを保存しました','ok');
-}
-
-async function loadTasks(){
-  const u = me();
-  const rows = (await list('tasks'))
-    .filter(t => t.userId === u.id)
-    .sort((a,b) => Number(!!a.completed) - Number(!!b.completed));
-
-  const el = $('taskList');
-  if(!rows.length){
-    el.innerHTML = '<div class="empty">タスクはありません</div>';
-    return;
-  }
-
-  el.innerHTML = rows.map(t => `
-    <div class="item">
-      <div class="itemTop">
-        <div>
-          <div class="title" style="${t.completed ? 'text-decoration:line-through;color:#889' : ''}">${esc(t.title)}</div>
-          <div class="meta">
-            <span class="badge ${t.priority==='high'?'b4':t.priority==='medium'?'b3':'b1'}">
-              ${t.priority==='high'?'高':t.priority==='medium'?'中':'低'}
-            </span>
-          </div>
-        </div>
-        <div class="right">
-          <button class="btn ${t.completed?'sec':'pri'} sm" onclick="toggleTask('${t.docId}',${!t.completed})">
-            <i class="fas fa-${t.completed?'rotate-left':'check'}"></i>
-          </button>
-          <button class="btn dan sm" onclick="removeTask('${t.docId}')">
-            <i class="fas fa-trash"></i>
-          </button>
-        </div>
-      </div>
-    </div>
-  `).join('');
-}
-
-async function addTask(){
-  const u = me();
-  const title = $('taskTitle').value.trim();
-  if(!title) return toast('タスク名を入力してください','error');
-
-  await add('tasks', {
-    userId:u.id,
-    title,
-    priority:$('taskPri').value,
-    completed:false
-  });
-
-  $('taskTitle').value = '';
-  $('taskPri').value = 'low';
-  await loadTasks();
-  await loadDashboard();
-  toast('タスクを追加しました','ok');
-}
-
-async function toggleTask(id, completed){
-  await upd('tasks', id, {completed});
-  await loadTasks();
-  await loadDashboard();
-}
-
-async function removeTask(id){
-  if(!confirm('削除しますか？')) return;
-  await del('tasks', id);
-  await loadTasks();
-  await loadDashboard();
-  toast('削除しました','ok');
-}
-
-function renderRoomCards(){
-  const el = $('roomCards');
-  el.innerHTML = Object.entries(ROOMS).map(([k,v]) => `
-    <div class="card roomBtn" onclick="openRoom('${k}')">
-      <h3>${esc(v)}</h3>
-      <p class="muted" style="margin-top:8px">${k==='office' ? '事務所ルームを追加済みです。' : '部署内の情報共有ができます。'}</p>
-    </div>
-  `).join('');
-}
-
-async function openRoom(key){
-  activeRoom = key;
-  $('roomTitle').textContent = ROOMS[key];
-  openModal('roomModal');
-  await loadRoomMsgs();
-  $('roomInput').focus();
-}
-
-async function loadRoomMsgs(){
-  if(!activeRoom) return;
-
-  const msgs = (await list('rooms_' + activeRoom))
-    .sort((a,b) => ms(a.createdAtMs || a.createdAt) - ms(b.createdAtMs || b.createdAt));
-
-  const el = $('roomMsgs');
-  if(!msgs.length){
-    el.innerHTML = '<div class="empty">まだメッセージがありません</div>';
-    return;
-  }
-
-  el.innerHTML = msgs.map(m => `
-    <div class="msg">
-      <div class="avatar" style="width:36px;height:36px;font-size:13px">${esc((m.userName || '?').slice(0,1))}</div>
-      <div class="bubble">
-        <div class="meta"><b>${esc(m.userName || '')}</b> <span>${fmt(m.createdAt)}</span></div>
-        <div style="white-space:pre-wrap">${esc(m.text || '')}</div>
-      </div>
-    </div>
-  `).join('');
-
-  el.scrollTop = el.scrollHeight;
-}
-
-async function sendRoomMsg(){
-  const text = $('roomInput').value.trim();
-  const u = me();
-  if(!text || !activeRoom) return;
-
-  await add('rooms_' + activeRoom, {
-    userId:u.id,
-    userName:u.name,
-    text,
-    room:activeRoom
-  });
-
-  $('roomInput').value = '';
-  await loadRoomMsgs();
-}
-
-function openSurveyModal(){
-  svQuestions = [];
-  $('svTitle').value = '';
-  $('svDesc').value = '';
-  $('svPass').value = '';
-  renderQuestions();
-  openModal('surveyModal');
-}
-
-function addQ(type){
-  svQuestions.push({
-    type,
-    text:'',
-    options:type==='checkbox' ? ['選択肢1'] : []
-  });
-  renderQuestions();
-}
-
-function renderQuestions(){
-  const el = $('svQuestions');
-  if(!svQuestions.length){
-    el.innerHTML = '<div class="empty">質問を追加してください</div>';
-    return;
-  }
-
-  el.innerHTML = svQuestions.map((q,i) => `
-    <div class="q">
-      <div class="cardHd">
-        <b>Q${i+1} ${q.type==='checkbox'?'選択式':'記述式'}</b>
-        <button class="btn dan sm" onclick="removeQ(${i})">削除</button>
-      </div>
-      <input class="inp" value="${esc(q.text)}" oninput="svQuestions[${i}].text=this.value" placeholder="質問文">
-      ${q.type==='checkbox' ? `
-        <div style="margin-top:10px">
-          ${q.options.map((o,oi) => `
-            <div class="row" style="margin-bottom:8px">
-              <input class="inp grow" value="${esc(o)}" oninput="svQuestions[${i}].options[${oi}]=this.value">
-              <button class="btn dan sm" onclick="removeOpt(${i},${oi})">-</button>
-            </div>
-          `).join('')}
-          <button class="btn out sm" onclick="addOpt(${i})">選択肢追加</button>
-        </div>
-      ` : ''}
-    </div>
-  `).join('');
-}
-
-function removeQ(i){
-  svQuestions.splice(i,1);
-  renderQuestions();
-}
-
-function addOpt(i){
-  svQuestions[i].options.push('新しい選択肢');
-  renderQuestions();
-}
-
-function removeOpt(i,j){
-  svQuestions[i].options.splice(j,1);
-  renderQuestions();
-}
-
-async function createSurvey(){
-  const u = me();
-  const title = $('svTitle').value.trim();
-  const desc = $('svDesc').value.trim();
-  const password = $('svPass').value.trim();
-
-  if(!title || password.length < 4 || !svQuestions.length){
-    return toast('タイトル・4文字以上のパスワード・質問が必要です','error');
-  }
-
-  if(svQuestions.some(q => !q.text.trim())){
-    return toast('未入力の質問があります','error');
-  }
-
-  await add('surveys', {
-    title,
-    desc,
-    password,
-    questions:JSON.stringify(svQuestions),
-    creatorId:u.id,
-    creatorName:u.name,
-    responses:'[]'
-  });
-
-  closeModal('surveyModal');
-  await loadSurveys();
-  await loadDashboard();
-  toast('アンケートを作成しました','ok');
-}
-
-async function loadSurveys(){
-  const u = me();
-  const rows = await list('surveys');
-  const el = $('surveyList');
-
-  if(!rows.length){
-    el.innerHTML = '<div class="empty">アンケートはありません</div>';
-    return;
-  }
-
-  el.innerHTML = rows.map(s => {
-    let responses = [];
-    try{ responses = JSON.parse(s.responses || '[]'); }catch(e){}
-    const answered = responses.some(r => r.userId === u.id);
-
-    return `
-      <div class="item">
-        <div class="itemTop">
-          <div>
-            <div class="title">${esc(s.title)}</div>
-            <div class="meta">
-              <span>${esc(s.creatorName || '')}</span>
-              <span>${responses.length}件回答</span>
-              <span>${answered?'<span class="badge b2">回答済</span>':'<span class="badge b3">未回答</span>'}</span>
+              <h2>康寿園ポータル</h2>
+              <div class="tiny">掲示板・タスク・部署チャット・アンケート</div>
             </div>
           </div>
           <div class="right">
-            ${answered ? '' : `<button class="btn pri sm" onclick="openSurveyAnswer('${s.docId}')">回答</button>`}
-            <button class="btn out sm" onclick="openSurveyResult('${s.docId}')">集計</button>
-            ${admin() ? `<button class="btn dan sm" onclick="deleteSurvey('${s.docId}')">削除</button>` : ''}
+            <button id="installBtn" class="btn out sm hide">
+              <i class="fas fa-download"></i> インストール
+            </button>
+            <button id="notifyBtn" class="btn out sm" onclick="requestNotify()">
+              <i class="fas fa-bell"></i> 通知OFF
+            </button>
+            <div class="avatar" id="av">?</div>
+            <div>
+              <div id="meName" style="font-weight: 800">-</div>
+              <div id="meRole" class="tiny">-</div>
+            </div>
+            <button class="btn dan sm" onclick="logout()">
+              <i class="fas fa-sign-out-alt"></i>
+            </button>
+          </div>
+        </header>
+
+        <nav class="tabs" id="tabs">
+          <button
+            class="tab active"
+            data-id="dashboard"
+            onclick="showTab('dashboard',this)"
+          >
+            <i class="fas fa-house"></i> ダッシュボード
+          </button>
+          <button
+            class="tab"
+            data-id="profile"
+            onclick="showTab('profile',this)"
+          >
+            <i class="fas fa-user"></i> プロフィール
+          </button>
+          <button class="tab" data-id="tasks" onclick="showTab('tasks',this)">
+            <i class="fas fa-list-check"></i> タスク
+          </button>
+          <button
+            class="tab"
+            data-id="training"
+            onclick="showTab('training',this)"
+          >
+            <i class="fas fa-graduation-cap"></i> 研修
+          </button>
+          <button class="tab" data-id="rooms" onclick="showTab('rooms',this)">
+            <i class="fas fa-comments"></i> 部署ルーム
+          </button>
+          <button class="tab" data-id="survey" onclick="showTab('survey',this)">
+            <i class="fas fa-poll"></i> アンケート
+          </button>
+          <button
+            class="tab hide"
+            id="adminTab"
+            data-id="admin"
+            onclick="showTab('admin',this)"
+          >
+            <i class="fas fa-shield-alt"></i> 管理者
+          </button>
+        </nav>
+
+        <section id="dashboard" class="screen active">
+          <div id="bannerArea" class="banner hide card"></div>
+          <div class="stats">
+            <div class="card stat">
+              <i
+                class="fas fa-list-check"
+                style="background: linear-gradient(135deg, #2f80ed, #56ccf2)"
+              ></i>
+              <div>
+                <b id="stTask">0</b><span class="muted">未完了タスク</span>
+              </div>
+            </div>
+            <div class="card stat">
+              <i
+                class="fas fa-book-open"
+                style="background: linear-gradient(135deg, #9b51e0, #f2994a)"
+              ></i>
+              <div>
+                <b id="stTrain">0</b><span class="muted">未完了研修</span>
+              </div>
+            </div>
+            <div class="card stat">
+              <i
+                class="fas fa-comments"
+                style="background: linear-gradient(135deg, #27ae60, #6fcf97)"
+              ></i>
+              <div>
+                <b id="stRoom">5</b><span class="muted">部署チャット数</span>
+              </div>
+            </div>
+            <div class="card stat">
+              <i
+                class="fas fa-poll"
+                style="background: linear-gradient(135deg, #eb5757, #f2994a)"
+              ></i>
+              <div>
+                <b id="stSurvey">0</b
+                ><span class="muted">未回答アンケート</span>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="cardHd">
+              <div>
+                <h3>掲示板</h3>
+                <div class="tiny">追加通知対応 / 通知から該当投稿へ遷移</div>
+              </div>
+              <button
+                id="addBoardBtn"
+                class="btn pri sm hide"
+                onclick="openBoardModal()"
+              >
+                <i class="fas fa-plus"></i> 投稿
+              </button>
+            </div>
+            <div id="boardList" class="list"></div>
+          </div>
+        </section>
+
+        <section id="profile" class="screen">
+          <div class="card stack">
+            <div>
+              <h3>マイプロフィール</h3>
+              <div class="tiny">ログイン情報・所属情報</div>
+            </div>
+            <div class="row">
+              <div class="grow">
+                <label class="tiny">名前</label
+                ><input id="pName" class="inp" readonly />
+              </div>
+              <div class="grow">
+                <label class="tiny">メールアドレス</label
+                ><input id="pEmail" class="inp" readonly />
+              </div>
+            </div>
+            <div class="row">
+              <div class="grow">
+                <label class="tiny">所属部署</label
+                ><select id="pDept">
+                  <option>介護</option>
+                  <option>看護</option>
+                  <option>リハビリ</option>
+                  <option>栄養</option>
+                  <option>事務</option>
+                </select>
+              </div>
+              <div class="grow">
+                <label class="tiny">内線番号</label
+                ><input id="pExt" class="inp" />
+              </div>
+            </div>
+            <div>
+              <label class="tiny">自己紹介</label
+              ><textarea id="pBio"></textarea>
+            </div>
+            <div>
+              <button class="btn pri" onclick="saveProfile()">
+                <i class="fas fa-save"></i> 保存
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section id="tasks" class="screen">
+          <div class="grid">
+            <div class="card stack">
+              <h3>タスク追加</h3>
+              <input id="taskTitle" class="inp" placeholder="タスク名" /><select
+                id="taskPri"
+              >
+                <option value="low">低</option>
+                <option value="medium">中</option>
+                <option value="high">高</option></select
+              ><button class="btn pri" onclick="addTask()">
+                <i class="fas fa-plus"></i> 追加
+              </button>
+            </div>
+            <div class="card">
+              <div class="cardHd"><h3>マイタスク</h3></div>
+              <div id="taskList" class="list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="training" class="screen">
+          <div class="grid">
+            <div class="card">
+              <h3>オンライン研修</h3>
+              <p class="muted" style="margin-top: 8px">
+                動画・資料をまとめて確認できます。
+              </p>
+              <div
+                style="
+                  height: 8px;
+                  background: #eef2f7;
+                  border-radius: 999px;
+                  margin: 14px 0;
+                "
+              >
+                <div
+                  style="
+                    width: 60%;
+                    height: 100%;
+                    background: linear-gradient(90deg, #2f80ed, #27ae60);
+                    border-radius: 999px;
+                  "
+                ></div>
+              </div>
+              <span class="tiny">完了率 60%</span>
+            </div>
+            <div class="card">
+              <h3>マニュアル</h3>
+              <p class="muted" style="margin-top: 8px">
+                掲示板の添付ファイルやPDFを業務資料として運用できます。
+              </p>
+            </div>
+            <div class="card">
+              <h3>資格情報</h3>
+              <p class="muted" style="margin-top: 8px">
+                必要に応じて拡張可能です。
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section id="rooms" class="screen">
+          <div class="grid" id="roomCards"></div>
+        </section>
+
+        <section id="survey" class="screen">
+          <div class="surveyTopGrid">
+            <div class="miniStat">
+              <b id="svStatOpen">0</b>
+              <div class="tiny">受付中アンケート</div>
+            </div>
+            <div class="miniStat">
+              <b id="svStatTodo">0</b>
+              <div class="tiny">未回答</div>
+            </div>
+            <div class="miniStat">
+              <b id="svStatDone">0</b>
+              <div class="tiny">回答済み</div>
+            </div>
+            <div class="miniStat">
+              <b id="svStatMine">0</b>
+              <div class="tiny">自分が作成</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="cardHd">
+              <div>
+                <h3>アンケート</h3>
+                <div class="tiny">
+                  職員向けに作りやすく、集計しやすい形へ強化 /
+                  グラフ画像コピー対応
+                </div>
+              </div>
+              <div class="right">
+                <button class="btn out sm" onclick="loadSurveys()">
+                  <i class="fas fa-rotate"></i> 更新</button
+                ><button class="btn pri sm" onclick="openSurveyModal()">
+                  <i class="fas fa-plus"></i> 作成
+                </button>
+              </div>
+            </div>
+            <div id="surveyList" class="list"></div>
+          </div>
+        </section>
+
+        <section id="admin" class="screen">
+          <div class="grid">
+            <div class="card">
+              <div class="cardHd">
+                <div>
+                  <h3>スタッフ管理</h3>
+                  <div class="tiny">ログインは 名前 + メールアドレス</div>
+                </div>
+                <button class="btn pri sm" onclick="openStaffModal()">
+                  <i class="fas fa-user-plus"></i> 追加
+                </button>
+              </div>
+              <div id="staffList"></div>
+            </div>
+            <div class="card stack">
+              <div>
+                <h3>システム設定</h3>
+                <div class="tiny">バナーと統計</div>
+              </div>
+              <div id="bannerStatus" class="muted">未設定</div>
+              <div class="row">
+                <button class="btn pri" onclick="openBannerModal()">
+                  <i class="fas fa-image"></i> バナー変更</button
+                ><button class="btn warn" onclick="cleanupExpiredData(false)">
+                  <i class="fas fa-broom"></i> 1か月超データ整理
+                </button>
+              </div>
+              <div id="adminStats" class="muted"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+    <div id="boardModal" class="modal">
+      <div class="box stack">
+        <div class="cardHd">
+          <h3>掲示板投稿</h3>
+          <button class="close" onclick="closeModal('boardModal')">×</button>
+        </div>
+        <input id="bTitle" class="inp" placeholder="タイトル" />
+        <textarea id="bBody" placeholder="本文"></textarea>
+        <select id="bPri">
+          <option value="normal">通常</option>
+          <option value="important">重要</option>
+          <option value="urgent">緊急</option>
+        </select>
+        <div>
+          <label class="tiny"
+            >添付ファイル（複数可 / PDF・Excel・Word・画像など）</label
+          ><input id="bFiles" class="inp" type="file" multiple />
+        </div>
+        <input id="bUrl" class="inp" placeholder="外部共有URL（任意）" />
+        <button class="btn pri" onclick="createBoard()">
+          <i class="fas fa-paper-plane"></i> 投稿する
+        </button>
+      </div>
+    </div>
+
+    <div id="roomModal" class="modal">
+      <div class="box stack">
+        <div class="cardHd">
+          <h3 id="roomTitle">部署ルーム</h3>
+          <button class="close" onclick="closeModal('roomModal')">×</button>
+        </div>
+        <div id="roomMsgs" class="msgBox"></div>
+        <div class="row">
+          <input
+            id="roomInput"
+            class="inp grow"
+            placeholder="メッセージ"
+          /><button class="btn pri" onclick="sendRoomMsg()">
+            <i class="fas fa-paper-plane"></i> 送信
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="staffModal" class="modal">
+      <div class="box stack">
+        <div class="cardHd">
+          <h3 id="staffModalTitle">スタッフ追加</h3>
+          <button class="close" onclick="closeModal('staffModal')">×</button>
+        </div>
+        <input type="hidden" id="sfId" />
+        <input id="sfName" class="inp" placeholder="氏名" />
+        <input
+          id="sfEmail"
+          class="inp"
+          type="email"
+          placeholder="メールアドレス"
+        />
+        <div class="row">
+          <select id="sfDept" class="grow">
+            <option>介護</option>
+            <option>看護</option>
+            <option>リハビリ</option>
+            <option>栄養</option>
+            <option>事務</option></select
+          ><select id="sfRole" class="grow">
+            <option value="staff">スタッフ</option>
+            <option value="admin">管理者</option>
+          </select>
+        </div>
+        <input id="sfExt" class="inp" placeholder="内線番号" />
+        <textarea id="sfNote" placeholder="メモ"></textarea>
+        <button class="btn pri" onclick="saveStaff()">
+          <i class="fas fa-save"></i> 保存
+        </button>
+      </div>
+    </div>
+
+    <div id="bannerModal" class="modal">
+      <div class="box stack">
+        <div class="cardHd">
+          <h3>バナー画像</h3>
+          <button class="close" onclick="closeModal('bannerModal')">×</button>
+        </div>
+        <input id="bannerFile" class="inp" type="file" accept="image/*" />
+        <div id="bannerPreview" class="hide"></div>
+        <button class="btn pri" onclick="uploadBanner()">
+          <i class="fas fa-cloud-upload-alt"></i> アップロード
+        </button>
+      </div>
+    </div>
+
+    <div id="surveyModal" class="modal">
+      <div class="box stack">
+        <div class="cardHd">
+          <h3 id="surveyModalTitle">アンケート作成</h3>
+          <button class="close" onclick="closeSurveyModal()">×</button>
+        </div>
+        <div class="aiBox stack">
+          <div class="cardHd" style="margin-bottom: 0">
+            <div>
+              <b>アンケート下書き作成</b>
+              <div class="tiny">
+                例：職員満足度アンケート / 研修後アンケート / 感染対策確認
+              </div>
+            </div>
+            <button class="btn sec sm" onclick="generateSurveyByAI()">
+              <i class="fas fa-wand-magic-sparkles"></i> 下書き生成
+            </button>
+          </div>
+          <input
+            id="svAiPrompt"
+            class="inp"
+            placeholder="作成したいアンケート内容を入力"
+          />
+          <div id="svAiStatus" class="tiny"></div>
+        </div>
+        <input type="hidden" id="svId" />
+        <div class="row">
+          <div class="grow">
+            <label class="tiny">タイトル</label
+            ><input id="svTitle" class="inp" placeholder="タイトル" />
+          </div>
+          <div class="grow">
+            <label class="tiny">対象部署</label
+            ><select id="svTargetDept">
+              <option value="all">全部署</option>
+              <option value="介護">介護</option>
+              <option value="看護">看護</option>
+              <option value="リハビリ">リハビリ</option>
+              <option value="栄養">栄養</option>
+              <option value="事務">事務</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="tiny">説明</label
+          ><textarea id="svDesc" placeholder="説明"></textarea>
+        </div>
+        <div class="row">
+          <div class="grow">
+            <label class="tiny">公開状態</label
+            ><select id="svStatus">
+              <option value="open">公開中</option>
+              <option value="closed">締切</option>
+            </select>
+          </div>
+          <div class="grow">
+            <label class="tiny">匿名表示</label
+            ><select id="svAnonymous">
+              <option value="0">記名</option>
+              <option value="1">匿名表示</option>
+            </select>
+          </div>
+          <div class="grow">
+            <label class="tiny">締切日（任意）</label
+            ><input id="svDue" class="inp" type="date" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="grow">
+            <label class="tiny">集計パスワード（任意）</label
+            ><input
+              id="svPass"
+              class="inp"
+              type="password"
+              placeholder="空欄ならパスワードなし"
+            />
+          </div>
+          <div class="grow">
+            <label class="tiny">対象</label
+            ><select id="svAudience">
+              <option value="staff">職員</option>
+              <option value="family">家族</option>
+              <option value="resident">利用者</option>
+              <option value="training">研修参加者</option>
+              <option value="other">その他</option>
+            </select>
+          </div>
+        </div>
+        <div class="noteBox">
+          使いやすさ重視のため、よく使う質問形式を中心にしています。必要に応じて後から追加・編集できます。
+        </div>
+        <div class="cardHd" style="margin-bottom: 0">
+          <h4>質問</h4>
+          <div class="right">
+            <button class="btn out sm" onclick="addQ('yesno')">
+              はい・いいえ</button
+            ><button class="btn out sm" onclick="addQ('rating5')">5段階</button
+            ><button class="btn out sm" onclick="addQ('single')">
+              単一選択</button
+            ><button class="btn out sm" onclick="addQ('multi')">複数選択</button
+            ><button class="btn out sm" onclick="addQ('text')">記述式</button>
+          </div>
+        </div>
+        <div id="svQuestions"></div>
+        <div class="stickyFoot">
+          <div class="right">
+            <button class="btn out" onclick="closeSurveyModal()">
+              キャンセル</button
+            ><button class="btn pri" onclick="createSurvey()">
+              <i class="fas fa-save"></i> 保存
+            </button>
           </div>
         </div>
       </div>
-    `;
-  }).join('');
-}
-
-async function openSurveyAnswer(id){
-  activeSurveyId = id;
-  const survey = (await list('surveys')).find(s => s.docId === id);
-  if(!survey) return;
-
-  let qs = [];
-  try{ qs = JSON.parse(survey.questions || '[]'); }catch(e){}
-
-  $('ansTitle').textContent = survey.title;
-  $('ansBody').innerHTML = qs.map((q,i) => `
-    <div class="q">
-      <div style="font-weight:800;margin-bottom:8px">Q${i+1}. ${esc(q.text)}</div>
-      ${q.type==='checkbox'
-        ? q.options.map(o => `
-          <label class="row" style="margin-bottom:6px">
-            <input type="checkbox" name="q${i}" value="${esc(o)}"> <span>${esc(o)}</span>
-          </label>
-        `).join('')
-        : `<input id="ans_${i}" class="inp" placeholder="回答">`
-      }
     </div>
-  `).join('');
 
-  openModal('surveyAnswerModal');
-}
-
-async function submitSurvey(){
-  const u = me();
-  if(!activeSurveyId) return;
-
-  const survey = (await list('surveys')).find(s => s.docId === activeSurveyId);
-  let qs = [];
-  try{ qs = JSON.parse(survey.questions || '[]'); }catch(e){}
-  let responses = [];
-  try{ responses = JSON.parse(survey.responses || '[]'); }catch(e){}
-
-  if(responses.some(r => r.userId === u.id)) return toast('すでに回答済みです','error');
-
-  const ans = {};
-  qs.forEach((q,i) => {
-    ans['q' + i] = q.type==='checkbox'
-      ? [...document.querySelectorAll(`input[name=q${i}]:checked`)].map(x => x.value)
-      : ($('ans_' + i)?.value.trim() || '');
-  });
-
-  responses.push({
-    userId:u.id,
-    userName:u.name,
-    ans,
-    at:new Date().toISOString()
-  });
-
-  await upd('surveys', activeSurveyId, {responses:JSON.stringify(responses)});
-  closeModal('surveyAnswerModal');
-  await loadSurveys();
-  await loadDashboard();
-  toast('回答を送信しました','ok');
-}
-
-async function openSurveyResult(id){
-  const pw = prompt('集計パスワード');
-  if(pw === null) return;
-
-  const survey = (await list('surveys')).find(s => s.docId === id);
-  if(!survey || survey.password !== pw) return toast('パスワードが違います','error');
-
-  let qs = [], res = [];
-  try{ qs = JSON.parse(survey.questions || '[]'); }catch(e){}
-  try{ res = JSON.parse(survey.responses || '[]'); }catch(e){}
-
-  Object.values(charts).forEach(c => c.destroy());
-  charts = {};
-
-  $('svSummary').innerHTML = `
-    <div class="card"><b>${res.length}</b><div class="tiny">総回答数</div></div>
-    <div class="card"><b>${qs.length}</b><div class="tiny">質問数</div></div>
-  `;
-
-  $('svResult').innerHTML = qs.map((q,i) => `
-    <div class="q">
-      <div style="font-weight:800">Q${i+1}. ${esc(q.text)}</div>
-      ${q.type==='checkbox'
-        ? `<div class="chartWrap"><canvas id="c${i}"></canvas></div>`
-        : `<div class="files">${res.map(r => r.ans?.['q'+i]).filter(Boolean).map(v => `<div class="file">${esc(v)}</div>`).join('') || '<div class="empty">回答なし</div>'}</div>`
-      }
+    <div id="surveyAnswerModal" class="modal">
+      <div class="box stack">
+        <div class="cardHd">
+          <div>
+            <h3 id="ansTitle">回答</h3>
+            <div id="ansSub" class="tiny"></div>
+          </div>
+          <button class="close" onclick="closeAnswerModal()">×</button>
+        </div>
+        <div id="ansBody"></div>
+        <div id="ansDraftInfo" class="tiny"></div>
+        <div class="stickyFoot">
+          <div class="right">
+            <button class="btn out" onclick="clearSurveyDraft()">
+              下書き消去</button
+            ><button class="btn pri" onclick="submitSurvey()">
+              <i class="fas fa-paper-plane"></i> 送信
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
-  `).join('');
 
-  openModal('surveyResultModal');
+    <div id="surveyResultModal" class="modal">
+      <div class="box stack">
+        <div class="cardHd">
+          <div>
+            <h3 id="svResultTitle">集計結果</h3>
+            <div id="svResultSub" class="tiny"></div>
+          </div>
+          <div class="right">
+            <button
+              class="btn out sm"
+              onclick="copyElementImage('svResultCaptureArea')"
+            >
+              <i class="fas fa-copy"></i> 集計全体を画像コピー</button
+            ><button class="btn out sm" onclick="downloadSurveyCsv()">
+              <i class="fas fa-file-csv"></i> CSV出力</button
+            ><button class="close" onclick="closeModal('surveyResultModal')">
+              ×
+            </button>
+          </div>
+        </div>
+        <div id="svResultCaptureArea">
+          <div id="svSummary" class="row"></div>
+          <div id="svResult"></div>
+        </div>
+      </div>
+    </div>
 
-  qs.forEach((q,i) => {
-    if(q.type !== 'checkbox') return;
-    const count = {};
-    q.options.forEach(o => count[o] = 0);
-    res.forEach(r => (r.ans?.['q'+i] || []).forEach(v => count[v] = (count[v] || 0) + 1));
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyB7WyB8qLVOtpYWDrTUyVi6q1f1MPmIEqI",
+        authDomain: "tokuyou-portal.firebaseapp.com",
+        projectId: "tokuyou-portal",
+        storageBucket: "tokuyou-portal.firebasestorage.app",
+        messagingSenderId: "628140097543",
+        appId: "1:628140097543:web:03f3cf9ef15a767dbdaaa2",
+      };
 
-    const ctx = $('c' + i).getContext('2d');
-    charts['c' + i] = new Chart(ctx, {
-      type:'bar',
-      data:{
-        labels:Object.keys(count),
-        datasets:[{
-          data:Object.values(count),
-          backgroundColor:['#2f80ed','#27ae60','#f39c12','#e74c3c','#9b51e0','#56ccf2']
-        }]
-      },
-      options:{
-        responsive:true,
-        maintainAspectRatio:false,
-        plugins:{legend:{display:false}},
-        scales:{
-          y:{beginAtZero:true,ticks:{stepSize:1}}
+      const VAPID_PUBLIC_KEY = "YOUR_PUBLIC_VAPID_KEY";
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
+      const storage = firebase.storage();
+      const messaging = firebase.messaging();
+
+      const ROOMS = {
+        care: "介護部署",
+        nurse: "看護部署",
+        rehab: "リハビリ部署",
+        nutrition: "栄養部署",
+        office: "事務所",
+      };
+      const DEPT_ROOM = {
+        介護: "care",
+        看護: "nurse",
+        リハビリ: "rehab",
+        栄養: "nutrition",
+        事務: "office",
+      };
+      const SURVEY_TYPES = {
+        text: "記述式",
+        yesno: "はい・いいえ",
+        rating5: "5段階評価",
+        rating10: "10段階評価",
+        single: "単一選択",
+        multi: "複数選択",
+        dropdown: "プルダウン",
+        date: "日付",
+        number: "数値入力",
+      };
+
+      let staffCache = [];
+      let activeRoom = "";
+      let activeSurveyId = "";
+      let activeSurveyData = null;
+      let svQuestions = [];
+      let watchers = [];
+      let charts = {};
+      let editingSurveyId = "";
+      let surveyResultCurrent = null;
+      let surveyDraftTimer = null;
+      let swReg = null;
+      let deferredPrompt = null;
+
+      const $ = (id) => document.getElementById(id);
+      const esc = (s) =>
+        String(s ?? "").replace(
+          /[&<>"']/g,
+          (m) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[m],
+        );
+      const me = () => JSON.parse(localStorage.getItem("ku_user") || "null");
+      const saveMe = (u) => localStorage.setItem("ku_user", JSON.stringify(u));
+      const admin = () => me()?.role === "admin";
+      const uid = (p = "id") =>
+        `${p}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const parseJSON = (v, d = []) => {
+        try {
+          const x = typeof v === "string" ? JSON.parse(v || "[]") : v;
+          return x ?? d;
+        } catch (e) {
+          return d;
+        }
+      };
+      function ms(v) {
+        if (typeof v === "number") return v;
+        if (v?.toDate) return v.toDate().getTime();
+        if (v) return new Date(v).getTime();
+        return 0;
+      }
+      function fmt(v) {
+        const d = v?.toDate ? v.toDate() : new Date(v);
+        if (!d || isNaN(d)) return "";
+        const diff = Date.now() - d.getTime();
+        if (diff < 6e4) return "たった今";
+        if (diff < 36e5) return Math.floor(diff / 6e4) + "分前";
+        if (diff < 864e5) return Math.floor(diff / 36e5) + "時間前";
+        return d.toLocaleString("ja-JP", {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      }
+      function todayStr() {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      }
+      function toast(msg, type = "info") {
+        const el = document.createElement("div");
+        el.className = "toast";
+        el.style.borderLeftColor =
+          type === "error"
+            ? "var(--dan)"
+            : type === "ok"
+              ? "var(--sec)"
+              : "var(--pri)";
+        el.innerHTML = `<i class="fas fa-${type === "error" ? "circle-exclamation" : type === "ok" ? "circle-check" : "circle-info"}"></i><div>${esc(msg)}</div>`;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 3200);
+      }
+      function calcMedian(arr) {
+        if (!arr.length) return 0;
+        const a = [...arr].sort((x, y) => x - y);
+        const m = Math.floor(a.length / 2);
+        return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+      }
+      const avg = (arr) =>
+        arr.length
+          ? arr.reduce((s, v) => s + Number(v || 0), 0) / arr.length
+          : 0;
+      const fmtNum = (n) => (Number.isFinite(n) ? Number(n).toFixed(1) : "-");
+      const draftKey = (surveyId, userId) =>
+        `surveyDraft_${surveyId}_${userId}`;
+
+      async function list(col) {
+        try {
+          const s = await db.collection(col).orderBy("createdAt", "desc").get();
+          return s.docs.map((d) => ({ docId: d.id, ...d.data() }));
+        } catch (e) {
+          const s = await db.collection(col).get();
+          return s.docs.map((d) => ({ docId: d.id, ...d.data() }));
         }
       }
-    });
-  });
-}
-
-async function deleteSurvey(id){
-  if(!confirm('アンケートを削除しますか？')) return;
-  await del('surveys', id);
-  await loadSurveys();
-  await loadDashboard();
-  toast('削除しました','ok');
-}
-
-async function loadAdmin(){
-  if(!admin()) return;
-
-  const [users, tasks, surveys, anns, settings] = await Promise.all([
-    list('users'),
-    list('tasks'),
-    list('surveys'),
-    list('announcements'),
-    list('settings')
-  ]);
-
-  $('staffList').innerHTML = !users.length
-    ? '<div class="empty">スタッフがいません</div>'
-    : `
-      <table class="table">
-        <thead>
-          <tr>
-            <th>氏名</th>
-            <th>メール</th>
-            <th>部署</th>
-            <th>権限</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          ${users.map(u => `
-            <tr>
-              <td>${esc(u.name || '')}</td>
-              <td>${esc(u.email || '')}</td>
-              <td>${esc(u.department || '')}</td>
-              <td>${u.role==='admin'?'管理者':'スタッフ'}</td>
-              <td>
-                <div class="right">
-                  <button class="btn out sm" onclick="editStaff('${u.docId}')">編集</button>
-                  <button class="btn dan sm" onclick="deleteStaff('${u.docId}','${esc(u.name || '')}')">削除</button>
-                </div>
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    `;
-
-  $('adminStats').innerHTML = `
-    登録スタッフ: <b>${users.length}</b> 名<br>
-    タスク: <b>${tasks.length}</b> 件<br>
-    アンケート: <b>${surveys.length}</b> 件<br>
-    掲示板: <b>${anns.length}</b> 件
-  `;
-
-  const b = settings.find(x => x.type === 'banner');
-  $('bannerStatus').innerHTML = b?.imageUrl
-    ? `<span class="badge b2">設定済み</span> ${esc(b.fileName || '')}`
-    : '未設定';
-}
-
-function openStaffModal(){
-  $('staffModalTitle').textContent = 'スタッフ追加';
-  $('sfId').value = '';
-  $('sfName').value = '';
-  $('sfEmail').value = '';
-  $('sfDept').value = '介護';
-  $('sfRole').value = 'staff';
-  $('sfExt').value = '';
-  $('sfNote').value = '';
-  openModal('staffModal');
-}
-
-async function editStaff(id){
-  const u = (await list('users')).find(x => x.docId === id);
-  if(!u) return;
-
-  $('staffModalTitle').textContent = 'スタッフ編集';
-  $('sfId').value = id;
-  $('sfName').value = u.name || '';
-  $('sfEmail').value = u.email || '';
-  $('sfDept').value = u.department || '介護';
-  $('sfRole').value = u.role || 'staff';
-  $('sfExt').value = u.extension || '';
-  $('sfNote').value = u.note || '';
-  openModal('staffModal');
-}
-
-async function saveStaff(){
-  const id = $('sfId').value;
-  const name = $('sfName').value.trim();
-  const email = $('sfEmail').value.trim().toLowerCase();
-
-  if(!name || !email) return toast('氏名とメールアドレスは必須です','error');
-
-  const data = {
-    name,
-    email,
-    department:$('sfDept').value,
-    role:$('sfRole').value,
-    extension:$('sfExt').value.trim(),
-    note:$('sfNote').value.trim()
-  };
-
-  if(id) await upd('users', id, data);
-  else await add('users', {...data, id:'u_' + Date.now()});
-
-  closeModal('staffModal');
-  await Promise.all([loadAdmin(), loadStaffHints()]);
-  toast('保存しました','ok');
-}
-
-async function deleteStaff(id, name){
-  if(!confirm(`「${name}」を削除しますか？`)) return;
-  await del('users', id);
-  await Promise.all([loadAdmin(), loadStaffHints()]);
-  toast('削除しました','ok');
-}
-
-function openBannerModal(){
-  $('bannerFile').value = '';
-  $('bannerPreview').innerHTML = '';
-  $('bannerPreview').classList.add('hide');
-  openModal('bannerModal');
-}
-
-$('bannerFile').addEventListener('change', e => {
-  const f = e.target.files[0];
-  if(!f) return;
-  const r = new FileReader();
-  r.onload = x => {
-    $('bannerPreview').innerHTML = `<img src="${x.target.result}" style="width:100%;max-height:240px;object-fit:cover;border-radius:14px">`;
-    $('bannerPreview').classList.remove('hide');
-  };
-  r.readAsDataURL(f);
-});
-
-async function uploadBanner(){
-  const f = $('bannerFile').files[0];
-  if(!f) return toast('画像を選択してください','error');
-
-  const ref = storage.ref(`banners/${Date.now()}_${f.name}`);
-  const snap = await ref.put(f);
-  const imageUrl = await snap.ref.getDownloadURL();
-
-  const settings = await list('settings');
-  const cur = settings.find(x => x.type === 'banner');
-
-  if(cur){
-    await upd('settings', cur.docId, {type:'banner', imageUrl, fileName:f.name});
-  }else{
-    await add('settings', {type:'banner', imageUrl, fileName:f.name});
-  }
-
-  closeModal('bannerModal');
-  await Promise.all([loadDashboard(), loadAdmin()]);
-  toast('バナーを更新しました','ok');
-}
-
-function clearWatchers(){
-  watchers.forEach(u => u && u());
-  watchers = [];
-}
-
-function watchLatest(col, key, handler){
-  const unsub = db.collection(col).orderBy('createdAt','desc').limit(1).onSnapshot(s => {
-    if(s.empty) return;
-    const d = s.docs[0];
-    const k = 'watch_' + key;
-    const prev = localStorage.getItem(k);
-
-    if(!prev){
-      localStorage.setItem(k, d.id);
-      return;
-    }
-
-    if(prev !== d.id){
-      localStorage.setItem(k, d.id);
-      handler({docId:d.id, ...d.data()});
-    }
-  });
-
-  watchers.push(unsub);
-}
-
-function setupRealtimeWatch(){
-  clearWatchers();
-  const u = me();
-  if(!u) return;
-
-  watchLatest('announcements','ann', d => {
-    if(d.creatorId !== u.id){
-      browserNotify('新しい掲示板', d.title || '投稿がありました');
-      loadDashboard();
-    }
-  });
-
-  const roomTargets = admin() ? Object.keys(ROOMS) : [DEPT_ROOM[u.department] || 'office', 'office'];
-
-  [...new Set(roomTargets)].forEach(r => {
-    watchLatest('rooms_' + r, 'room_' + r, d => {
-      if(d.userId !== u.id){
-        browserNotify(ROOMS[r], `${d.userName || ''}: ${String(d.text || '').slice(0,40)}`);
-        if(activeRoom === r && $('roomModal').classList.contains('show')) loadRoomMsgs();
+      async function add(col, data) {
+        return (
+          await db
+            .collection(col)
+            .add({
+              ...data,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+              createdAtMs: Date.now(),
+            })
+        ).id;
       }
-    });
-  });
-}
-
-async function cleanupExpiredData(silent=true){
-  try{
-    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    let removed = 0;
-
-    const anns = await list('announcements');
-    for(const a of anns.filter(x => ms(x.createdAtMs || x.createdAt) && ms(x.createdAtMs || x.createdAt) < cutoff)){
-      await deleteAnnFiles(a);
-      await del('announcements', a.docId);
-      removed++;
-    }
-
-    for(const r of Object.keys(ROOMS)){
-      const rows = await list('rooms_' + r);
-      for(const m of rows.filter(x => ms(x.createdAtMs || x.createdAt) && ms(x.createdAtMs || x.createdAt) < cutoff)){
-        await del('rooms_' + r, m.docId);
-        removed++;
+      async function upd(col, id, data) {
+        await db
+          .collection(col)
+          .doc(id)
+          .update({
+            ...data,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAtMs: Date.now(),
+          });
       }
-    }
+      async function del(col, id) {
+        await db.collection(col).doc(id).delete();
+      }
+      async function uploadMany(fileList, folder) {
+        const files = [...(fileList || [])],
+          out = [];
+        for (const f of files) {
+          if (f.size > 20 * 1024 * 1024)
+            throw new Error("20MBを超えるファイルがあります");
+          const ref = storage.ref(`${folder}/${Date.now()}_${f.name}`);
+          const snap = await ref.put(f);
+          out.push({
+            name: f.name,
+            url: await snap.ref.getDownloadURL(),
+            size: f.size,
+            type: f.type || "",
+          });
+        }
+        return out;
+      }
 
-    if(!silent && removed) toast(`1か月超の掲示板・チャット ${removed} 件を整理しました`, 'ok');
-    if(admin()) loadAdmin();
-    loadDashboard();
-  }catch(e){
-    if(!silent) toast('自動整理で一部エラーがありました','error');
-  }
-}
+      function openModal(id) {
+        $(id).classList.add("show");
+      }
+      function closeModal(id) {
+        $(id).classList.remove("show");
+      }
+      function closeSurveyModal() {
+        editingSurveyId = "";
+        $("svId").value = "";
+        closeModal("surveyModal");
+      }
+      function closeAnswerModal() {
+        activeSurveyId = "";
+        activeSurveyData = null;
+        closeModal("surveyAnswerModal");
+      }
+      function setNotifyBtn(mode = "default") {
+        $("notifyBtn").innerHTML =
+          `<i class="fas fa-bell"></i> ${mode === "on" ? "通知ON" : mode === "denied" ? "通知拒否" : "通知OFF"}`;
+      }
+      async function registerServiceWorker() {
+        if (!("serviceWorker" in navigator)) return null;
+        swReg = await navigator.serviceWorker.register("./service-worker.js");
+        return swReg;
+      }
+      async function saveFcmToken(token) {
+        const u = me();
+        if (!u || !token) return;
+        await db
+          .collection("fcmTokens")
+          .doc(encodeURIComponent(token))
+          .set(
+            {
+              token,
+              userId: u.id,
+              userName: u.name || "",
+              department: u.department || "",
+              role: u.role || "staff",
+              updatedAtMs: Date.now(),
+              createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            },
+            { merge: true },
+          );
+      }
+      async function requestNotify() {
+        try {
+          if (!("Notification" in window))
+            return toast("このブラウザは通知に未対応です", "error");
+          if (!swReg) await registerServiceWorker();
+          const p = await Notification.requestPermission();
+          if (p !== "granted") {
+            setNotifyBtn(p === "denied" ? "denied" : "default");
+            return toast("通知が許可されませんでした", "error");
+          }
+          if (!VAPID_PUBLIC_KEY || VAPID_PUBLIC_KEY === "YOUR_PUBLIC_VAPID_KEY")
+            return toast("VAPIDキーを設定してください", "error");
+          const token = await messaging.getToken({
+            vapidKey: VAPID_PUBLIC_KEY,
+            serviceWorkerRegistration: swReg,
+          });
+          if (!token)
+            return toast("通知トークンを取得できませんでした", "error");
+          await saveFcmToken(token);
+          localStorage.setItem("ku_notify_enabled", "1");
+          setNotifyBtn("on");
+          toast("PWA通知を有効化しました", "ok");
+        } catch (e) {
+          console.error(e);
+          toast("通知設定でエラーが発生しました", "error");
+        }
+      }
+      function browserNotify(title, body) {
+        toast(`${title}：${body}`);
+        if ("Notification" in window && Notification.permission === "granted") {
+          try {
+            new Notification(title, { body, tag: title });
+          } catch (e) {}
+        }
+        if (navigator.vibrate) {
+          try {
+            navigator.vibrate([120, 40, 120]);
+          } catch (e) {}
+        }
+      }
+      async function setupForegroundMessaging() {
+        messaging.onMessage(async (payload) => {
+          const data = payload?.data || {};
+          const title =
+            data.title || payload?.notification?.title || "新しいお知らせ";
+          const body =
+            data.body || payload?.notification?.body || "新しい更新があります";
+          browserNotify(title, body);
+          if (data.type === "announcement") {
+            await loadDashboard();
+            if (data.boardId)
+              setTimeout(() => highlightBoard(data.boardId), 500);
+          }
+        });
+      }
+      function setupInstallPrompt() {
+        window.addEventListener("beforeinstallprompt", (e) => {
+          e.preventDefault();
+          deferredPrompt = e;
+          $("installBtn")?.classList.remove("hide");
+        });
+        $("installBtn")?.addEventListener("click", async () => {
+          if (!deferredPrompt) return;
+          deferredPrompt.prompt();
+          await deferredPrompt.userChoice;
+          deferredPrompt = null;
+          $("installBtn").classList.add("hide");
+        });
+        window.addEventListener("appinstalled", () =>
+          $("installBtn")?.classList.add("hide"),
+        );
+      }
+      function handleDeepLink() {
+        const params = new URLSearchParams(location.search);
+        const tab = params.get("tab");
+        const boardId = params.get("board");
+        if (tab) {
+          const btn = document.querySelector(`.tab[data-id="${tab}"]`);
+          if (btn) showTab(tab, btn);
+        }
+        if (boardId) setTimeout(() => highlightBoard(boardId), 700);
+      }
+      function highlightBoard(boardId) {
+        const el = document.getElementById(`board-${boardId}`);
+        if (!el) return;
+        const btn = document.querySelector('.tab[data-id="dashboard"]');
+        if (btn) showTab("dashboard", btn);
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add("flashTarget");
+        setTimeout(() => el.classList.remove("flashTarget"), 2500);
+      }
+      async function autoRestorePushToken() {
+        if (localStorage.getItem("ku_notify_enabled") !== "1") return;
+        if (Notification.permission !== "granted") return;
+        if (!VAPID_PUBLIC_KEY || VAPID_PUBLIC_KEY === "YOUR_PUBLIC_VAPID_KEY")
+          return;
+        try {
+          const token = await messaging.getToken({
+            vapidKey: VAPID_PUBLIC_KEY,
+            serviceWorkerRegistration: swReg,
+          });
+          if (token) {
+            await saveFcmToken(token);
+            setNotifyBtn("on");
+          }
+        } catch (e) {}
+      }
+      async function copyElementImage(id) {
+        const el = document.getElementById(id);
+        if (!el) return toast("コピー対象が見つかりません", "error");
+        try {
+          const canvas = await html2canvas(el, {
+            backgroundColor: "#ffffff",
+            scale: 2,
+            useCORS: true,
+          });
+          if (!navigator.clipboard || !window.ClipboardItem)
+            throw new Error("clipboard unsupported");
+          const blob = await new Promise((r) => canvas.toBlob(r, "image/png"));
+          await navigator.clipboard.write([
+            new ClipboardItem({ "image/png": blob }),
+          ]);
+          toast("画像をクリップボードにコピーしました", "ok");
+        } catch (e) {
+          console.error(e);
+          toast("画像コピーに失敗しました。PNG保存をご利用ください", "error");
+        }
+      }
+      async function copyCanvasImage(canvasId) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return toast("グラフが見つかりません", "error");
+        try {
+          const blob = await new Promise((r) => canvas.toBlob(r, "image/png"));
+          await navigator.clipboard.write([
+            new ClipboardItem({ "image/png": blob }),
+          ]);
+          toast("グラフ画像をコピーしました", "ok");
+        } catch (e) {
+          console.error(e);
+          toast("グラフコピーに失敗しました", "error");
+        }
+      }
+      function downloadCanvasImage(canvasId, fileName = "chart.png") {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const a = document.createElement("a");
+        a.href = canvas.toDataURL("image/png");
+        a.download = fileName;
+        a.click();
+      }
+      function fileIcon(n = "") {
+        const e = (n.split(".").pop() || "").toLowerCase();
+        if (["pdf"].includes(e)) return "fa-file-pdf";
+        if (["xls", "xlsx", "csv"].includes(e)) return "fa-file-excel";
+        if (["doc", "docx"].includes(e)) return "fa-file-word";
+        if (["ppt", "pptx"].includes(e)) return "fa-file-powerpoint";
+        if (["jpg", "jpeg", "png", "gif", "webp"].includes(e))
+          return "fa-file-image";
+        return "fa-file-lines";
+      }
+      function getAnnFiles(a) {
+        let files = [];
+        if (Array.isArray(a.attachments)) files = a.attachments;
+        else if (typeof a.attachments === "string") {
+          try {
+            files = JSON.parse(a.attachments) || [];
+          } catch (e) {}
+        }
+        if (a.fileUrl && !files.length)
+          files = [{ name: a.fileName || "添付ファイル", url: a.fileUrl }];
+        if (a.externalUrl)
+          files.push({
+            name: "外部リンク",
+            url: a.externalUrl,
+            external: true,
+          });
+        return files;
+      }
+      async function deleteAnnFiles(a) {
+        for (const f of getAnnFiles(a).filter((x) => x.url && !x.external)) {
+          try {
+            await storage.refFromURL(f.url).delete();
+          } catch (e) {}
+        }
+      }
+      async function loadStaffHints() {
+        staffCache = await list("users");
+        $("staffNames").innerHTML = staffCache
+          .map((s) => `<option value="${esc(s.name || "")}"></option>`)
+          .join("");
+        const empty = staffCache.length === 0;
+        $("firstSetupBox").classList.toggle("hide", !empty);
+        $("loginFields").classList.toggle("hide", empty);
+      }
+      async function login() {
+        const name = $("loginName").value.trim();
+        const email = $("loginEmail").value.trim().toLowerCase();
+        if (!name || !email)
+          return toast("名前とメールアドレスを入力してください", "error");
+        const users = staffCache.length ? staffCache : await list("users");
+        const user = users.find(
+          (u) =>
+            (u.name || "") === name &&
+            String(u.email || "").toLowerCase() === email,
+        );
+        if (!user) return toast("ログイン情報が一致しません", "error");
+        saveMe(user);
+        boot();
+      }
+      async function createInitialAdmin() {
+        const name = $("setupName").value.trim();
+        const email = $("setupEmail").value.trim().toLowerCase();
+        const department = $("setupDept").value;
+        const extension = $("setupExt").value.trim();
+        if (!name || !email)
+          return toast("管理者名とメールアドレスを入力してください", "error");
+        const now = await list("users");
+        if (now.length)
+          return toast("すでにスタッフが登録されています", "error");
+        await add("users", {
+          id: "u_admin_" + Date.now(),
+          name,
+          email,
+          department,
+          extension,
+          role: "admin",
+          note: "初期管理者",
+        });
+        await loadStaffHints();
+        $("loginName").value = name;
+        $("loginEmail").value = email;
+        toast("初期管理者を作成しました。そのままログインできます", "ok");
+      }
+      async function logout() {
+        if (!confirm("ログアウトしますか？")) return;
+        try {
+          if (
+            swReg &&
+            VAPID_PUBLIC_KEY &&
+            VAPID_PUBLIC_KEY !== "YOUR_PUBLIC_VAPID_KEY"
+          ) {
+            const token = await messaging.getToken({
+              vapidKey: VAPID_PUBLIC_KEY,
+              serviceWorkerRegistration: swReg,
+            });
+            if (token)
+              await db
+                .collection("fcmTokens")
+                .doc(encodeURIComponent(token))
+                .delete()
+                .catch(() => {});
+          }
+        } catch (e) {}
+        localStorage.removeItem("ku_user");
+        watchers.forEach((u) => u && u());
+        location.reload();
+      }
 
-document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => {
-  if(e.target === m) m.classList.remove('show');
-}));
+      async function boot() {
+        const u = me();
+        if (!u) {
+          $("loginScreen").classList.remove("hide");
+          $("app").classList.add("hide");
+          await loadStaffHints();
+          return;
+        }
+        $("loginScreen").classList.add("hide");
+        $("app").classList.remove("hide");
+        $("av").textContent = (u.name || "?").slice(0, 1);
+        $("meName").textContent = u.name || "";
+        $("meRole").textContent =
+          (u.role === "admin" ? "管理者" : "スタッフ") +
+          " / " +
+          (u.department || "未設定");
+        $("adminTab").classList.toggle("hide", !admin());
+        $("addBoardBtn").classList.toggle("hide", !admin());
+        setNotifyBtn(
+          localStorage.getItem("ku_notify_enabled") === "1" ? "on" : "default",
+        );
+        renderRoomCards();
+        setupInstallPrompt();
+        await registerServiceWorker().catch(() => null);
+        await setupForegroundMessaging();
+        await Promise.all([
+          loadDashboard(),
+          loadProfile(),
+          loadTasks(),
+          loadSurveys(),
+        ]);
+        if (admin()) await Promise.all([loadAdmin(), loadStaffHints()]);
+        setupRealtimeWatch();
+        cleanupExpiredData(true);
+        setInterval(() => cleanupExpiredData(true), 12 * 60 * 60 * 1000);
+        await autoRestorePushToken();
+        handleDeepLink();
+      }
+      function showTab(id, btn) {
+        document
+          .querySelectorAll(".tab")
+          .forEach((t) => t.classList.remove("active"));
+        if (btn) btn.classList.add("active");
+        document
+          .querySelectorAll(".screen")
+          .forEach((s) => s.classList.remove("active"));
+        $(id).classList.add("active");
+        (
+          ({
+            dashboard: loadDashboard,
+            profile: loadProfile,
+            tasks: loadTasks,
+            survey: loadSurveys,
+            admin: loadAdmin,
+          })[id] || (() => {})
+        )();
+      }
 
-$('loginName').addEventListener('keypress', e => e.key === 'Enter' && login());
-$('loginEmail').addEventListener('keypress', e => e.key === 'Enter' && login());
-$('setupName').addEventListener('keypress', e => e.key === 'Enter' && createInitialAdmin());
-$('setupEmail').addEventListener('keypress', e => e.key === 'Enter' && createInitialAdmin());
-$('roomInput').addEventListener('keypress', e => e.key === 'Enter' && sendRoomMsg());
+      async function loadDashboard() {
+        const u = me();
+        const [tasks, surveys, anns, settings, responses] = await Promise.all([
+          list("tasks"),
+          list("surveys"),
+          list("announcements"),
+          list("settings"),
+          list("surveyResponses").catch(() => []),
+        ]);
+        $("stTask").textContent = tasks.filter(
+          (t) => t.userId === u.id && !t.completed,
+        ).length;
+        $("stTrain").textContent = 1;
+        $("stSurvey").textContent = surveys.filter(
+          (s) =>
+            canUserSeeSurvey(s, u) &&
+            isSurveyOpen(s) &&
+            !hasUserAnsweredSurvey(s, u, responses),
+        ).length;
+        const b = settings.find((x) => x.type === "banner");
+        if (b?.imageUrl) {
+          $("bannerArea").innerHTML =
+            `<img src="${esc(b.imageUrl)}" alt="banner">`;
+          $("bannerArea").classList.remove("hide");
+        } else $("bannerArea").classList.add("hide");
+        renderBoard(anns);
+      }
+      function renderBoard(anns) {
+        const el = $("boardList");
+        if (!anns.length) {
+          el.innerHTML = '<div class="empty">掲示板はまだありません</div>';
+          return;
+        }
+        el.innerHTML = anns
+          .sort(
+            (a, b) =>
+              ms(b.createdAtMs || b.createdAt) -
+              ms(a.createdAtMs || a.createdAt),
+          )
+          .map((a) => {
+            const files = getAnnFiles(a);
+            const badge =
+              a.priority === "urgent"
+                ? "b4"
+                : a.priority === "important"
+                  ? "b3"
+                  : "b1";
+            const label =
+              a.priority === "urgent"
+                ? "緊急"
+                : a.priority === "important"
+                  ? "重要"
+                  : "通常";
+            return `<div class="item" id="board-${a.docId}"><div class="itemTop"><div><div class="title">${esc(a.title)}</div><div class="meta"><span>${esc(a.creatorName || "")}</span><span>${fmt(a.createdAt)}</span><span>${files.length ? files.length + "件添付" : "添付なし"}</span></div></div><span class="badge ${badge}">${label}</span></div><div style="margin-top:10px;white-space:pre-wrap;line-height:1.6">${esc(a.content || "")}</div>${files.length ? `<div class="files">${files.map((f) => `<div class="file"><div><i class="fas ${fileIcon(f.name || "")}"></i> ${esc(f.name || "添付ファイル")}</div><div class="right"><a class="btn out sm" href="${esc(f.url)}" target="_blank"><i class="fas fa-arrow-up-right-from-square"></i> 開く</a></div></div>`).join("")}</div>` : ""}${admin() ? `<div style="margin-top:10px"><button class="btn dan sm" onclick="deleteBoard('${a.docId}')"><i class="fas fa-trash"></i> 削除</button></div>` : ""}</div>`;
+          })
+          .join("");
+      }
+      function openBoardModal() {
+        $("bTitle").value = "";
+        $("bBody").value = "";
+        $("bPri").value = "normal";
+        $("bFiles").value = "";
+        $("bUrl").value = "";
+        openModal("boardModal");
+      }
+      async function createBoard() {
+        const u = me(),
+          title = $("bTitle").value.trim(),
+          content = $("bBody").value.trim();
+        if (!title || !content)
+          return toast("タイトルと本文は必須です", "error");
+        try {
+          const attachments = await uploadMany(
+            $("bFiles").files,
+            "announcements",
+          );
+          await add("announcements", {
+            title,
+            content,
+            priority: $("bPri").value,
+            creatorId: u.id,
+            creatorName: u.name,
+            attachments,
+            externalUrl: $("bUrl").value.trim(),
+          });
+          closeModal("boardModal");
+          await loadDashboard();
+          toast("掲示板に投稿しました", "ok");
+        } catch (e) {
+          toast("投稿エラー: " + e.message, "error");
+        }
+      }
+      async function deleteBoard(id) {
+        if (!confirm("掲示板を削除しますか？")) return;
+        const ann = (await list("announcements")).find((x) => x.docId === id);
+        if (ann) await deleteAnnFiles(ann);
+        await del("announcements", id);
+        await loadDashboard();
+        toast("削除しました", "ok");
+      }
 
-window.addEventListener('load', boot);
-</script>
-</body>
+      function loadProfile() {
+        const u = me();
+        $("pName").value = u.name || "";
+        $("pEmail").value = u.email || "";
+        $("pDept").value = u.department || "介護";
+        $("pExt").value = u.extension || "";
+        $("pBio").value = u.bio || "";
+      }
+      async function saveProfile() {
+        const u = me();
+        const patch = {
+          department: $("pDept").value,
+          extension: $("pExt").value.trim(),
+          bio: $("pBio").value.trim(),
+        };
+        if (u.docId) await upd("users", u.docId, patch);
+        const nu = { ...u, ...patch };
+        saveMe(nu);
+        $("meRole").textContent =
+          (nu.role === "admin" ? "管理者" : "スタッフ") +
+          " / " +
+          (nu.department || "未設定");
+        toast("プロフィールを保存しました", "ok");
+      }
+
+      async function loadTasks() {
+        const u = me();
+        const rows = (await list("tasks"))
+          .filter((t) => t.userId === u.id)
+          .sort((a, b) => Number(!!a.completed) - Number(!!b.completed));
+        const el = $("taskList");
+        if (!rows.length) {
+          el.innerHTML = '<div class="empty">タスクはありません</div>';
+          return;
+        }
+        el.innerHTML = rows
+          .map(
+            (t) =>
+              `<div class="item" id="board-${a.docId}"><div class="itemTop"><div><div class="title" style="${t.completed ? "text-decoration:line-through;color:#889" : ""}">${esc(t.title)}</div><div class="meta"><span class="badge ${t.priority === "high" ? "b4" : t.priority === "medium" ? "b3" : "b1"}">${t.priority === "high" ? "高" : t.priority === "medium" ? "中" : "低"}</span></div></div><div class="right"><button class="btn ${t.completed ? "sec" : "pri"} sm" onclick="toggleTask('${t.docId}',${!t.completed})"><i class="fas fa-${t.completed ? "rotate-left" : "check"}"></i></button><button class="btn dan sm" onclick="removeTask('${t.docId}')"><i class="fas fa-trash"></i></button></div></div></div>`,
+          )
+          .join("");
+      }
+      async function addTask() {
+        const u = me();
+        const title = $("taskTitle").value.trim();
+        if (!title) return toast("タスク名を入力してください", "error");
+        await add("tasks", {
+          userId: u.id,
+          title,
+          priority: $("taskPri").value,
+          completed: false,
+        });
+        $("taskTitle").value = "";
+        $("taskPri").value = "low";
+        await loadTasks();
+        await loadDashboard();
+        toast("タスクを追加しました", "ok");
+      }
+      async function toggleTask(id, completed) {
+        await upd("tasks", id, { completed });
+        await loadTasks();
+        await loadDashboard();
+      }
+      async function removeTask(id) {
+        if (!confirm("削除しますか？")) return;
+        await del("tasks", id);
+        await loadTasks();
+        await loadDashboard();
+        toast("削除しました", "ok");
+      }
+
+      function renderRoomCards() {
+        const el = $("roomCards");
+        el.innerHTML = Object.entries(ROOMS)
+          .map(
+            ([k, v]) =>
+              `<div class="card roomBtn" onclick="openRoom('${k}')"><h3>${esc(v)}</h3><p class="muted" style="margin-top:8px">${k === "office" ? "事務所ルームを追加済みです。" : "部署内の情報共有ができます。"}</p></div>`,
+          )
+          .join("");
+      }
+      async function openRoom(key) {
+        activeRoom = key;
+        $("roomTitle").textContent = ROOMS[key];
+        openModal("roomModal");
+        await loadRoomMsgs();
+        $("roomInput").focus();
+      }
+      async function loadRoomMsgs() {
+        if (!activeRoom) return;
+        const msgs = (await list("rooms_" + activeRoom)).sort(
+          (a, b) =>
+            ms(a.createdAtMs || a.createdAt) - ms(b.createdAtMs || b.createdAt),
+        );
+        const el = $("roomMsgs");
+        if (!msgs.length) {
+          el.innerHTML = '<div class="empty">まだメッセージがありません</div>';
+          return;
+        }
+        el.innerHTML = msgs
+          .map(
+            (m) =>
+              `<div class="msg"><div class="avatar" style="width:36px;height:36px;font-size:13px">${esc((m.userName || "?").slice(0, 1))}</div><div class="bubble"><div class="meta"><b>${esc(m.userName || "")}</b> <span>${fmt(m.createdAt)}</span></div><div style="white-space:pre-wrap">${esc(m.text || "")}</div></div></div>`,
+          )
+          .join("");
+        el.scrollTop = el.scrollHeight;
+      }
+      async function sendRoomMsg() {
+        const text = $("roomInput").value.trim();
+        const u = me();
+        if (!text || !activeRoom) return;
+        await add("rooms_" + activeRoom, {
+          userId: u.id,
+          userName: u.name,
+          text,
+          room: activeRoom,
+        });
+        $("roomInput").value = "";
+        await loadRoomMsgs();
+      }
+
+      function clearWatchers() {
+        watchers.forEach((u) => u && u());
+        watchers = [];
+      }
+      function watchLatest(col, key, handler) {
+        const unsub = db
+          .collection(col)
+          .orderBy("createdAt", "desc")
+          .limit(1)
+          .onSnapshot((s) => {
+            if (s.empty) return;
+            const d = s.docs[0];
+            const k = "watch_" + key;
+            const prev = localStorage.getItem(k);
+            if (!prev) {
+              localStorage.setItem(k, d.id);
+              return;
+            }
+            if (prev !== d.id) {
+              localStorage.setItem(k, d.id);
+              handler({ docId: d.id, ...d.data() });
+            }
+          });
+        watchers.push(unsub);
+      }
+      function setupRealtimeWatch() {
+        clearWatchers();
+        const u = me();
+        if (!u) return;
+        watchLatest("announcements", "ann", (d) => {
+          if (d.creatorId !== u.id) {
+            browserNotify("新しい掲示板", d.title || "投稿がありました");
+            loadDashboard();
+          }
+        });
+        const roomTargets = admin()
+          ? Object.keys(ROOMS)
+          : [DEPT_ROOM[u.department] || "office", "office"];
+        [...new Set(roomTargets)].forEach((r) =>
+          watchLatest("rooms_" + r, "room_" + r, (d) => {
+            if (d.userId !== u.id) {
+              browserNotify(
+                ROOMS[r],
+                `${d.userName || ""}: ${String(d.text || "").slice(0, 40)}`,
+              );
+              if (activeRoom === r && $("roomModal").classList.contains("show"))
+                loadRoomMsgs();
+            }
+          }),
+        );
+      }
+
+      async function loadAdmin() {
+        if (!admin()) return;
+        const [users, tasks, surveys, anns, settings] = await Promise.all([
+          list("users"),
+          list("tasks"),
+          list("surveys"),
+          list("announcements"),
+          list("settings"),
+        ]);
+        $("staffList").innerHTML = !users.length
+          ? '<div class="empty">スタッフがいません</div>'
+          : `<table class="table"><thead><tr><th>氏名</th><th>メール</th><th>部署</th><th>権限</th><th></th></tr></thead><tbody>${users.map((u) => `<tr><td>${esc(u.name || "")}</td><td>${esc(u.email || "")}</td><td>${esc(u.department || "")}</td><td>${u.role === "admin" ? "管理者" : "スタッフ"}</td><td><div class="right"><button class="btn out sm" onclick="editStaff('${u.docId}')">編集</button><button class="btn dan sm" onclick="deleteStaff('${u.docId}','${esc(u.name || "")}')">削除</button></div></td></tr>`).join("")}</tbody></table>`;
+        $("adminStats").innerHTML =
+          `登録スタッフ: <b>${users.length}</b> 名<br>タスク: <b>${tasks.length}</b> 件<br>アンケート: <b>${surveys.length}</b> 件<br>掲示板: <b>${anns.length}</b> 件`;
+        const b = settings.find((x) => x.type === "banner");
+        $("bannerStatus").innerHTML = b?.imageUrl
+          ? `<span class="badge b2">設定済み</span> ${esc(b.fileName || "")}`
+          : "未設定";
+      }
+      function openStaffModal() {
+        $("staffModalTitle").textContent = "スタッフ追加";
+        $("sfId").value = "";
+        $("sfName").value = "";
+        $("sfEmail").value = "";
+        $("sfDept").value = "介護";
+        $("sfRole").value = "staff";
+        $("sfExt").value = "";
+        $("sfNote").value = "";
+        openModal("staffModal");
+      }
+      async function editStaff(id) {
+        const u = (await list("users")).find((x) => x.docId === id);
+        if (!u) return;
+        $("staffModalTitle").textContent = "スタッフ編集";
+        $("sfId").value = id;
+        $("sfName").value = u.name || "";
+        $("sfEmail").value = u.email || "";
+        $("sfDept").value = u.department || "介護";
+        $("sfRole").value = u.role || "staff";
+        $("sfExt").value = u.extension || "";
+        $("sfNote").value = u.note || "";
+        openModal("staffModal");
+      }
+      async function saveStaff() {
+        const id = $("sfId").value;
+        const name = $("sfName").value.trim();
+        const email = $("sfEmail").value.trim().toLowerCase();
+        if (!name || !email)
+          return toast("氏名とメールアドレスは必須です", "error");
+        const data = {
+          name,
+          email,
+          department: $("sfDept").value,
+          role: $("sfRole").value,
+          extension: $("sfExt").value.trim(),
+          note: $("sfNote").value.trim(),
+        };
+        if (id) await upd("users", id, data);
+        else await add("users", { ...data, id: "u_" + Date.now() });
+        closeModal("staffModal");
+        await Promise.all([loadAdmin(), loadStaffHints()]);
+        toast("保存しました", "ok");
+      }
+      async function deleteStaff(id, name) {
+        if (!confirm(`「${name}」を削除しますか？`)) return;
+        await del("users", id);
+        await Promise.all([loadAdmin(), loadStaffHints()]);
+        toast("削除しました", "ok");
+      }
+      function openBannerModal() {
+        $("bannerFile").value = "";
+        $("bannerPreview").innerHTML = "";
+        $("bannerPreview").classList.add("hide");
+        openModal("bannerModal");
+      }
+      $("bannerFile").addEventListener("change", (e) => {
+        const f = e.target.files[0];
+        if (!f) return;
+        const r = new FileReader();
+        r.onload = (x) => {
+          $("bannerPreview").innerHTML =
+            `<img src="${x.target.result}" style="width:100%;max-height:240px;object-fit:cover;border-radius:14px">`;
+          $("bannerPreview").classList.remove("hide");
+        };
+        r.readAsDataURL(f);
+      });
+      async function uploadBanner() {
+        const f = $("bannerFile").files[0];
+        if (!f) return toast("画像を選択してください", "error");
+        const ref = storage.ref(`banners/${Date.now()}_${f.name}`);
+        const snap = await ref.put(f);
+        const imageUrl = await snap.ref.getDownloadURL();
+        const settings = await list("settings");
+        const cur = settings.find((x) => x.type === "banner");
+        if (cur)
+          await upd("settings", cur.docId, {
+            type: "banner",
+            imageUrl,
+            fileName: f.name,
+          });
+        else
+          await add("settings", { type: "banner", imageUrl, fileName: f.name });
+        closeModal("bannerModal");
+        await Promise.all([loadDashboard(), loadAdmin()]);
+        toast("バナーを更新しました", "ok");
+      }
+      async function cleanupExpiredData(silent = true) {
+        try {
+          const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+          let removed = 0;
+          const anns = await list("announcements");
+          for (const a of anns.filter(
+            (x) =>
+              ms(x.createdAtMs || x.createdAt) &&
+              ms(x.createdAtMs || x.createdAt) < cutoff,
+          )) {
+            await deleteAnnFiles(a);
+            await del("announcements", a.docId);
+            removed++;
+          }
+          for (const r of Object.keys(ROOMS)) {
+            const rows = await list("rooms_" + r);
+            for (const m of rows.filter(
+              (x) =>
+                ms(x.createdAtMs || x.createdAt) &&
+                ms(x.createdAtMs || x.createdAt) < cutoff,
+            )) {
+              await del("rooms_" + r, m.docId);
+              removed++;
+            }
+          }
+          if (!silent && removed)
+            toast(
+              `1か月超の掲示板・チャット ${removed} 件を整理しました`,
+              "ok",
+            );
+          if (admin()) loadAdmin();
+          loadDashboard();
+        } catch (e) {
+          if (!silent) toast("自動整理で一部エラーがありました", "error");
+        }
+      }
+      function normalizeQuestion(q, idx) {
+        const type = q?.type || "text";
+        const base = {
+          id: q?.id || `q${idx}`,
+          type,
+          text: q?.text || "",
+          required: !!q?.required,
+          options: Array.isArray(q?.options) ? q.options : [],
+          leftLabel: q?.leftLabel || "",
+          rightLabel: q?.rightLabel || "",
+          placeholder: q?.placeholder || "",
+        };
+        if (type === "yesno") base.options = ["はい", "いいえ"];
+        if (type === "rating5") base.options = ["1", "2", "3", "4", "5"];
+        if (type === "rating10")
+          base.options = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
+        if (
+          ["single", "multi", "dropdown"].includes(type) &&
+          !base.options.length
+        )
+          base.options = ["選択肢1", "選択肢2"];
+        return base;
+      }
+      function normalizeQuestions(arr) {
+        return (parseJSON(arr, arr || []) || []).map((q, i) =>
+          normalizeQuestion(q, i),
+        );
+      }
+      function surveyOwner(s, u) {
+        return admin() || s.creatorId === u.id;
+      }
+      function canUserSeeSurvey(s, u) {
+        return (
+          s.targetDept === "all" ||
+          !s.targetDept ||
+          s.targetDept === u.department ||
+          surveyOwner(s, u)
+        );
+      }
+      function isSurveyOpen(s) {
+        return s.status !== "closed" && (!s.dueDate || s.dueDate >= todayStr());
+      }
+      function hasUserAnsweredSurvey(s, u, responses) {
+        return getSurveyResponses(s, responses).some((r) => r.userId === u.id);
+      }
+      function getSurveyResponses(s, allResponses = []) {
+        const current = (allResponses || [])
+          .filter((r) => r.surveyId === s.docId)
+          .map((r) => ({ ...r, answers: parseJSON(r.answers, {}) }));
+        const legacy = parseJSON(s.responses, []).map((r, i) => ({
+          docId: `legacy_${i}`,
+          surveyId: s.docId,
+          userId: r.userId,
+          userName: r.userName,
+          department: r.department || "",
+          anonymous: !!s.anonymous,
+          answers: r.ans || {},
+          submittedAt: r.at,
+          createdAtMs: ms(r.at),
+        }));
+        const map = new Map();
+        [...legacy, ...current].forEach((r) =>
+          map.set(`${r.userId || ""}_${r.submittedAt || r.docId}`, r),
+        );
+        return [...map.values()];
+      }
+      function getTargetUsers(users, survey) {
+        return (users || []).filter((u) =>
+          survey.targetDept === "all" || !survey.targetDept
+            ? true
+            : u.department === survey.targetDept,
+        );
+      }
+      function defaultQuestion(type = "text") {
+        return normalizeQuestion(
+          {
+            id: uid("q"),
+            type,
+            text: "",
+            required: true,
+            options: ["single", "multi", "dropdown"].includes(type)
+              ? ["選択肢1", "選択肢2"]
+              : [],
+            leftLabel: "",
+            rightLabel: "",
+            placeholder: "",
+          },
+          svQuestions.length,
+        );
+      }
+      function typeLabel(type) {
+        return SURVEY_TYPES[type] || type;
+      }
+      function moveQ(i, dir) {
+        const j = i + dir;
+        if (j < 0 || j >= svQuestions.length) return;
+        [svQuestions[i], svQuestions[j]] = [svQuestions[j], svQuestions[i]];
+        renderQuestions();
+      }
+      function duplicateQ(i) {
+        svQuestions.splice(i + 1, 0, {
+          ...svQuestions[i],
+          id: uid("q"),
+          options: [...(svQuestions[i].options || [])],
+        });
+        renderQuestions();
+      }
+      function removeQ(i) {
+        svQuestions.splice(i, 1);
+        renderQuestions();
+      }
+      function addQ(type = "text") {
+        svQuestions.push(defaultQuestion(type));
+        renderQuestions();
+      }
+      function addOpt(i) {
+        svQuestions[i].options.push("新しい選択肢");
+        renderQuestions();
+      }
+      function removeOpt(i, j) {
+        svQuestions[i].options.splice(j, 1);
+        renderQuestions();
+      }
+      function changeQType(i, val) {
+        svQuestions[i] = normalizeQuestion({ ...svQuestions[i], type: val }, i);
+        renderQuestions();
+      }
+      function renderQuestions() {
+        const el = $("svQuestions");
+        if (!svQuestions.length) {
+          el.innerHTML = '<div class="empty">質問を追加してください</div>';
+          return;
+        }
+        el.innerHTML = svQuestions
+          .map((q, i) => {
+            q = normalizeQuestion(q, i);
+            return `<div class="qCard"><div class="qHead"><div><span class="chip">Q${i + 1}</span> <span class="tiny">${typeLabel(q.type)}</span></div><div class="right"><button class="btn out sm" onclick="moveQ(${i},-1)"><i class="fas fa-arrow-up"></i></button><button class="btn out sm" onclick="moveQ(${i},1)"><i class="fas fa-arrow-down"></i></button><button class="btn out sm" onclick="duplicateQ(${i})"><i class="fas fa-copy"></i></button><button class="btn dan sm" onclick="removeQ(${i})"><i class="fas fa-trash"></i></button></div></div><div class="row"><div class="grow"><label class="tiny">質問文</label><input class="inp" value="${esc(q.text)}" oninput="svQuestions[${i}].text=this.value" placeholder="質問文"></div><div class="grow"><label class="tiny">質問形式</label><select onchange="changeQType(${i},this.value)">${Object.entries(
+              SURVEY_TYPES,
+            )
+              .map(
+                ([k, v]) =>
+                  `<option value="${k}" ${q.type === k ? "selected" : ""}>${v}</option>`,
+              )
+              .join(
+                "",
+              )}</select></div><div style="min-width:120px"><label class="tiny">必須</label><select onchange="svQuestions[${i}].required=this.value==='1'"><option value="1" ${q.required ? "selected" : ""}>必須</option><option value="0" ${!q.required ? "selected" : ""}>任意</option></select></div></div>${["single", "multi", "dropdown"].includes(q.type) ? `<div style="margin-top:10px"><div class="tiny">選択肢</div>${q.options.map((o, oi) => `<div class="optRow"><input class="inp grow" value="${esc(o)}" oninput="svQuestions[${i}].options[${oi}]=this.value"><button class="btn dan sm" onclick="removeOpt(${i},${oi})">-</button></div>`).join("")}<div style="margin-top:8px"><button class="btn out sm" onclick="addOpt(${i})">選択肢追加</button></div></div>` : ""}${["rating5", "rating10"].includes(q.type) ? `<div class="row" style="margin-top:10px"><div class="grow"><label class="tiny">左ラベル</label><input class="inp" value="${esc(q.leftLabel || "")}" oninput="svQuestions[${i}].leftLabel=this.value" placeholder="例：不満"></div><div class="grow"><label class="tiny">右ラベル</label><input class="inp" value="${esc(q.rightLabel || "")}" oninput="svQuestions[${i}].rightLabel=this.value" placeholder="例：満足"></div></div>` : ""}${["text", "number", "date"].includes(q.type) ? `<div style="margin-top:10px"><label class="tiny">補助テキスト（任意）</label><input class="inp" value="${esc(q.placeholder || "")}" oninput="svQuestions[${i}].placeholder=this.value" placeholder="例：自由に入力してください"></div>` : ""}</div>`;
+          })
+          .join("");
+      }
+      function resetSurveyForm() {
+        editingSurveyId = "";
+        $("svId").value = "";
+        $("surveyModalTitle").textContent = "アンケート作成";
+        $("svTitle").value = "";
+        $("svDesc").value = "";
+        $("svPass").value = "";
+        $("svTargetDept").value = "all";
+        $("svAudience").value = "staff";
+        $("svAnonymous").value = "0";
+        $("svStatus").value = "open";
+        $("svDue").value = "";
+        $("svAiPrompt").value = "";
+        $("svAiStatus").textContent = "";
+        svQuestions = [];
+        renderQuestions();
+      }
+      function openSurveyModal() {
+        resetSurveyForm();
+        openModal("surveyModal");
+      }
+      async function editSurvey(id) {
+        const survey = (await list("surveys")).find((s) => s.docId === id);
+        if (!survey) return;
+        editingSurveyId = id;
+        $("svId").value = id;
+        $("surveyModalTitle").textContent = "アンケート編集";
+        $("svTitle").value = survey.title || "";
+        $("svDesc").value = survey.desc || "";
+        $("svPass").value = survey.password || "";
+        $("svTargetDept").value = survey.targetDept || "all";
+        $("svAudience").value = survey.audience || "staff";
+        $("svAnonymous").value = survey.anonymous ? "1" : "0";
+        $("svStatus").value = survey.status || "open";
+        $("svDue").value = survey.dueDate || "";
+        $("svAiPrompt").value = "";
+        $("svAiStatus").textContent = "";
+        svQuestions = normalizeQuestions(parseJSON(survey.questions, []));
+        renderQuestions();
+        openModal("surveyModal");
+      }
+      async function duplicateSurvey(id) {
+        const survey = (await list("surveys")).find((s) => s.docId === id);
+        if (!survey) return;
+        resetSurveyForm();
+        $("svTitle").value = `${survey.title || "アンケート"}（コピー）`;
+        $("svDesc").value = survey.desc || "";
+        $("svTargetDept").value = survey.targetDept || "all";
+        $("svAudience").value = survey.audience || "staff";
+        $("svAnonymous").value = survey.anonymous ? "1" : "0";
+        $("svStatus").value = "open";
+        $("svDue").value = "";
+        svQuestions = normalizeQuestions(parseJSON(survey.questions, [])).map(
+          (q) => ({ ...q, id: uid("q") }),
+        );
+        renderQuestions();
+        openModal("surveyModal");
+      }
+      function buildLocalSurveyDraft(prompt) {
+        const p = String(prompt || "");
+        if (/職員|スタッフ|満足/.test(p))
+          return {
+            title: "職員満足度アンケート",
+            desc: "職員向けの簡易アンケートです。率直なご意見をお願いします。",
+            questions: [
+              {
+                id: uid("q"),
+                type: "rating5",
+                text: "現在の勤務環境に満足していますか？",
+                required: true,
+                leftLabel: "低い",
+                rightLabel: "高い",
+              },
+              {
+                id: uid("q"),
+                type: "rating5",
+                text: "上司・同僚との連携は取りやすいですか？",
+                required: true,
+                leftLabel: "取りにくい",
+                rightLabel: "取りやすい",
+              },
+              {
+                id: uid("q"),
+                type: "single",
+                text: "特に改善が必要だと感じる項目はどれですか？",
+                required: true,
+                options: [
+                  "人員体制",
+                  "情報共有",
+                  "教育体制",
+                  "業務負担",
+                  "設備",
+                ],
+              },
+              {
+                id: uid("q"),
+                type: "multi",
+                text: "良いと感じている点を選んでください",
+                required: false,
+                options: [
+                  "人間関係",
+                  "シフト配慮",
+                  "相談しやすさ",
+                  "教育",
+                  "利用者対応",
+                ],
+              },
+              {
+                id: uid("q"),
+                type: "text",
+                text: "自由記述",
+                required: false,
+                placeholder: "ご意見・ご要望があればご記入ください",
+              },
+            ],
+          };
+        if (/研修/.test(p))
+          return {
+            title: "研修後アンケート",
+            desc: "研修内容の振り返りにご協力ください。",
+            questions: [
+              {
+                id: uid("q"),
+                type: "rating5",
+                text: "研修内容は理解しやすかったですか？",
+                required: true,
+                leftLabel: "低い",
+                rightLabel: "高い",
+              },
+              {
+                id: uid("q"),
+                type: "rating5",
+                text: "現場で活かせそうですか？",
+                required: true,
+                leftLabel: "活かしにくい",
+                rightLabel: "活かせる",
+              },
+              {
+                id: uid("q"),
+                type: "yesno",
+                text: "追加の研修を希望しますか？",
+                required: true,
+              },
+              {
+                id: uid("q"),
+                type: "single",
+                text: "今後受けたいテーマは何ですか？",
+                required: false,
+                options: ["認知症ケア", "感染対策", "事故防止", "接遇", "記録"],
+              },
+              {
+                id: uid("q"),
+                type: "text",
+                text: "研修へのご意見",
+                required: false,
+              },
+            ],
+          };
+        if (/感染/.test(p))
+          return {
+            title: "感染対策確認アンケート",
+            desc: "現場の感染対策状況を確認します。",
+            questions: [
+              {
+                id: uid("q"),
+                type: "yesno",
+                text: "手指消毒は適切に実施できていますか？",
+                required: true,
+              },
+              {
+                id: uid("q"),
+                type: "yesno",
+                text: "防護具の使用方法を理解していますか？",
+                required: true,
+              },
+              {
+                id: uid("q"),
+                type: "rating5",
+                text: "感染対策マニュアルは分かりやすいですか？",
+                required: true,
+                leftLabel: "低い",
+                rightLabel: "高い",
+              },
+              {
+                id: uid("q"),
+                type: "single",
+                text: "困っている点はどれですか？",
+                required: false,
+                options: ["物品不足", "周知不足", "動線", "清掃", "特になし"],
+              },
+              {
+                id: uid("q"),
+                type: "text",
+                text: "改善したい点",
+                required: false,
+              },
+            ],
+          };
+        return {
+          title: "アンケート",
+          desc: "ご意見をお聞かせください。",
+          questions: [
+            {
+              id: uid("q"),
+              type: "rating5",
+              text: "全体として満足していますか？",
+              required: true,
+              leftLabel: "低い",
+              rightLabel: "高い",
+            },
+            {
+              id: uid("q"),
+              type: "single",
+              text: "特に重要な項目を選んでください",
+              required: true,
+              options: ["対応", "食事", "清潔", "連携", "その他"],
+            },
+            { id: uid("q"), type: "text", text: "自由記述", required: false },
+          ],
+        };
+      }
+      async function generateSurveyByAI() {
+        const prompt = $("svAiPrompt").value.trim();
+        if (!prompt) return toast("作成したい内容を入力してください", "error");
+        $("svAiStatus").textContent = "下書きを生成しています…";
+        let draft = null;
+        try {
+          const res = await fetch("/api/survey_ai_draft.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt }),
+          });
+          if (res.ok) draft = await res.json();
+        } catch (e) {}
+        if (!draft) draft = buildLocalSurveyDraft(prompt);
+        $("svTitle").value = draft.title || $("svTitle").value;
+        $("svDesc").value = draft.desc || $("svDesc").value;
+        svQuestions = normalizeQuestions(draft.questions || []);
+        renderQuestions();
+        $("svAiStatus").textContent =
+          "下書きを反映しました。必要に応じて編集してください。";
+        toast("下書きを反映しました", "ok");
+      }
+      async function createSurvey() {
+        const u = me();
+        const title = $("svTitle").value.trim();
+        if (!title) return toast("タイトルを入力してください", "error");
+        if (!svQuestions.length)
+          return toast("質問を1つ以上追加してください", "error");
+        if (svQuestions.some((q) => !String(q.text || "").trim()))
+          return toast("未入力の質問があります", "error");
+        const payload = {
+          title,
+          desc: $("svDesc").value.trim(),
+          password: $("svPass").value.trim(),
+          targetDept: $("svTargetDept").value,
+          audience: $("svAudience").value,
+          anonymous: $("svAnonymous").value === "1",
+          status: $("svStatus").value,
+          dueDate: $("svDue").value || "",
+          creatorId: u.id,
+          creatorName: u.name,
+          questions: JSON.stringify(
+            svQuestions.map((q, i) => normalizeQuestion(q, i)),
+          ),
+        };
+        if (editingSurveyId) await upd("surveys", editingSurveyId, payload);
+        else await add("surveys", payload);
+        closeSurveyModal();
+        await Promise.all([loadSurveys(), loadDashboard()]);
+        toast(
+          editingSurveyId
+            ? "アンケートを更新しました"
+            : "アンケートを作成しました",
+          "ok",
+        );
+      }
+      async function toggleSurveyStatus(id, nextStatus) {
+        await upd("surveys", id, { status: nextStatus });
+        await Promise.all([loadSurveys(), loadDashboard()]);
+        toast(
+          nextStatus === "closed"
+            ? "アンケートを締切にしました"
+            : "アンケートを再開しました",
+          "ok",
+        );
+      }
+      async function deleteSurvey(id) {
+        if (!confirm("アンケートを削除しますか？")) return;
+        const rows = await list("surveyResponses").catch(() => []);
+        for (const r of rows.filter((x) => x.surveyId === id))
+          await del("surveyResponses", r.docId);
+        await del("surveys", id);
+        await Promise.all([loadSurveys(), loadDashboard()]);
+        toast("削除しました", "ok");
+      }
+
+      async function loadSurveys() {
+        const u = me();
+        const [surveys, responses, users] = await Promise.all([
+          list("surveys"),
+          list("surveyResponses").catch(() => []),
+          list("users"),
+        ]);
+        const visible = surveys
+          .filter((s) => canUserSeeSurvey(s, u))
+          .sort(
+            (a, b) =>
+              ms(b.createdAtMs || b.createdAt) -
+              ms(a.createdAtMs || a.createdAt),
+          );
+        const openCount = visible.filter(isSurveyOpen).length;
+        const doneCount = visible.filter((s) =>
+          hasUserAnsweredSurvey(s, u, responses),
+        ).length;
+        const todoCount = visible.filter(
+          (s) => isSurveyOpen(s) && !hasUserAnsweredSurvey(s, u, responses),
+        ).length;
+        const mineCount = visible.filter((s) => s.creatorId === u.id).length;
+        $("svStatOpen").textContent = openCount;
+        $("svStatDone").textContent = doneCount;
+        $("svStatTodo").textContent = todoCount;
+        $("svStatMine").textContent = mineCount;
+        const el = $("surveyList");
+        if (!visible.length) {
+          el.innerHTML = '<div class="empty">アンケートはありません</div>';
+          return;
+        }
+        el.innerHTML = visible
+          .map((s) => {
+            const qs = normalizeQuestions(parseJSON(s.questions, []));
+            const rs = getSurveyResponses(s, responses);
+            const answered = rs.some((r) => r.userId === u.id);
+            const targetUsers = getTargetUsers(users, s).length || 0;
+            const rate = targetUsers
+              ? Math.round((rs.length / targetUsers) * 100)
+              : 0;
+            const open = isSurveyOpen(s);
+            const owner = surveyOwner(s, u);
+            return `<div class="item" id="board-${a.docId}"><div class="itemTop"><div><div class="title">${esc(s.title || "")}</div><div class="meta"><span>${esc(s.creatorName || "")}</span><span>${s.targetDept === "all" || !s.targetDept ? "全部署" : esc(s.targetDept)}</span><span>${qs.length}問</span><span>${rs.length}件回答</span><span>回答率 ${rate}%</span>${s.anonymous ? '<span class="badge b2">匿名表示</span>' : '<span class="badge b1">記名</span>'}${open ? '<span class="badge b2">受付中</span>' : '<span class="badge b4">締切</span>'}${answered ? '<span class="badge b2">回答済</span>' : open ? '<span class="badge b3">未回答</span>' : ""}</div></div><div class="right">${!answered && open ? `<button class="btn pri sm" onclick="openSurveyAnswer('${s.docId}')">回答</button>` : ""}<button class="btn out sm" onclick="openSurveyResult('${s.docId}')">集計</button>${owner ? `<button class="btn out sm" onclick="editSurvey('${s.docId}')">編集</button><button class="btn out sm" onclick="duplicateSurvey('${s.docId}')">複製</button><button class="btn ${open ? "warn" : "sec"} sm" onclick="toggleSurveyStatus('${s.docId}','${open ? "closed" : "open"}')">${open ? "締切" : "再開"}</button><button class="btn dan sm" onclick="deleteSurvey('${s.docId}')">削除</button>` : ""}</div></div>${s.desc ? `<div style="margin-top:10px;white-space:pre-wrap;line-height:1.6">${esc(s.desc)}</div>` : ""}${s.dueDate ? `<div class="meta"><span>締切: ${esc(s.dueDate)}</span></div>` : ""}</div>`;
+          })
+          .join("");
+      }
+
+      function renderAnswerInput(q, i, draft) {
+        const key = q.id || `q${i}`;
+        const val = draft?.[key];
+        if (q.type === "text")
+          return `<textarea class="inp surveyInput" data-key="${key}" placeholder="${esc(q.placeholder || "")}">${esc(val || "")}</textarea>`;
+        if (q.type === "yesno" || q.type === "single")
+          return `<div class="pick">${q.options.map((o) => `<label><input class="surveyInput" type="radio" name="${key}" value="${esc(o)}" ${val === o ? "checked" : ""}> ${esc(o)}</label>`).join("")}</div>`;
+        if (q.type === "multi")
+          return `<div class="pick">${q.options.map((o) => `<label><input class="surveyInput" type="checkbox" data-key="${key}" value="${esc(o)}" ${Array.isArray(val) && val.includes(o) ? "checked" : ""}> ${esc(o)}</label>`).join("")}</div>`;
+        if (q.type === "dropdown")
+          return `<select class="surveyInput" data-key="${key}"><option value="">選択してください</option>${q.options.map((o) => `<option value="${esc(o)}" ${val === o ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>`;
+        if (q.type === "rating5" || q.type === "rating10")
+          return `${q.leftLabel || q.rightLabel ? `<div class="meta"><span>${esc(q.leftLabel || "")}</span><span style="margin-left:auto">${esc(q.rightLabel || "")}</span></div>` : ""}<div class="scale">${q.options.map((o) => `<label><input class="surveyInput" type="radio" name="${key}" value="${o}" ${String(val || "") === String(o) ? "checked" : ""}><div>${o}</div></label>`).join("")}</div>`;
+        if (q.type === "number")
+          return `<input class="inp surveyInput" type="number" data-key="${key}" value="${esc(val || "")}" placeholder="${esc(q.placeholder || "")}">`;
+        if (q.type === "date")
+          return `<input class="inp surveyInput" type="date" data-key="${key}" value="${esc(val || "")}" placeholder="${esc(q.placeholder || "")}">`;
+        return `<input class="inp surveyInput" data-key="${key}" value="${esc(val || "")}">`;
+      }
+      function wireDraftAutosave() {
+        const fn = () => {
+          if (!activeSurveyId || !activeSurveyData) return;
+          const u = me();
+          const answers = collectAnswerValues(false);
+          localStorage.setItem(
+            draftKey(activeSurveyId, u.id),
+            JSON.stringify(answers),
+          );
+          $("ansDraftInfo").textContent = "下書きを自動保存しました";
+        };
+        document.querySelectorAll("#ansBody .surveyInput").forEach((el) =>
+          el.addEventListener("input", () => {
+            clearTimeout(surveyDraftTimer);
+            surveyDraftTimer = setTimeout(fn, 500);
+          }),
+        );
+      }
+      function clearSurveyDraft() {
+        if (!activeSurveyId) return;
+        const u = me();
+        localStorage.removeItem(draftKey(activeSurveyId, u.id));
+        $("ansDraftInfo").textContent = "下書きを削除しました";
+        toast("下書きを削除しました", "ok");
+      }
+      function collectAnswerValues(withValidation = true) {
+        const qs = normalizeQuestions(
+          parseJSON(activeSurveyData.questions, []),
+        );
+        const answers = {};
+        const errors = [];
+        qs.forEach((q, i) => {
+          const key = q.id || `q${i}`;
+          let value = "";
+          if (q.type === "multi")
+            value = [
+              ...document.querySelectorAll(
+                `#ansBody input[data-key="${key}"]:checked`,
+              ),
+            ].map((x) => x.value);
+          else if (
+            q.type === "yesno" ||
+            q.type === "single" ||
+            q.type === "rating5" ||
+            q.type === "rating10"
+          )
+            value =
+              document.querySelector(`#ansBody input[name="${key}"]:checked`)
+                ?.value || "";
+          else
+            value =
+              document
+                .querySelector(`#ansBody [data-key="${key}"]`)
+                ?.value?.trim?.() ?? "";
+          answers[key] = value;
+          if (withValidation && q.required) {
+            const ok = Array.isArray(value)
+              ? value.length > 0
+              : String(value || "").trim() !== "";
+            if (!ok) errors.push(`Q${i + 1}`);
+          }
+        });
+        return withValidation ? { answers, errors } : answers;
+      }
+      async function openSurveyAnswer(id) {
+        const u = me();
+        const [surveys, responses] = await Promise.all([
+          list("surveys"),
+          list("surveyResponses").catch(() => []),
+        ]);
+        const survey = surveys.find((s) => s.docId === id);
+        if (!survey) return;
+        if (!canUserSeeSurvey(survey, u))
+          return toast("このアンケートは対象外です", "error");
+        if (!isSurveyOpen(survey))
+          return toast("このアンケートは締め切られています", "error");
+        if (hasUserAnsweredSurvey(survey, u, responses))
+          return toast("すでに回答済みです", "error");
+        activeSurveyId = id;
+        activeSurveyData = survey;
+        const qs = normalizeQuestions(parseJSON(survey.questions, []));
+        const draft = parseJSON(localStorage.getItem(draftKey(id, u.id)), {});
+        $("ansTitle").textContent = survey.title || "アンケート回答";
+        $("ansSub").textContent =
+          `${survey.targetDept === "all" || !survey.targetDept ? "全部署" : survey.targetDept} / ${survey.anonymous ? "匿名表示" : "記名"}`;
+        $("ansBody").innerHTML =
+          `${survey.desc ? `<div class="noteBox">${esc(survey.desc)}</div>` : ""}${qs.map((q, i) => `<div class="q"><div style="font-weight:800;margin-bottom:8px">Q${i + 1}. ${esc(q.text)} ${q.required ? '<span class="badge b4">必須</span>' : '<span class="badge b1">任意</span>'}</div>${renderAnswerInput(q, i, draft)}</div>`).join("")}`;
+        $("ansDraftInfo").textContent = Object.keys(draft || {}).length
+          ? "保存済みの下書きを読み込みました"
+          : "";
+        openModal("surveyAnswerModal");
+        wireDraftAutosave();
+      }
+      async function submitSurvey() {
+        if (!activeSurveyId || !activeSurveyData) return;
+        const u = me();
+        const { answers, errors } = collectAnswerValues(true);
+        if (errors.length)
+          return toast(`${errors.join(" / ")} を入力してください`, "error");
+        await add("surveyResponses", {
+          surveyId: activeSurveyId,
+          surveyTitle: activeSurveyData.title || "",
+          userId: u.id,
+          userName: u.name,
+          department: u.department || "",
+          anonymous: !!activeSurveyData.anonymous,
+          answers: JSON.stringify(answers),
+          submittedAt: new Date().toISOString(),
+        });
+        localStorage.removeItem(draftKey(activeSurveyId, u.id));
+        closeAnswerModal();
+        await Promise.all([loadSurveys(), loadDashboard()]);
+        toast("回答を送信しました", "ok");
+      }
+      function makeChart(id, type, labels, data) {
+        const ctx = $(id).getContext("2d");
+        charts[id] = new Chart(ctx, {
+          type,
+          data: {
+            labels,
+            datasets: [
+              {
+                data,
+                backgroundColor: [
+                  "#2f80ed",
+                  "#27ae60",
+                  "#f39c12",
+                  "#e74c3c",
+                  "#9b51e0",
+                  "#56ccf2",
+                  "#6fcf97",
+                  "#f2c94c",
+                  "#eb5757",
+                  "#828282",
+                ],
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: type === "pie" } },
+            scales:
+              type === "pie"
+                ? {}
+                : { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+          },
+        });
+      }
+      function extractKeywords(texts) {
+        const tokens = [];
+        const stop = [
+          "です",
+          "ます",
+          "した",
+          "して",
+          "ある",
+          "いる",
+          "こと",
+          "ため",
+          "よう",
+          "ない",
+          "いつも",
+          "とても",
+          "など",
+          "また",
+          "特に",
+        ];
+        texts.forEach((t) => {
+          String(t || "")
+            .match(/[一-龠ぁ-んァ-ヶA-Za-z0-9]{2,}/g)
+            ?.forEach((w) => {
+              if (!stop.includes(w)) tokens.push(w);
+            });
+        });
+        const count = {};
+        tokens.forEach((w) => (count[w] = (count[w] || 0) + 1));
+        return Object.entries(count)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 10);
+      }
+      function summarizeComments(texts) {
+        const cats = { 感謝: 0, 要望: 0, 課題: 0, 改善案: 0, その他: 0 };
+        texts.forEach((t) => {
+          const s = String(t || "");
+          if (/ありがとう|感謝|助か/.test(s)) cats["感謝"]++;
+          else if (/してほしい|欲しい|希望|要望|必要/.test(s)) cats["要望"]++;
+          else if (/困る|大変|不足|問題|不便|負担/.test(s)) cats["課題"]++;
+          else if (/改善|見直|増や|減ら|工夫|整備/.test(s)) cats["改善案"]++;
+          else cats["その他"]++;
+        });
+        return cats;
+      }
+      async function openSurveyResult(id) {
+        const u = me();
+        const [surveys, responses, users] = await Promise.all([
+          list("surveys"),
+          list("surveyResponses").catch(() => []),
+          list("users"),
+        ]);
+        const survey = surveys.find((s) => s.docId === id);
+        if (!survey) return;
+        if (!canUserSeeSurvey(survey, u))
+          return toast("このアンケートは対象外です", "error");
+        if (survey.password && !surveyOwner(survey, u)) {
+          const pw = prompt("集計パスワード");
+          if (pw === null) return;
+          if (pw !== survey.password)
+            return toast("パスワードが違います", "error");
+        }
+        Object.values(charts).forEach((c) => c.destroy());
+        charts = {};
+        const qs = normalizeQuestions(parseJSON(survey.questions, []));
+        const rs = getSurveyResponses(survey, responses);
+        const targetUsers = getTargetUsers(users, survey);
+        const rate = targetUsers.length
+          ? Math.round((rs.length / targetUsers.length) * 100)
+          : 0;
+        surveyResultCurrent = { survey, qs, rs, users };
+        $("svResultTitle").textContent = `${survey.title || ""} 集計結果`;
+        $("svResultSub").textContent =
+          `${survey.targetDept === "all" || !survey.targetDept ? "全部署" : survey.targetDept} / 回答率 ${rate}% / ${survey.anonymous ? "匿名表示" : "記名"}`;
+        const numericValues = [];
+        qs.forEach((q, i) => {
+          if (["rating5", "rating10", "number"].includes(q.type)) {
+            rs.forEach((r) => {
+              const v = Number(parseJSON(r.answers, {})[q.id || `q${i}`]);
+              if (Number.isFinite(v)) numericValues.push(v);
+            });
+          }
+        });
+        $("svSummary").innerHTML =
+          `<div class="resultStat"><b>${rs.length}</b><div class="tiny">回答人数</div></div><div class="resultStat"><b>${targetUsers.length}</b><div class="tiny">対象人数</div></div><div class="resultStat"><b>${rate}%</b><div class="tiny">回答率</div></div><div class="resultStat"><b>${numericValues.length ? fmtNum(avg(numericValues)) : "-"}</b><div class="tiny">平均点</div></div>`;
+        $("svResult").innerHTML = qs
+          .map((q, i) => {
+            const key = q.id || `q${i}`;
+            const vals = rs
+              .map((r) => parseJSON(r.answers, {})[key])
+              .filter(
+                (v) =>
+                  !(Array.isArray(v)
+                    ? !v.length
+                    : String(v ?? "").trim() === ""),
+              );
+            const cid = `chart_${Date.now()}_${i}`;
+            let body = "";
+            if (["yesno", "single", "dropdown"].includes(q.type)) {
+              const count = {};
+              q.options.forEach((o) => (count[o] = 0));
+              vals.forEach((v) => (count[v] = (count[v] || 0) + 1));
+              body = `<div class="right"><button class="btn out sm" onclick="copyCanvasImage('${cid}')"><i class="fas fa-copy"></i> グラフコピー</button><button class="btn out sm" onclick="downloadCanvasImage('${cid}','${cid}.png')"><i class="fas fa-image"></i> PNG保存</button></div><div class="meta"><span>回答数 ${vals.length}</span></div><div class="chartWrap"><canvas id="${cid}"></canvas></div><div class="meta">${Object.entries(
+                count,
+              )
+                .map(([k, v]) => `<span>${esc(k)}: ${v}</span>`)
+                .join("")}</div>`;
+              setTimeout(
+                () =>
+                  makeChart(
+                    cid,
+                    "pie",
+                    Object.keys(count),
+                    Object.values(count),
+                  ),
+                0,
+              );
+            } else if (q.type === "multi") {
+              const count = {};
+              q.options.forEach((o) => (count[o] = 0));
+              vals.forEach((arr) =>
+                (arr || []).forEach((v) => (count[v] = (count[v] || 0) + 1)),
+              );
+              body = `<div class="right"><button class="btn out sm" onclick="copyCanvasImage('${cid}')"><i class="fas fa-copy"></i> グラフコピー</button><button class="btn out sm" onclick="downloadCanvasImage('${cid}','${cid}.png')"><i class="fas fa-image"></i> PNG保存</button></div><div class="meta"><span>回答数 ${vals.length}</span></div><div class="chartWrap"><canvas id="${cid}"></canvas></div>`;
+              setTimeout(
+                () =>
+                  makeChart(
+                    cid,
+                    "bar",
+                    Object.keys(count),
+                    Object.values(count),
+                  ),
+                0,
+              );
+            } else if (["rating5", "rating10", "number"].includes(q.type)) {
+              const nums = vals
+                .map((v) => Number(v))
+                .filter((v) => Number.isFinite(v));
+              const labels = [...new Set(nums)]
+                .sort((a, b) => a - b)
+                .map(String);
+              const count = labels.map(
+                (lb) => nums.filter((v) => String(v) === lb).length,
+              );
+              body = `<div class="right"><button class="btn out sm" onclick="copyCanvasImage('${cid}')"><i class="fas fa-copy"></i> グラフコピー</button><button class="btn out sm" onclick="downloadCanvasImage('${cid}','${cid}.png')"><i class="fas fa-image"></i> PNG保存</button></div><div class="row"><div class="resultStat"><b>${nums.length ? fmtNum(avg(nums)) : "-"}</b><div class="tiny">平均</div></div><div class="resultStat"><b>${nums.length ? fmtNum(calcMedian(nums)) : "-"}</b><div class="tiny">中央値</div></div><div class="resultStat"><b>${nums.length ? Math.max(...nums) : "-"}</b><div class="tiny">最高</div></div><div class="resultStat"><b>${nums.length ? Math.min(...nums) : "-"}</b><div class="tiny">最低</div></div></div><div class="chartWrap"><canvas id="${cid}"></canvas></div>`;
+              setTimeout(() => makeChart(cid, "bar", labels, count), 0);
+            } else if (q.type === "text") {
+              const texts = vals
+                .map((v) => String(v || "").trim())
+                .filter(Boolean);
+              const kws = extractKeywords(texts);
+              const sum = summarizeComments(texts);
+              body = `<div class="meta"><span>記述件数 ${texts.length}</span></div><div>${Object.entries(
+                sum,
+              )
+                .map(([k, v]) => `<span class="kw">${esc(k)} ${v}</span>`)
+                .join(
+                  "",
+                )}</div><div style="margin-top:8px">${kws.length ? kws.map(([k, v]) => `<span class="kw">${esc(k)} ${v}</span>`).join("") : '<span class="tiny">頻出語なし</span>'}</div><div class="files">${
+                texts.length
+                  ? texts
+                      .slice(0, 12)
+                      .map((t) => `<div class="file">${esc(t)}</div>`)
+                      .join("")
+                  : '<div class="empty">回答なし</div>'
+              }</div>`;
+            } else {
+              body = `<div class="files">${vals.length ? vals.map((v) => `<div class="file">${esc(Array.isArray(v) ? v.join(" / ") : v)}</div>`).join("") : '<div class="empty">回答なし</div>'}</div>`;
+            }
+            return `<div class="q" id="result_block_${i}"><div class="right" style="justify-content:space-between"><div style="font-weight:800">Q${i + 1}. ${esc(q.text)}</div><button class="btn out sm" onclick="copyElementImage('result_block_${i}')"><i class="fas fa-copy"></i> 設問を画像コピー</button></div>${body}</div>`;
+          })
+          .join("");
+        openModal("surveyResultModal");
+      }
+      function downloadSurveyCsv() {
+        if (!surveyResultCurrent)
+          return toast("集計結果を先に開いてください", "error");
+        const { survey, qs, rs } = surveyResultCurrent;
+        const header = [
+          "回答日時",
+          "回答者",
+          "部署",
+          ...qs.map((q) => q.text || q.id),
+        ];
+        const rows = rs.map((r) => {
+          const ans = parseJSON(r.answers, {});
+          return [
+            r.submittedAt || r.createdAtMs || "",
+            survey.anonymous ? "匿名" : r.userName || "",
+            r.department || "",
+            ...qs.map((q, i) => {
+              const v = ans[q.id || `q${i}`];
+              return Array.isArray(v) ? v.join(" / ") : (v ?? "");
+            }),
+          ];
+        });
+        const csv = [header, ...rows]
+          .map((row) =>
+            row
+              .map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`)
+              .join(","),
+          )
+          .join("\n");
+        const blob = new Blob(["\ufeff" + csv], {
+          type: "text/csv;charset=utf-8;",
+        });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `${survey.title || "survey"}_responses.csv`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }
+
+      document.querySelectorAll(".modal").forEach((m) =>
+        m.addEventListener("click", (e) => {
+          if (e.target === m) m.classList.remove("show");
+        }),
+      );
+      $("loginName").addEventListener(
+        "keypress",
+        (e) => e.key === "Enter" && login(),
+      );
+      $("loginEmail").addEventListener(
+        "keypress",
+        (e) => e.key === "Enter" && login(),
+      );
+      $("setupName").addEventListener(
+        "keypress",
+        (e) => e.key === "Enter" && createInitialAdmin(),
+      );
+      $("setupEmail").addEventListener(
+        "keypress",
+        (e) => e.key === "Enter" && createInitialAdmin(),
+      );
+      $("roomInput").addEventListener(
+        "keypress",
+        (e) => e.key === "Enter" && sendRoomMsg(),
+      );
+      window.addEventListener("load", boot);
+    </script>
+  </body>
 </html>
