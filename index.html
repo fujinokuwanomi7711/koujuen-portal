@@ -552,6 +552,20 @@
       .flashTarget {
         animation: flashBoard 2.2s ease;
       }
+      .tab.alertDot {
+        position: relative;
+      }
+      .tab.alertDot::after {
+        content: "";
+        position: absolute;
+        top: 8px;
+        right: 10px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #e74c3c;
+        box-shadow: 0 0 0 2px #fff;
+      }
       @keyframes flashBoard {
         0% {
           box-shadow: 0 0 0 0 rgba(47, 128, 237, 0.6);
@@ -688,6 +702,7 @@
         <nav class="tabs" id="tabs">
           <button
             class="tab active"
+            id="tabDashboard"
             data-id="dashboard"
             onclick="showTab('dashboard',this)"
           >
@@ -713,7 +728,12 @@
           <button class="tab" data-id="rooms" onclick="showTab('rooms',this)">
             <i class="fas fa-comments"></i> 部署ルーム
           </button>
-          <button class="tab" data-id="survey" onclick="showTab('survey',this)">
+          <button
+            class="tab"
+            id="tabSurvey"
+            data-id="survey"
+            onclick="showTab('survey',this)"
+          >
             <i class="fas fa-poll"></i> アンケート
           </button>
           <button
@@ -1525,21 +1545,36 @@
           $("installBtn")?.classList.add("hide"),
         );
       }
+      function setTabAlert(tabId, on = true) {
+        const btn = document.querySelector(`.tab[data-id="${tabId}"]`);
+        if (btn) btn.classList.toggle("alertDot", !!on);
+      }
       function handleDeepLink() {
         const params = new URLSearchParams(location.search);
         const tab = params.get("tab");
         const boardId = params.get("board");
+        const surveyId = params.get("survey");
         if (tab) {
           const btn = document.querySelector(`.tab[data-id="${tab}"]`);
           if (btn) showTab(tab, btn);
         }
         if (boardId) setTimeout(() => highlightBoard(boardId), 700);
+        if (surveyId) setTimeout(() => highlightSurvey(surveyId), 700);
       }
       function highlightBoard(boardId) {
         const el = document.getElementById(`board-${boardId}`);
         if (!el) return;
         const btn = document.querySelector('.tab[data-id="dashboard"]');
         if (btn) showTab("dashboard", btn);
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add("flashTarget");
+        setTimeout(() => el.classList.remove("flashTarget"), 2500);
+      }
+      function highlightSurvey(surveyId) {
+        const el = document.getElementById(`survey-${surveyId}`);
+        if (!el) return;
+        const btn = document.querySelector('.tab[data-id="survey"]');
+        if (btn) showTab("survey", btn);
         el.scrollIntoView({ behavior: "smooth", block: "center" });
         el.classList.add("flashTarget");
         setTimeout(() => el.classList.remove("flashTarget"), 2500);
@@ -1758,6 +1793,7 @@
           .querySelectorAll(".screen")
           .forEach((s) => s.classList.remove("active"));
         $(id).classList.add("active");
+        if (id === "dashboard" || id === "survey") setTabAlert(id, false);
         (
           ({
             dashboard: loadDashboard,
@@ -1908,7 +1944,7 @@
         el.innerHTML = rows
           .map(
             (t) =>
-              `<div class="item" id="board-${a.docId}"><div class="itemTop"><div><div class="title" style="${t.completed ? "text-decoration:line-through;color:#889" : ""}">${esc(t.title)}</div><div class="meta"><span class="badge ${t.priority === "high" ? "b4" : t.priority === "medium" ? "b3" : "b1"}">${t.priority === "high" ? "高" : t.priority === "medium" ? "中" : "低"}</span></div></div><div class="right"><button class="btn ${t.completed ? "sec" : "pri"} sm" onclick="toggleTask('${t.docId}',${!t.completed})"><i class="fas fa-${t.completed ? "rotate-left" : "check"}"></i></button><button class="btn dan sm" onclick="removeTask('${t.docId}')"><i class="fas fa-trash"></i></button></div></div></div>`,
+              `<div class="item" id="task-${t.docId}"><div class="itemTop"><div><div class="title" style="${t.completed ? "text-decoration:line-through;color:#889" : ""}">${esc(t.title)}</div><div class="meta"><span class="badge ${t.priority === "high" ? "b4" : t.priority === "medium" ? "b3" : "b1"}">${t.priority === "high" ? "高" : t.priority === "medium" ? "中" : "低"}</span></div></div><div class="right"><button class="btn ${t.completed ? "sec" : "pri"} sm" onclick="toggleTask('${t.docId}',${!t.completed})"><i class="fas fa-${t.completed ? "rotate-left" : "check"}"></i></button><button class="btn dan sm" onclick="removeTask('${t.docId}')"><i class="fas fa-trash"></i></button></div></div></div>`,
           )
           .join("");
       }
@@ -1995,6 +2031,8 @@
         watchers = [];
       }
       function watchLatest(col, key, handler) {
+        const viewer = me();
+        const storageKey = `watch_${viewer?.id || "guest"}_${key}`;
         const unsub = db
           .collection(col)
           .orderBy("createdAt", "desc")
@@ -2002,14 +2040,13 @@
           .onSnapshot((s) => {
             if (s.empty) return;
             const d = s.docs[0];
-            const k = "watch_" + key;
-            const prev = localStorage.getItem(k);
+            const prev = localStorage.getItem(storageKey);
             if (!prev) {
-              localStorage.setItem(k, d.id);
+              localStorage.setItem(storageKey, d.id);
               return;
             }
             if (prev !== d.id) {
-              localStorage.setItem(k, d.id);
+              localStorage.setItem(storageKey, d.id);
               handler({ docId: d.id, ...d.data() });
             }
           });
@@ -2019,10 +2056,26 @@
         clearWatchers();
         const u = me();
         if (!u) return;
-        watchLatest("announcements", "ann", (d) => {
+        watchLatest("announcements", "ann", async (d) => {
           if (d.creatorId !== u.id) {
+            setTabAlert("dashboard", true);
             browserNotify("新しい掲示板", d.title || "投稿がありました");
-            loadDashboard();
+            await loadDashboard();
+            if ($("dashboard").classList.contains("active")) {
+              setTimeout(() => highlightBoard(d.docId), 250);
+              setTabAlert("dashboard", false);
+            }
+          }
+        });
+        watchLatest("surveys", "survey", async (d) => {
+          if (d.creatorId !== u.id && canUserSeeSurvey(d, u)) {
+            setTabAlert("survey", true);
+            browserNotify("新しいアンケート", d.title || "アンケートが追加されました");
+            await Promise.all([loadSurveys(), loadDashboard()]);
+            if ($("survey").classList.contains("active")) {
+              setTimeout(() => highlightSurvey(d.docId), 250);
+              setTabAlert("survey", false);
+            }
           }
         });
         const roomTargets = admin()
@@ -2231,6 +2284,7 @@
       }
       function getSurveyResponses(s, allResponses = []) {
         const current = (allResponses || [])
+
           .filter((r) => r.surveyId === s.docId)
           .map((r) => ({ ...r, answers: parseJSON(r.answers, {}) }));
         const legacy = parseJSON(s.responses, []).map((r, i) => ({
@@ -2579,6 +2633,7 @@
       async function createSurvey() {
         const u = me();
         const title = $("svTitle").value.trim();
+        const isEdit = !!editingSurveyId;
         if (!title) return toast("タイトルを入力してください", "error");
         if (!svQuestions.length)
           return toast("質問を1つ以上追加してください", "error");
@@ -2599,16 +2654,11 @@
             svQuestions.map((q, i) => normalizeQuestion(q, i)),
           ),
         };
-        if (editingSurveyId) await upd("surveys", editingSurveyId, payload);
+        if (isEdit) await upd("surveys", editingSurveyId, payload);
         else await add("surveys", payload);
         closeSurveyModal();
         await Promise.all([loadSurveys(), loadDashboard()]);
-        toast(
-          editingSurveyId
-            ? "アンケートを更新しました"
-            : "アンケートを作成しました",
-          "ok",
-        );
+        toast(isEdit ? "アンケートを更新しました" : "アンケートを作成しました", "ok");
       }
       async function toggleSurveyStatus(id, nextStatus) {
         await upd("surveys", id, { status: nextStatus });
@@ -2672,7 +2722,7 @@
               : 0;
             const open = isSurveyOpen(s);
             const owner = surveyOwner(s, u);
-            return `<div class="item" id="board-${a.docId}"><div class="itemTop"><div><div class="title">${esc(s.title || "")}</div><div class="meta"><span>${esc(s.creatorName || "")}</span><span>${s.targetDept === "all" || !s.targetDept ? "全部署" : esc(s.targetDept)}</span><span>${qs.length}問</span><span>${rs.length}件回答</span><span>回答率 ${rate}%</span>${s.anonymous ? '<span class="badge b2">匿名表示</span>' : '<span class="badge b1">記名</span>'}${open ? '<span class="badge b2">受付中</span>' : '<span class="badge b4">締切</span>'}${answered ? '<span class="badge b2">回答済</span>' : open ? '<span class="badge b3">未回答</span>' : ""}</div></div><div class="right">${!answered && open ? `<button class="btn pri sm" onclick="openSurveyAnswer('${s.docId}')">回答</button>` : ""}<button class="btn out sm" onclick="openSurveyResult('${s.docId}')">集計</button>${owner ? `<button class="btn out sm" onclick="editSurvey('${s.docId}')">編集</button><button class="btn out sm" onclick="duplicateSurvey('${s.docId}')">複製</button><button class="btn ${open ? "warn" : "sec"} sm" onclick="toggleSurveyStatus('${s.docId}','${open ? "closed" : "open"}')">${open ? "締切" : "再開"}</button><button class="btn dan sm" onclick="deleteSurvey('${s.docId}')">削除</button>` : ""}</div></div>${s.desc ? `<div style="margin-top:10px;white-space:pre-wrap;line-height:1.6">${esc(s.desc)}</div>` : ""}${s.dueDate ? `<div class="meta"><span>締切: ${esc(s.dueDate)}</span></div>` : ""}</div>`;
+            return `<div class="item" id="survey-${s.docId}"><div class="itemTop"><div><div class="title">${esc(s.title || "")}</div><div class="meta"><span>${esc(s.creatorName || "")}</span><span>${s.targetDept === "all" || !s.targetDept ? "全部署" : esc(s.targetDept)}</span><span>${qs.length}問</span><span>${rs.length}件回答</span><span>回答率 ${rate}%</span>${s.anonymous ? '<span class="badge b2">匿名表示</span>' : '<span class="badge b1">記名</span>'}${open ? '<span class="badge b2">受付中</span>' : '<span class="badge b4">締切</span>'}${answered ? '<span class="badge b2">回答済</span>' : open ? '<span class="badge b3">未回答</span>' : ""}</div></div><div class="right">${!answered && open ? `<button class="btn pri sm" onclick="openSurveyAnswer('${s.docId}')">回答</button>` : ""}<button class="btn out sm" onclick="openSurveyResult('${s.docId}')">集計</button>${owner ? `<button class="btn out sm" onclick="editSurvey('${s.docId}')">編集</button><button class="btn out sm" onclick="duplicateSurvey('${s.docId}')">複製</button><button class="btn ${open ? "warn" : "sec"} sm" onclick="toggleSurveyStatus('${s.docId}','${open ? "closed" : "open"}')">${open ? "締切" : "再開"}</button><button class="btn dan sm" onclick="deleteSurvey('${s.docId}')">削除</button>` : ""}</div></div>${s.desc ? `<div style="margin-top:10px;white-space:pre-wrap;line-height:1.6">${esc(s.desc)}</div>` : ""}${s.dueDate ? `<div class="meta"><span>締切: ${esc(s.dueDate)}</span></div>` : ""}</div>`;
           })
           .join("");
       }
