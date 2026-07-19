@@ -1,4 +1,2561 @@
-ring(d.text || "").slice(0, 40)}`,
+
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>康寿園ポータル 改善版</title>
+
+    <link rel="manifest" href="./manifest.json" />
+    <meta name="theme-color" content="#2f80ed" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="康寿園ポータル" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
+    <style>
+      :root {
+        --pri: #2f80ed;
+        --sec: #27ae60;
+        --warn: #f39c12;
+        --dan: #e74c3c;
+        --dark: #22313f;
+        --mut: #6b7b8c;
+        --bg: #eef3fb;
+        --card: #fff;
+        --line: #dfe7f0;
+        --rad: 16px;
+        --shadow: 0 8px 26px rgba(0, 0, 0, 0.08);
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+        background: linear-gradient(135deg, #6a82fb, #7f53ac);
+        min-height: 100vh;
+        color: var(--dark);
+      }
+      .hide {
+        display: none !important;
+      }
+      .wrap {
+        max-width: 1320px;
+        margin: auto;
+        padding: 18px;
+      }
+      .panel,
+      .card {
+        background: var(--card);
+        border-radius: var(--rad);
+        box-shadow: var(--shadow);
+      }
+      .center {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      .login {
+        width: min(460px, 100%);
+        padding: 34px;
+      }
+      .login h1 {
+        font-size: 28px;
+        margin-bottom: 8px;
+      }
+      .muted {
+        color: var(--mut);
+      }
+      .tiny {
+        font-size: 12px;
+        color: var(--mut);
+      }
+      .helper {
+        font-size: 12px;
+        color: var(--mut);
+        line-height: 1.6;
+      }
+      .row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .grow {
+        flex: 1 1 240px;
+      }
+      .stack {
+        display: grid;
+        gap: 14px;
+      }
+      .inp,
+      select,
+      textarea {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1.8px solid var(--line);
+        border-radius: 12px;
+        font: inherit;
+        background: #fff;
+      }
+      .inp:focus,
+      select:focus,
+      textarea:focus {
+        outline: none;
+        border-color: var(--pri);
+        box-shadow: 0 0 0 3px rgba(47, 128, 237, 0.14);
+      }
+      textarea {
+        min-height: 96px;
+        resize: vertical;
+      }
+      .btn {
+        border: none;
+        border-radius: 12px;
+        padding: 11px 16px;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: 0.2s;
+      }
+      .btn:hover {
+        transform: translateY(-1px);
+      }
+      .pri {
+        background: var(--pri);
+        color: #fff;
+      }
+      .sec {
+        background: var(--sec);
+        color: #fff;
+      }
+      .warn {
+        background: var(--warn);
+        color: #fff;
+      }
+      .dan {
+        background: var(--dan);
+        color: #fff;
+      }
+      .out {
+        background: #fff;
+        color: var(--pri);
+        border: 1.6px solid var(--pri);
+      }
+      .sm {
+        padding: 7px 11px;
+        font-size: 12px;
+      }
+      .hdr {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 20px;
+        margin-bottom: 18px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .brand i {
+        font-size: 28px;
+        color: var(--pri);
+      }
+      .avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        color: #fff;
+        background: linear-gradient(135deg, #2f80ed, #27ae60);
+        font-weight: 700;
+      }
+      .tabs {
+        display: flex;
+        gap: 8px;
+        overflow: auto;
+        padding-bottom: 8px;
+        margin-bottom: 18px;
+      }
+      .tab {
+        background: #fff;
+        border: none;
+        border-radius: 999px;
+        padding: 10px 16px;
+        white-space: nowrap;
+        cursor: pointer;
+        color: var(--dark);
+      }
+      .tab.active,
+      .tab:hover {
+        background: var(--pri);
+        color: #fff;
+      }
+      .screen {
+        display: none;
+      }
+      .screen.active {
+        display: block;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 14px;
+        margin-bottom: 18px;
+      }
+      .stat {
+        padding: 18px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+      .stat i {
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        display: grid;
+        place-items: center;
+        color: #fff;
+        font-size: 22px;
+      }
+      .stat b {
+        font-size: 28px;
+        display: block;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 16px;
+      }
+      .card {
+        padding: 18px;
+        margin-bottom: 16px;
+      }
+      .card h3 {
+        font-size: 18px;
+      }
+      .cardHd {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      .badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 800;
+      }
+      .b1 {
+        background: var(--pri);
+        color: #fff;
+      }
+      .b2 {
+        background: var(--sec);
+        color: #fff;
+      }
+      .b3 {
+        background: var(--warn);
+        color: #fff;
+      }
+      .b4 {
+        background: var(--dan);
+        color: #fff;
+      }
+      .list {
+        display: grid;
+        gap: 10px;
+      }
+      .item {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 14px;
+        background: #fff;
+      }
+      .itemTop {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        align-items: flex-start;
+      }
+      .title {
+        font-weight: 800;
+      }
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 6px;
+        color: var(--mut);
+        font-size: 12px;
+      }
+      .files {
+        display: grid;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .file {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px;
+        background: #f8fbff;
+      }
+      .roomBtn {
+        cursor: pointer;
+      }
+      .msgBox {
+        max-height: 420px;
+        overflow: auto;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #f7fbff;
+        padding: 12px;
+        display: grid;
+        gap: 10px;
+      }
+      .msg {
+        display: flex;
+        gap: 10px;
+      }
+      .bubble {
+        background: #fff;
+        border-radius: 14px;
+        padding: 10px 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        flex: 1;
+      }
+      .bubble .meta {
+        margin-top: 2px;
+        margin-bottom: 6px;
+      }
+      .modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 18px;
+        z-index: 50;
+      }
+      .modal.show {
+        display: flex;
+      }
+      .modal .box {
+        width: min(980px, 100%);
+        max-height: 90vh;
+        overflow: auto;
+        background: #fff;
+        border-radius: 18px;
+        padding: 22px;
+        box-shadow: 0 14px 40px rgba(0, 0, 0, 0.16);
+      }
+      .close {
+        background: none;
+        border: none;
+        font-size: 22px;
+        cursor: pointer;
+      }
+      .toast {
+        position: fixed;
+        right: 18px;
+        top: 18px;
+        z-index: 70;
+        background: #fff;
+        padding: 12px 14px;
+        border-radius: 14px;
+        box-shadow: var(--shadow);
+        border-left: 5px solid var(--pri);
+        display: flex;
+        gap: 9px;
+        max-width: 340px;
+      }
+      .empty {
+        text-align: center;
+        color: var(--mut);
+        padding: 28px 10px;
+      }
+      .banner img {
+        width: 100%;
+        max-height: 290px;
+        object-fit: cover;
+        border-radius: 16px;
+      }
+      .q {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 12px;
+        background: #fbfdff;
+        margin-bottom: 10px;
+      }
+      .qCard {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 14px;
+        background: #fbfdff;
+      }
+      .qHead {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .chartWrap {
+        position: relative;
+        height: 270px;
+        margin-top: 10px;
+      }
+      .table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .table th,
+      .table td {
+        padding: 10px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        font-size: 13px;
+      }
+      .table tr:hover {
+        background: #fafcff;
+      }
+      .right {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .w100 {
+        width: 100%;
+      }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #eef5ff;
+        color: #205bb3;
+        border: 1px solid #cfe0ff;
+        border-radius: 999px;
+        padding: 6px 10px;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .kw {
+        display: inline-block;
+        margin: 4px 6px 0 0;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #f0f7ff;
+        border: 1px solid #d9e8ff;
+        font-size: 12px;
+        color: #2a5db0;
+      }
+      .optRow {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-top: 8px;
+      }
+      .scale {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .scale label,
+      .pick label {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px;
+        text-align: center;
+        background: #fff;
+        cursor: pointer;
+        display: block;
+      }
+      .pick {
+        display: grid;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .resultStat {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 14px;
+        background: #fff;
+      }
+      .surveyTopGrid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      .miniStat {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 14px;
+      }
+      .miniStat b {
+        display: block;
+        font-size: 24px;
+        margin-bottom: 4px;
+      }
+      .aiBox {
+        border: 1px dashed #bcd3ff;
+        background: #f5f9ff;
+        border-radius: 14px;
+        padding: 14px;
+      }
+      .stickyFoot {
+        position: sticky;
+        bottom: 0;
+        background: #fff;
+        padding-top: 10px;
+      }
+      .soft {
+        background: #f8fbff;
+      }
+      .noteBox {
+        background: #fffdf5;
+        border: 1px solid #f4e5b3;
+        color: #7a5a00;
+        padding: 10px 12px;
+        border-radius: 12px;
+        font-size: 13px;
+      }
+      .flashTarget {
+        animation: flashBoard 2.2s ease;
+      }
+      .tab.alertDot {
+        position: relative;
+      }
+      .tab.alertDot::after {
+        content: "";
+        position: absolute;
+        top: 8px;
+        right: 10px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #e74c3c;
+        box-shadow: 0 0 0 2px #fff;
+      }
+      @keyframes flashBoard {
+        0% {
+          box-shadow: 0 0 0 0 rgba(47, 128, 237, 0.6);
+          background: #eef6ff;
+        }
+        100% {
+          box-shadow: 0 0 0 12px rgba(47, 128, 237, 0);
+          background: #fff;
+        }
+      }
+      .searchRow {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+      }
+      .searchRow .inp {
+        flex: 1 1 280px;
+      }
+      .homeGrid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      .homeCard {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 14px;
+        background: linear-gradient(180deg, #ffffff, #f8fbff);
+      }
+      .homeCard h4 {
+        font-size: 15px;
+        margin-bottom: 8px;
+      }
+      .actionList {
+        display: grid;
+        gap: 8px;
+      }
+      .actionItem {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        align-items: flex-start;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px;
+        background: #fff;
+      }
+      .linkGrid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 10px;
+      }
+      .linkCard {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #fff;
+      }
+      .searchResults {
+        display: grid;
+        gap: 8px;
+      }
+      .searchHit {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px 12px;
+        background: #fff;
+      }
+      .directoryToolbar {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+      }
+      .directoryToolbar .inp,
+      .directoryToolbar select {
+        flex: 1 1 220px;
+      }
+      .directoryList {
+        display: grid;
+        gap: 10px;
+      }
+      .personCard {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 12px;
+        background: #fff;
+      }
+      .roomMeta {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+      }
+      .pinBadge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 9px;
+        border-radius: 999px;
+        background: #fff3cd;
+        color: #8a5b00;
+        font-size: 11px;
+        font-weight: 800;
+      }
+      .readBadge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 9px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 800;
+      }
+      .readBadge.unread {
+        background: #ffe8e8;
+        color: #b42318;
+      }
+      .readBadge.read {
+        background: #ebf7ee;
+        color: #1f7a3d;
+      }
+      .splitCols {
+        display: grid;
+        grid-template-columns: 1.2fr .8fr;
+        gap: 16px;
+      }
+      .subtleBox {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 12px;
+        background: #fbfdff;
+      }
+      .miniLinks {
+        display: grid;
+        gap: 8px;
+      }
+      .miniLinks a,
+      .miniLinks button {
+        justify-content: space-between;
+        width: 100%;
+      }
+      .summaryList {
+        display: grid;
+        gap: 8px;
+      }
+      .summaryRow {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: center;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px;
+        background: #fff;
+      }
+      @media (max-width: 768px) {
+        .splitCols {
+          grid-template-columns: 1fr;
+        }
+        .hdr {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+        .wrap {
+          padding: 10px;
+        }
+        .login {
+          padding: 24px;
+        }
+        .stats {
+          grid-template-columns: 1fr 1fr;
+        }
+        .itemTop {
+          flex-direction: column;
+        }
+        .modal .box {
+          padding: 16px;
+        }
+        .scale {
+          grid-template-columns: repeat(3, 1fr);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="loginScreen" class="center">
+      <div class="panel login stack">
+        <div style="text-align: center">
+          <i
+            class="fas fa-hospital-user"
+            style="font-size: 56px; color: var(--pri); margin-bottom: 12px"
+          ></i>
+          <h1>康寿園ポータル</h1>
+          <p class="muted">IDは名前・パスワードはメールアドレスでログイン</p>
+        </div>
+        <div id="loginFields" class="stack">
+          <input
+            id="loginName"
+            class="inp"
+            list="staffNames"
+            placeholder="名前"
+          />
+          <datalist id="staffNames"></datalist>
+          <input
+            id="loginEmail"
+            class="inp"
+            type="email"
+            placeholder="メールアドレス"
+          />
+          <button class="btn pri w100" onclick="login()">
+            <i class="fas fa-sign-in-alt"></i> ログイン
+          </button>
+        </div>
+        <div
+          id="firstSetupBox"
+          class="stack hide"
+          style="
+            padding: 14px;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            background: #f8fbff;
+          "
+        >
+          <div>
+            <b>初回セットアップ</b>
+            <div class="tiny">最初の1人目の管理者をここから作成できます</div>
+          </div>
+          <input id="setupName" class="inp" placeholder="管理者名" />
+          <input
+            id="setupEmail"
+            class="inp"
+            type="email"
+            placeholder="メールアドレス"
+          />
+          <select id="setupDept">
+            <option>事務</option>
+            <option>2階介護</option>
+            <option>3階介護</option>
+            <option>介護</option>
+            <option>看護</option>
+            <option>リハビリ</option>
+            <option>栄養</option>
+            <option>相談課</option>
+            <option>施設長</option>
+            <option>所長</option>
+          </select>
+          <input id="setupExt" class="inp" placeholder="内線番号（任意）" />
+          <button class="btn sec w100" onclick="createInitialAdmin()">
+            <i class="fas fa-user-shield"></i> 初期管理者を作成
+          </button>
+        </div>
+        <p class="tiny">
+          ※
+          ご要望どおりの認証方式です。運用上は将来的に本パスワード認証へ変更推奨です。
+        </p>
+      </div>
+    </div>
+
+    <div id="app" class="hide">
+      <div class="wrap">
+        <header class="panel hdr">
+          <div class="brand">
+            <i class="fas fa-hospital-user"></i>
+            <div>
+              <h2>康寿園ポータル</h2>
+              <div class="tiny">掲示板・タスク・部署チャット・アンケート</div>
+            </div>
+          </div>
+          <div class="right">
+            <button id="installBtn" class="btn out sm hide">
+              <i class="fas fa-download"></i> インストール
+            </button>
+            <button id="notifyBtn" class="btn out sm" onclick="requestNotify()">
+              <i class="fas fa-bell"></i> 通知OFF
+            </button>
+            <div class="avatar" id="av">?</div>
+            <div>
+              <div id="meName" style="font-weight: 800">-</div>
+              <div id="meRole" class="tiny">-</div>
+            </div>
+            <button class="btn dan sm" onclick="logout()">
+              <i class="fas fa-sign-out-alt"></i>
+            </button>
+          </div>
+        </header>
+
+        <nav class="tabs" id="tabs">
+          <button
+            class="tab active"
+            id="tabDashboard"
+            data-id="dashboard"
+            onclick="showTab('dashboard',this)"
+          >
+            <i class="fas fa-house"></i> ダッシュボード
+          </button>
+          <button
+            class="tab"
+            data-id="profile"
+            onclick="showTab('profile',this)"
+          >
+            <i class="fas fa-user"></i> プロフィール
+          </button>
+          <button class="tab" data-id="tasks" onclick="showTab('tasks',this)">
+            <i class="fas fa-list-check"></i> タスク
+          </button>
+          <button
+            class="tab"
+            data-id="training"
+            onclick="showTab('training',this)"
+          >
+            <i class="fas fa-graduation-cap"></i> 研修
+          </button>
+          <button class="tab" data-id="rooms" onclick="showTab('rooms',this)">
+            <i class="fas fa-comments"></i> 部署ルーム
+          </button>
+          <button
+            class="tab"
+            id="tabSurvey"
+            data-id="survey"
+            onclick="showTab('survey',this)"
+          >
+            <i class="fas fa-poll"></i> アンケート
+          </button>
+          <button
+            class="tab hide"
+            id="adminTab"
+            data-id="admin"
+            onclick="showTab('admin',this)"
+          >
+            <i class="fas fa-shield-alt"></i> 管理者
+          </button>
+        </nav>
+
+        <section id="dashboard" class="screen active">
+          <div id="bannerArea" class="banner hide card"></div>
+          <div class="card stack">
+            <div class="cardHd">
+              <div>
+                <h3>今日やることホーム</h3>
+                <div class="tiny">未読・未回答・未完了を最初に確認できる簡潔なホームです</div>
+              </div>
+              <button class="btn out sm" onclick="loadDashboard()">
+                <i class="fas fa-rotate"></i> 更新
+              </button>
+            </div>
+            <div class="searchRow">
+              <input id="globalSearch" class="inp" placeholder="掲示板・アンケート・ルーム・職員名をまとめて検索" />
+              <button class="btn pri" onclick="runGlobalSearch()">
+                <i class="fas fa-magnifying-glass"></i> 検索
+              </button>
+            </div>
+            <div id="searchResult" class="searchResults"></div>
+            <div class="stats">
+              <div class="card stat">
+                <i
+                  class="fas fa-list-check"
+                  style="background: linear-gradient(135deg, #2f80ed, #56ccf2)"
+                ></i>
+                <div>
+                  <b id="stTask">0</b><span class="muted">未完了タスク</span>
+                </div>
+              </div>
+              <div class="card stat">
+                <i
+                  class="fas fa-book-open"
+                  style="background: linear-gradient(135deg, #9b51e0, #f2994a)"
+                ></i>
+                <div>
+                  <b id="stTrain">0</b><span class="muted">未完了研修</span>
+                </div>
+              </div>
+              <div class="card stat">
+                <i
+                  class="fas fa-comments"
+                  style="background: linear-gradient(135deg, #27ae60, #6fcf97)"
+                ></i>
+                <div>
+                  <b id="stRoom">0</b><span class="muted">未読ルーム</span>
+                </div>
+              </div>
+              <div class="card stat">
+                <i
+                  class="fas fa-poll"
+                  style="background: linear-gradient(135deg, #eb5757, #f2994a)"
+                ></i>
+                <div>
+                  <b id="stSurvey">0</b><span class="muted">未回答アンケート</span>
+                </div>
+              </div>
+            </div>
+            <div id="todayHome" class="homeGrid"></div>
+          </div>
+          <div class="grid">
+            <div class="card stack">
+              <div class="cardHd">
+                <div>
+                  <h3>よく使うリンク / マイリンク</h3>
+                  <div class="tiny">内部ショートカットと個人用リンクを分けて整理します</div>
+                </div>
+                <button class="btn pri sm" onclick="addMyLink()">
+                  <i class="fas fa-plus"></i> マイリンク追加
+                </button>
+              </div>
+              <div id="quickLinks" class="linkGrid"></div>
+            </div>
+            <div class="card stack">
+              <div class="cardHd">
+                <div>
+                  <h3>ホームの見方</h3>
+                  <div class="tiny">複雑にしすぎないよう、よく使う項目だけに絞っています</div>
+                </div>
+              </div>
+              <div class="summaryList">
+                <div class="summaryRow"><b>未読掲示板</b><span class="tiny">確認ボタンで既読化</span></div>
+                <div class="summaryRow"><b>未回答アンケート</b><span class="tiny">回答または集計表示で確認</span></div>
+                <div class="summaryRow"><b>未読ルーム</b><span class="tiny">ルームを開くと未読が消えます</span></div>
+                <div class="summaryRow"><b>検索窓</b><span class="tiny">掲示板・アンケート・ルーム・職員を横断検索</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="cardHd">
+              <div>
+                <h3>掲示板</h3>
+                <div class="tiny">既読/未読表示つき。確認ボタンで既読にできます。</div>
+              </div>
+              <button
+                id="addBoardBtn"
+                class="btn pri sm hide"
+                onclick="openBoardModal()"
+              >
+                <i class="fas fa-plus"></i> 投稿
+              </button>
+            </div>
+            <div id="boardList" class="list"></div>
+          </div>
+        </section>
+
+        <section id="profile" class="screen">
+          <div class="splitCols">
+            <div class="card stack">
+              <div>
+                <h3>マイプロフィール</h3>
+                <div class="tiny">ログイン情報・所属情報</div>
+              </div>
+              <div class="row">
+                <div class="grow">
+                  <label class="tiny">名前</label
+                  ><input id="pName" class="inp" readonly />
+                </div>
+                <div class="grow">
+                  <label class="tiny">メールアドレス</label
+                  ><input id="pEmail" class="inp" readonly />
+                </div>
+              </div>
+              <div class="row">
+                <div class="grow">
+                  <label class="tiny">所属部署</label
+                  ><select id="pDept">
+                    <option>2階介護</option>
+                    <option>3階介護</option>
+                    <option>介護</option>
+                    <option>看護</option>
+                    <option>リハビリ</option>
+                    <option>栄養</option>
+                    <option>事務</option>
+                    <option>相談課</option>
+                    <option>施設長</option>
+                    <option>所長</option>
+                  </select>
+                </div>
+                <div class="grow">
+                  <label class="tiny">内線番号</label
+                  ><input id="pExt" class="inp" />
+                </div>
+              </div>
+              <div>
+                <label class="tiny">自己紹介</label
+                ><textarea id="pBio"></textarea>
+              </div>
+              <div>
+                <button class="btn pri" onclick="saveProfile()">
+                  <i class="fas fa-save"></i> 保存
+                </button>
+              </div>
+            </div>
+            <div class="card stack">
+              <div class="cardHd">
+                <div>
+                  <h3>マイリンク補足</h3>
+                  <div class="tiny">ダッシュボードのマイリンクから、勤怠やシフト表への個人ショートカットを登録できます</div>
+                </div>
+              </div>
+              <div class="subtleBox">
+                <div class="tiny">おすすめの登録例</div>
+                <div class="miniLinks">
+                  <button class="btn out sm" type="button" onclick="seedSampleLinks()"><i class="fas fa-wand-magic-sparkles"></i> サンプルを入れる</button>
+                  <div class="tiny">例：シフト表 / 勤怠 / 介護記録 / 研修資料</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card stack">
+            <div class="cardHd">
+              <div>
+                <h3>職員連絡先ミニ名簿</h3>
+                <div class="tiny">氏名・部署・役割・内線だけに絞ったシンプルな名簿です</div>
+              </div>
+              <div class="tiny" id="directoryCount">0件</div>
+            </div>
+            <div class="directoryToolbar">
+              <input id="directoryKeyword" class="inp" placeholder="氏名・部署・役割・メモで検索" />
+              <select id="directoryDeptFilter">
+                <option value="all">全部署</option>
+                <option value="2階介護">2階介護</option>
+                <option value="3階介護">3階介護</option>
+                <option value="介護">介護（旧）</option>
+                <option value="看護">看護</option>
+                <option value="リハビリ">リハビリ</option>
+                <option value="栄養">栄養</option>
+                <option value="事務">事務</option>
+                <option value="相談課">相談課</option>
+                <option value="施設長">施設長</option>
+                <option value="所長">所長</option>
+              </select>
+            </div>
+            <div id="miniDirectoryList" class="directoryList"></div>
+          </div>
+        </section>
+
+        <section id="tasks" class="screen">
+          <div class="grid">
+            <div class="card stack">
+              <h3>タスク追加</h3>
+              <input id="taskTitle" class="inp" placeholder="タスク名" /><select
+                id="taskPri"
+              >
+                <option value="low">低</option>
+                <option value="medium">中</option>
+                <option value="high">高</option></select
+              ><button class="btn pri" onclick="addTask()">
+                <i class="fas fa-plus"></i> 追加
+              </button>
+            </div>
+            <div class="card">
+              <div class="cardHd"><h3>マイタスク</h3></div>
+              <div id="taskList" class="list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="training" class="screen">
+          <div class="grid">
+            <div class="card">
+              <h3>オンライン研修</h3>
+              <p class="muted" style="margin-top: 8px">
+                動画・資料をまとめて確認できます。
+              </p>
+              <div
+                style="
+                  height: 8px;
+                  background: #eef2f7;
+                  border-radius: 999px;
+                  margin: 14px 0;
+                "
+              >
+                <div
+                  style="
+                    width: 60%;
+                    height: 100%;
+                    background: linear-gradient(90deg, #2f80ed, #27ae60);
+                    border-radius: 999px;
+                  "
+                ></div>
+              </div>
+              <span class="tiny">完了率 60%</span>
+            </div>
+            <div class="card">
+              <h3>マニュアル</h3>
+              <p class="muted" style="margin-top: 8px">
+                掲示板の添付ファイルやPDFを業務資料として運用できます。
+              </p>
+            </div>
+            <div class="card">
+              <h3>資格情報</h3>
+              <p class="muted" style="margin-top: 8px">
+                必要に応じて拡張可能です。
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section id="rooms" class="screen">
+          <div class="card stack">
+            <div class="cardHd">
+              <div>
+                <h3>チャットルーム</h3>
+                <div class="tiny">2階介護 / 3階介護 に分割し、相談課・施設長・所長・役職者ルームを追加しました</div>
+              </div>
+              <button class="btn out sm" onclick="renderRoomCards()">
+                <i class="fas fa-rotate"></i> 更新
+              </button>
+            </div>
+            <div class="grid" id="roomCards"></div>
+          </div>
+        </section>
+
+        <section id="survey" class="screen">
+          <div class="surveyTopGrid">
+            <div class="miniStat">
+              <b id="svStatOpen">0</b>
+              <div class="tiny">受付中アンケート</div>
+            </div>
+            <div class="miniStat">
+              <b id="svStatTodo">0</b>
+              <div class="tiny">未回答</div>
+            </div>
+            <div class="miniStat">
+              <b id="svStatDone">0</b>
+              <div class="tiny">回答済み</div>
+            </div>
+            <div class="miniStat">
+              <b id="svStatMine">0</b>
+              <div class="tiny">自分が作成</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="cardHd">
+              <div>
+                <h3>アンケート</h3>
+                <div class="tiny">
+                  職員向けに作りやすく、集計しやすい形へ強化 /
+                  グラフ画像コピー対応
+                </div>
+              </div>
+              <div class="right">
+                <button class="btn out sm" onclick="loadSurveys()">
+                  <i class="fas fa-rotate"></i> 更新</button
+                ><button class="btn pri sm" onclick="openSurveyModal()">
+                  <i class="fas fa-plus"></i> 作成
+                </button>
+              </div>
+            </div>
+            <div id="surveyList" class="list"></div>
+          </div>
+        </section>
+
+        <section id="admin" class="screen">
+          <div class="grid">
+            <div class="card">
+              <div class="cardHd">
+                <div>
+                  <h3>スタッフ管理</h3>
+                  <div class="tiny">ログインは 名前 + メールアドレス</div>
+                </div>
+                <button class="btn pri sm" onclick="openStaffModal()">
+                  <i class="fas fa-user-plus"></i> 追加
+                </button>
+              </div>
+              <div id="staffList"></div>
+            </div>
+            <div class="card stack">
+              <div>
+                <h3>システム設定</h3>
+                <div class="tiny">バナーと統計</div>
+              </div>
+              <div id="bannerStatus" class="muted">未設定</div>
+              <div class="row">
+                <button class="btn pri" onclick="openBannerModal()">
+                  <i class="fas fa-image"></i> バナー変更</button
+                ><button class="btn warn" onclick="cleanupExpiredData(false)">
+                  <i class="fas fa-broom"></i> 1か月超データ整理
+                </button>
+              </div>
+              <div id="adminStats" class="muted"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+    <div id="boardModal" class="modal">
+      <div class="box stack">
+        <div class="cardHd">
+          <h3>掲示板投稿</h3>
+          <button class="close" onclick="closeModal('boardModal')">×</button>
+        </div>
+        <input id="bTitle" class="inp" placeholder="タイトル" />
+        <textarea id="bBody" placeholder="本文"></textarea>
+        <select id="bPri">
+          <option value="normal">通常</option>
+          <option value="important">重要</option>
+          <option value="urgent">緊急</option>
+        </select>
+        <div>
+          <label class="tiny"
+            >添付ファイル（複数可 / PDF・Excel・Word・画像など）</label
+          ><input id="bFiles" class="inp" type="file" multiple />
+        </div>
+        <input id="bUrl" class="inp" placeholder="外部共有URL（任意）" />
+        <button class="btn pri" onclick="createBoard()">
+          <i class="fas fa-paper-plane"></i> 投稿する
+        </button>
+      </div>
+    </div>
+
+    <div id="roomModal" class="modal">
+      <div class="box stack">
+        <div class="cardHd">
+          <h3 id="roomTitle">部署ルーム</h3>
+          <button class="close" onclick="closeModal('roomModal')">×</button>
+        </div>
+        <div id="roomMsgs" class="msgBox"></div>
+        <div class="row">
+          <input
+            id="roomInput"
+            class="inp grow"
+            placeholder="メッセージ"
+          /><button class="btn pri" onclick="sendRoomMsg()">
+            <i class="fas fa-paper-plane"></i> 送信
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="staffModal" class="modal">
+      <div class="box stack">
+        <div class="cardHd">
+          <h3 id="staffModalTitle">スタッフ追加</h3>
+          <button class="close" onclick="closeModal('staffModal')">×</button>
+        </div>
+        <input type="hidden" id="sfId" />
+        <input id="sfName" class="inp" placeholder="氏名" />
+        <input
+          id="sfEmail"
+          class="inp"
+          type="email"
+          placeholder="メールアドレス"
+        />
+        <div class="row">
+          <select id="sfDept" class="grow">
+            <option>2階介護</option>
+            <option>3階介護</option>
+            <option>介護</option>
+            <option>看護</option>
+            <option>リハビリ</option>
+            <option>栄養</option>
+            <option>事務</option>
+            <option>相談課</option>
+            <option>施設長</option>
+            <option>所長</option></select
+          ><select id="sfRole" class="grow">
+            <option value="staff">スタッフ</option>
+            <option value="admin">管理者</option>
+          </select>
+        </div>
+        <input id="sfExt" class="inp" placeholder="内線番号" />
+        <textarea id="sfNote" placeholder="メモ"></textarea>
+        <button class="btn pri" onclick="saveStaff()">
+          <i class="fas fa-save"></i> 保存
+        </button>
+      </div>
+    </div>
+
+    <div id="bannerModal" class="modal">
+      <div class="box stack">
+        <div class="cardHd">
+          <h3>バナー画像</h3>
+          <button class="close" onclick="closeModal('bannerModal')">×</button>
+        </div>
+        <input id="bannerFile" class="inp" type="file" accept="image/*" />
+        <div id="bannerPreview" class="hide"></div>
+        <button class="btn pri" onclick="uploadBanner()">
+          <i class="fas fa-cloud-upload-alt"></i> アップロード
+        </button>
+      </div>
+    </div>
+
+    <div id="surveyModal" class="modal">
+      <div class="box stack">
+        <div class="cardHd">
+          <h3 id="surveyModalTitle">アンケート作成</h3>
+          <button class="close" onclick="closeSurveyModal()">×</button>
+        </div>
+        <div class="aiBox stack">
+          <div class="cardHd" style="margin-bottom: 0">
+            <div>
+              <b>アンケート下書き作成</b>
+              <div class="tiny">
+                例：職員満足度アンケート / 研修後アンケート / 感染対策確認
+              </div>
+            </div>
+            <button class="btn sec sm" onclick="generateSurveyByAI()">
+              <i class="fas fa-wand-magic-sparkles"></i> 下書き生成
+            </button>
+          </div>
+          <input
+            id="svAiPrompt"
+            class="inp"
+            placeholder="作成したいアンケート内容を入力"
+          />
+          <div id="svAiStatus" class="tiny"></div>
+        </div>
+        <input type="hidden" id="svId" />
+        <div class="row">
+          <div class="grow">
+            <label class="tiny">タイトル</label
+            ><input id="svTitle" class="inp" placeholder="タイトル" />
+          </div>
+          <div class="grow">
+            <label class="tiny">対象部署</label
+            ><select id="svTargetDept">
+              <option value="all">全部署</option>
+              <option value="2階介護">2階介護</option>
+              <option value="3階介護">3階介護</option>
+              <option value="介護">介護（旧）</option>
+              <option value="看護">看護</option>
+              <option value="リハビリ">リハビリ</option>
+              <option value="栄養">栄養</option>
+              <option value="事務">事務</option>
+              <option value="相談課">相談課</option>
+              <option value="施設長">施設長</option>
+              <option value="所長">所長</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="tiny">説明</label
+          ><textarea id="svDesc" placeholder="説明"></textarea>
+        </div>
+        <div class="row">
+          <div class="grow">
+            <label class="tiny">公開状態</label
+            ><select id="svStatus">
+              <option value="open">公開中</option>
+              <option value="closed">締切</option>
+            </select>
+          </div>
+          <div class="grow">
+            <label class="tiny">匿名表示</label
+            ><select id="svAnonymous">
+              <option value="0">記名</option>
+              <option value="1">匿名表示</option>
+            </select>
+          </div>
+          <div class="grow">
+            <label class="tiny">締切日（任意）</label
+            ><input id="svDue" class="inp" type="date" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="grow">
+            <label class="tiny">集計パスワード（任意）</label
+            ><input
+              id="svPass"
+              class="inp"
+              type="password"
+              placeholder="空欄ならパスワードなし"
+            />
+          </div>
+          <div class="grow">
+            <label class="tiny">対象</label
+            ><select id="svAudience">
+              <option value="staff">職員</option>
+              <option value="family">家族</option>
+              <option value="resident">利用者</option>
+              <option value="training">研修参加者</option>
+              <option value="other">その他</option>
+            </select>
+          </div>
+        </div>
+        <div class="noteBox">
+          使いやすさ重視のため、よく使う質問形式を中心にしています。必要に応じて後から追加・編集できます。
+        </div>
+        <div class="cardHd" style="margin-bottom: 0">
+          <h4>質問</h4>
+          <div class="right">
+            <button class="btn out sm" onclick="addQ('yesno')">
+              はい・いいえ</button
+            ><button class="btn out sm" onclick="addQ('rating5')">5段階</button
+            ><button class="btn out sm" onclick="addQ('single')">
+              単一選択</button
+            ><button class="btn out sm" onclick="addQ('multi')">複数選択</button
+            ><button class="btn out sm" onclick="addQ('text')">記述式</button>
+          </div>
+        </div>
+        <div id="svQuestions"></div>
+        <div class="stickyFoot">
+          <div class="right">
+            <button class="btn out" onclick="closeSurveyModal()">
+              キャンセル</button
+            ><button class="btn pri" onclick="createSurvey()">
+              <i class="fas fa-save"></i> 保存
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="surveyAnswerModal" class="modal">
+      <div class="box stack">
+        <div class="cardHd">
+          <div>
+            <h3 id="ansTitle">回答</h3>
+            <div id="ansSub" class="tiny"></div>
+          </div>
+          <button class="close" onclick="closeAnswerModal()">×</button>
+        </div>
+        <div id="ansBody"></div>
+        <div id="ansDraftInfo" class="tiny"></div>
+        <div class="stickyFoot">
+          <div class="right">
+            <button class="btn out" onclick="clearSurveyDraft()">
+              下書き消去</button
+            ><button class="btn pri" onclick="submitSurvey()">
+              <i class="fas fa-paper-plane"></i> 送信
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="surveyResultModal" class="modal">
+      <div class="box stack">
+        <div class="cardHd">
+          <div>
+            <h3 id="svResultTitle">集計結果</h3>
+            <div id="svResultSub" class="tiny"></div>
+          </div>
+          <div class="right">
+            <button
+              class="btn out sm"
+              onclick="copyElementImage('svResultCaptureArea')"
+            >
+              <i class="fas fa-copy"></i> 集計全体を画像コピー</button
+            ><button class="btn out sm" onclick="downloadSurveyCsv()">
+              <i class="fas fa-file-csv"></i> CSV出力</button
+            ><button class="close" onclick="closeModal('surveyResultModal')">
+              ×
+            </button>
+          </div>
+        </div>
+        <div id="svResultCaptureArea">
+          <div id="svSummary" class="row"></div>
+          <div id="svResult"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyB7WyB8qLVOtpYWDrTUyVi6q1f1MPmIEqI",
+        authDomain: "tokuyou-portal.firebaseapp.com",
+        projectId: "tokuyou-portal",
+        storageBucket: "tokuyou-portal.firebasestorage.app",
+        messagingSenderId: "628140097543",
+        appId: "1:628140097543:web:03f3cf9ef15a767dbdaaa2",
+      };
+
+      const VAPID_PUBLIC_KEY = "YOUR_PUBLIC_VAPID_KEY";
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
+      const storage = firebase.storage();
+      const messaging = firebase.messaging();
+
+      const ROOMS = {
+        care2: "2階介護",
+        care3: "3階介護",
+        nurse: "看護",
+        rehab: "リハビリ",
+        nutrition: "栄養",
+        office: "事務",
+        consult: "相談課",
+        director: "施設長",
+        chief: "所長",
+        leaders: "役職者",
+      };
+      const DEPT_ROOM = {
+        "2階介護": "care2",
+        "3階介護": "care3",
+        "介護": "care2",
+        "看護": "nurse",
+        "リハビリ": "rehab",
+        "栄養": "nutrition",
+        "事務": "office",
+        "相談課": "consult",
+        "施設長": "director",
+        "所長": "chief",
+      };
+      const SURVEY_TYPES = {
+        text: "記述式",
+        yesno: "はい・いいえ",
+        rating5: "5段階評価",
+        rating10: "10段階評価",
+        single: "単一選択",
+        multi: "複数選択",
+        dropdown: "プルダウン",
+        date: "日付",
+        number: "数値入力",
+      };
+
+      let staffCache = [];
+      let activeRoom = "";
+      let activeSurveyId = "";
+      let activeSurveyData = null;
+      let svQuestions = [];
+      let watchers = [];
+      let charts = {};
+      let editingSurveyId = "";
+      let surveyResultCurrent = null;
+      let surveyDraftTimer = null;
+      let swReg = null;
+      let deferredPrompt = null;
+
+      const $ = (id) => document.getElementById(id);
+      const esc = (s) =>
+        String(s ?? "").replace(
+          /[&<>"']/g,
+          (m) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[m],
+        );
+      const me = () => JSON.parse(localStorage.getItem("ku_user") || "null");
+      const saveMe = (u) => localStorage.setItem("ku_user", JSON.stringify(u));
+      const admin = () => me()?.role === "admin";
+      const uid = (p = "id") =>
+        `${p}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const parseJSON = (v, d = []) => {
+        try {
+          const x = typeof v === "string" ? JSON.parse(v || "[]") : v;
+          return x ?? d;
+        } catch (e) {
+          return d;
+        }
+      };
+      function ms(v) {
+        if (typeof v === "number") return v;
+        if (v?.toDate) return v.toDate().getTime();
+        if (v) return new Date(v).getTime();
+        return 0;
+      }
+      function fmt(v) {
+        const d = v?.toDate ? v.toDate() : new Date(v);
+        if (!d || isNaN(d)) return "";
+        const diff = Date.now() - d.getTime();
+        if (diff < 6e4) return "たった今";
+        if (diff < 36e5) return Math.floor(diff / 6e4) + "分前";
+        if (diff < 864e5) return Math.floor(diff / 36e5) + "時間前";
+        return d.toLocaleString("ja-JP", {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      }
+      function todayStr() {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      }
+      function toast(msg, type = "info") {
+        const el = document.createElement("div");
+        el.className = "toast";
+        el.style.borderLeftColor =
+          type === "error"
+            ? "var(--dan)"
+            : type === "ok"
+              ? "var(--sec)"
+              : "var(--pri)";
+        el.innerHTML = `<i class="fas fa-${type === "error" ? "circle-exclamation" : type === "ok" ? "circle-check" : "circle-info"}"></i><div>${esc(msg)}</div>`;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 3200);
+      }
+      function calcMedian(arr) {
+        if (!arr.length) return 0;
+        const a = [...arr].sort((x, y) => x - y);
+        const m = Math.floor(a.length / 2);
+        return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+      }
+      const avg = (arr) =>
+        arr.length
+          ? arr.reduce((s, v) => s + Number(v || 0), 0) / arr.length
+          : 0;
+      const fmtNum = (n) => (Number.isFinite(n) ? Number(n).toFixed(1) : "-");
+      const draftKey = (surveyId, userId) =>
+        `surveyDraft_${surveyId}_${userId}`;
+      const boardReadKey = (boardId, userId = me()?.id || "guest") =>
+        `ku_board_read_${userId}_${boardId}`;
+      const surveySeenKey = (surveyId, userId = me()?.id || "guest") =>
+        `ku_survey_seen_${userId}_${surveyId}`;
+      const roomReadKey = (roomId, userId = me()?.id || "guest") =>
+        `ku_room_read_${userId}_${roomId}`;
+      const myLinksKey = (userId = me()?.id || "guest") =>
+        `ku_my_links_${userId}`;
+      function isBoardRead(board, user = me()) {
+        if (!user || !board) return true;
+        if (board.creatorId === user.id) return true;
+        return localStorage.getItem(boardReadKey(board.docId, user.id)) === "1";
+      }
+      function markBoardRead(boardId, silent = false) {
+        localStorage.setItem(boardReadKey(boardId), "1");
+        if (!silent) toast("掲示板を確認済みにしました", "ok");
+        loadDashboard().catch(() => {});
+      }
+      function isSurveySeen(survey, user = me(), responses = []) {
+        if (!user || !survey) return true;
+        if (survey.creatorId === user.id) return true;
+        if (hasUserAnsweredSurvey(survey, user, responses)) return true;
+        return localStorage.getItem(surveySeenKey(survey.docId, user.id)) === "1";
+      }
+      function markSurveySeen(surveyId, silent = true) {
+        localStorage.setItem(surveySeenKey(surveyId), "1");
+        if (!silent) toast("アンケートを確認済みにしました", "ok");
+        loadSurveys().catch(() => {});
+        loadDashboard().catch(() => {});
+      }
+      function getRoomReadMs(roomId, userId = me()?.id || "guest") {
+        return Number(localStorage.getItem(roomReadKey(roomId, userId)) || 0);
+      }
+      function setRoomReadMs(roomId, value = Date.now(), userId = me()?.id || "guest") {
+        localStorage.setItem(roomReadKey(roomId, userId), String(value || Date.now()));
+      }
+      function getMyLinks() {
+        return parseJSON(localStorage.getItem(myLinksKey()), []);
+      }
+      function saveMyLinks(links) {
+        localStorage.setItem(myLinksKey(), JSON.stringify((links || []).slice(0, 8)));
+      }
+      function addMyLink() {
+        const label = prompt("リンク名");
+        if (!label) return;
+        const url = prompt("URL", "https://");
+        if (!url) return;
+        const links = getMyLinks();
+        links.push({ label: label.trim(), url: url.trim() });
+        saveMyLinks(links);
+        renderQuickLinks();
+        toast("マイリンクを追加しました", "ok");
+      }
+      function editMyLink(index) {
+        const links = getMyLinks();
+        const item = links[index];
+        if (!item) return;
+        const label = prompt("リンク名", item.label || "");
+        if (!label) return;
+        const url = prompt("URL", item.url || "https://");
+        if (!url) return;
+        links[index] = { label: label.trim(), url: url.trim() };
+        saveMyLinks(links);
+        renderQuickLinks();
+        toast("マイリンクを更新しました", "ok");
+      }
+      function removeMyLink(index) {
+        const links = getMyLinks();
+        if (!links[index]) return;
+        if (!confirm("このマイリンクを削除しますか？")) return;
+        links.splice(index, 1);
+        saveMyLinks(links);
+        renderQuickLinks();
+        toast("マイリンクを削除しました", "ok");
+      }
+      function seedSampleLinks() {
+        saveMyLinks([
+          { label: "シフト表", url: "https://example.com/shift" },
+          { label: "勤怠", url: "https://example.com/time" },
+          { label: "介護記録", url: "https://example.com/record" },
+        ]);
+        renderQuickLinks();
+        toast("サンプルのマイリンクを入れました。必要に応じて編集してください", "ok");
+      }
+      function renderQuickLinks() {
+        const el = $("quickLinks");
+        if (!el) return;
+        const internal = [
+          { label: "掲示板", icon: "bullhorn", action: "showTab('dashboard',document.querySelector('.tab[data-id=\"dashboard\"]'))" },
+          { label: "未回答アンケート", icon: "poll", action: "showTab('survey',document.querySelector('.tab[data-id=\"survey\"]'))" },
+          { label: "チャットルーム", icon: "comments", action: "showTab('rooms',document.querySelector('.tab[data-id=\"rooms\"]'))" },
+          { label: "職員名簿", icon: "address-book", action: "showTab('profile',document.querySelector('.tab[data-id=\"profile\"]'))" },
+        ];
+        const mine = getMyLinks();
+        el.innerHTML = `${internal.map((x) => `<div class="linkCard"><div><div class="title">${esc(x.label)}</div><div class="tiny">内部ショートカット</div></div><button class="btn out sm" onclick="${x.action}"><i class="fas fa-${x.icon}"></i> 開く</button></div>`).join("")}${mine.map((x, i) => `<div class="linkCard"><div><div class="title">${esc(x.label || "")}</div><div class="tiny">${esc(x.url || "")}</div></div><div class="right"><a class="btn out sm" href="${esc(x.url || "#")}" target="_blank"><i class="fas fa-arrow-up-right-from-square"></i> 開く</a><button class="btn out sm" onclick="editMyLink(${i})"><i class="fas fa-pen"></i></button><button class="btn dan sm" onclick="removeMyLink(${i})"><i class="fas fa-trash"></i></button></div></div>`).join("")}`;
+      }
+      function renderMiniDirectory(users = staffCache) {
+        const listData = Array.isArray(users) && users.length ? users : staffCache;
+        const q = String($("directoryKeyword")?.value || "").trim().toLowerCase();
+        const dept = $("directoryDeptFilter")?.value || "all";
+        const filtered = (listData || []).filter((u) => {
+          if (dept !== "all" && (u.department || "") !== dept) return false;
+          if (!q) return true;
+          return [u.name, u.department, u.email, u.extension, u.note, u.role]
+            .join(" ")
+            .toLowerCase()
+            .includes(q);
+        });
+        if ($("directoryCount")) $("directoryCount").textContent = `${filtered.length}件`;
+        if (!$("miniDirectoryList")) return;
+        $("miniDirectoryList").innerHTML = filtered.length
+          ? filtered
+              .sort((a, b) => String(a.department || "").localeCompare(String(b.department || "")) || String(a.name || "").localeCompare(String(b.name || ""), "ja"))
+              .map((u) => `<div class="personCard"><div class="itemTop"><div><div class="title">${esc(u.name || "")}</div><div class="meta"><span>${esc(u.department || "")}</span><span>${u.role === "admin" ? "管理者" : "スタッフ"}</span>${u.extension ? `<span>内線 ${esc(u.extension)}</span>` : ""}</div></div><a class="btn out sm" href="mailto:${esc(u.email || "")}"><i class="fas fa-envelope"></i> メール</a></div>${u.note ? `<div style="margin-top:8px" class="tiny">${esc(u.note)}</div>` : ""}</div>`)
+              .join("")
+          : '<div class="empty">該当する職員がいません</div>';
+      }
+      async function runGlobalSearch(forceWord = "") {
+        const input = $("globalSearch");
+        const word = String(forceWord || input?.value || "").trim().toLowerCase();
+        if (input && forceWord) input.value = forceWord;
+        if (!$("searchResult")) return;
+        if (!word) {
+          $("searchResult").innerHTML = "";
+          return;
+        }
+        $("searchResult").innerHTML = '<div class="tiny">検索中...</div>';
+        const u = me();
+        const [anns, surveys, users] = await Promise.all([
+          list("announcements"),
+          list("surveys"),
+          list("users"),
+        ]);
+        const boardHits = anns
+          .filter((a) => [a.title, a.content, a.creatorName].join(" ").toLowerCase().includes(word))
+          .slice(0, 5);
+        const surveyHits = surveys
+          .filter((s) => canUserSeeSurvey(s, u) && [s.title, s.desc, s.creatorName].join(" ").toLowerCase().includes(word))
+          .slice(0, 5);
+        const peopleHits = users
+          .filter((x) => [x.name, x.department, x.email, x.extension, x.note].join(" ").toLowerCase().includes(word))
+          .slice(0, 5);
+        const roomHits = Object.entries(ROOMS)
+          .filter(([, label]) => label.toLowerCase().includes(word))
+          .slice(0, 5);
+        const blocks = [];
+        boardHits.forEach((a) => blocks.push(`<div class="searchHit"><div class="itemTop"><div><div class="title">掲示板: ${esc(a.title || "")}</div><div class="tiny">${esc(a.creatorName || "")} / ${fmt(a.createdAt)}</div></div><button class="btn out sm" onclick="showTab('dashboard',document.querySelector('.tab[data-id=\"dashboard\"]'));setTimeout(()=>highlightBoard('${a.docId}'),180)"><i class="fas fa-arrow-right"></i> 開く</button></div></div>`));
+        surveyHits.forEach((s) => blocks.push(`<div class="searchHit"><div class="itemTop"><div><div class="title">アンケート: ${esc(s.title || "")}</div><div class="tiny">${esc(s.targetDept || "全部署")} / ${esc(s.creatorName || "")}</div></div><button class="btn out sm" onclick="showTab('survey',document.querySelector('.tab[data-id=\"survey\"]'));setTimeout(()=>highlightSurvey('${s.docId}'),180)"><i class="fas fa-arrow-right"></i> 開く</button></div></div>`));
+        peopleHits.forEach((x) => blocks.push(`<div class="searchHit"><div class="itemTop"><div><div class="title">職員: ${esc(x.name || "")}</div><div class="tiny">${esc(x.department || "")} ${x.extension ? '/ 内線 ' + esc(x.extension) : ''}</div></div><button class="btn out sm" onclick="showTab('profile',document.querySelector('.tab[data-id=\"profile\"]'));setTimeout(()=>{if($('directoryKeyword')){$('directoryKeyword').value='${esc(x.name || "")}';renderMiniDirectory();}},180)"><i class="fas fa-address-book"></i> 名簿で見る</button></div></div>`));
+        roomHits.forEach(([key, label]) => blocks.push(`<div class="searchHit"><div class="itemTop"><div><div class="title">ルーム: ${esc(label)}</div><div class="tiny">チャットルーム</div></div><button class="btn out sm" onclick="showTab('rooms',document.querySelector('.tab[data-id=\"rooms\"]'));setTimeout(()=>openRoom('${key}'),180)"><i class="fas fa-comments"></i> 開く</button></div></div>`));
+        $("searchResult").innerHTML = blocks.length ? blocks.join("") : '<div class="empty">一致する結果がありません</div>';
+      }
+      function buildTodayHome(tasks, surveys, responses, anns, roomInfo, users = staffCache) {
+        const u = me();
+        const unreadBoards = anns.filter((a) => !isBoardRead(a, u)).slice(0, 4);
+        const todoSurveys = surveys.filter((s) => canUserSeeSurvey(s, u) && isSurveyOpen(s) && !hasUserAnsweredSurvey(s, u, responses)).slice(0, 4);
+        const unreadRooms = roomInfo.filter((r) => r.unread > 0).slice(0, 4);
+        const myTasks = tasks.filter((t) => t.userId === u.id && !t.completed).slice(0, 4);
+        $("todayHome").innerHTML = `
+          <div class="homeCard"><h4><i class="fas fa-bullhorn"></i> 未読掲示板</h4><div class="actionList">${unreadBoards.length ? unreadBoards.map((a) => `<div class="actionItem"><div><div class="title">${esc(a.title || '')}</div><div class="tiny">${fmt(a.createdAt)}</div></div><div class="right"><button class="btn out sm" onclick="highlightBoard('${a.docId}');markBoardRead('${a.docId}',true)">確認</button></div></div>`).join('') : '<div class="tiny">未読はありません</div>'}</div></div>
+          <div class="homeCard"><h4><i class="fas fa-poll"></i> 未回答アンケート</h4><div class="actionList">${todoSurveys.length ? todoSurveys.map((s) => `<div class="actionItem"><div><div class="title">${esc(s.title || '')}</div><div class="tiny">${esc(s.targetDept || '全部署')}</div></div><div class="right"><button class="btn pri sm" onclick="markSurveySeen('${s.docId}',true);openSurveyAnswer('${s.docId}')">回答</button></div></div>`).join('') : '<div class="tiny">未回答はありません</div>'}</div></div>
+          <div class="homeCard"><h4><i class="fas fa-comments"></i> 未読ルーム</h4><div class="actionList">${unreadRooms.length ? unreadRooms.map((r) => `<div class="actionItem"><div><div class="title">${esc(r.label)}</div><div class="tiny">未読 ${r.unread} 件${r.last ? ' / ' + esc(r.last.userName || '') : ''}</div></div><div class="right"><button class="btn out sm" onclick="openRoom('${r.key}')">開く</button></div></div>`).join('') : '<div class="tiny">未読ルームはありません</div>'}</div></div>
+          <div class="homeCard"><h4><i class="fas fa-list-check"></i> 自分のタスク</h4><div class="actionList">${myTasks.length ? myTasks.map((t) => `<div class="actionItem"><div><div class="title">${esc(t.title || '')}</div><div class="tiny">優先度 ${t.priority === 'high' ? '高' : t.priority === 'medium' ? '中' : '低'}</div></div><div class="right"><button class="btn sec sm" onclick="toggleTask('${t.docId}',true)">完了</button></div></div>`).join('') : '<div class="tiny">未完了タスクはありません</div>'}</div></div>`;
+      }
+
+      async function list(col) {
+        try {
+          const s = await db.collection(col).orderBy("createdAt", "desc").get();
+          return s.docs.map((d) => ({ docId: d.id, ...d.data() }));
+        } catch (e) {
+          const s = await db.collection(col).get();
+          return s.docs.map((d) => ({ docId: d.id, ...d.data() }));
+        }
+      }
+      async function add(col, data) {
+        return (
+          await db
+            .collection(col)
+            .add({
+              ...data,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+              createdAtMs: Date.now(),
+            })
+        ).id;
+      }
+      async function upd(col, id, data) {
+        await db
+          .collection(col)
+          .doc(id)
+          .update({
+            ...data,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAtMs: Date.now(),
+          });
+      }
+      async function del(col, id) {
+        await db.collection(col).doc(id).delete();
+      }
+      async function uploadMany(fileList, folder) {
+        const files = [...(fileList || [])],
+          out = [];
+        for (const f of files) {
+          if (f.size > 20 * 1024 * 1024)
+            throw new Error("20MBを超えるファイルがあります");
+          const ref = storage.ref(`${folder}/${Date.now()}_${f.name}`);
+          const snap = await ref.put(f);
+          out.push({
+            name: f.name,
+            url: await snap.ref.getDownloadURL(),
+            size: f.size,
+            type: f.type || "",
+          });
+        }
+        return out;
+      }
+
+      function openModal(id) {
+        $(id).classList.add("show");
+      }
+      function closeModal(id) {
+        $(id).classList.remove("show");
+      }
+      function closeSurveyModal() {
+        editingSurveyId = "";
+        $("svId").value = "";
+        closeModal("surveyModal");
+      }
+      function closeAnswerModal() {
+        activeSurveyId = "";
+        activeSurveyData = null;
+        closeModal("surveyAnswerModal");
+      }
+      function setNotifyBtn(mode = "default") {
+        $("notifyBtn").innerHTML =
+          `<i class="fas fa-bell"></i> ${mode === "on" ? "通知ON" : mode === "denied" ? "通知拒否" : "通知OFF"}`;
+      }
+      async function registerServiceWorker() {
+        if (!("serviceWorker" in navigator)) return null;
+        swReg = await navigator.serviceWorker.register("./service-worker.js");
+        return swReg;
+      }
+      async function saveFcmToken(token) {
+        const u = me();
+        if (!u || !token) return;
+        await db
+          .collection("fcmTokens")
+          .doc(encodeURIComponent(token))
+          .set(
+            {
+              token,
+              userId: u.id,
+              userName: u.name || "",
+              department: u.department || "",
+              role: u.role || "staff",
+              updatedAtMs: Date.now(),
+              createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            },
+            { merge: true },
+          );
+      }
+      async function requestNotify() {
+        try {
+          if (!("Notification" in window))
+            return toast("このブラウザは通知に未対応です", "error");
+          if (!swReg) await registerServiceWorker();
+          const p = await Notification.requestPermission();
+          if (p !== "granted") {
+            setNotifyBtn(p === "denied" ? "denied" : "default");
+            return toast("通知が許可されませんでした", "error");
+          }
+          if (!VAPID_PUBLIC_KEY || VAPID_PUBLIC_KEY === "YOUR_PUBLIC_VAPID_KEY")
+            return toast("VAPIDキーを設定してください", "error");
+          const token = await messaging.getToken({
+            vapidKey: VAPID_PUBLIC_KEY,
+            serviceWorkerRegistration: swReg,
+          });
+          if (!token)
+            return toast("通知トークンを取得できませんでした", "error");
+          await saveFcmToken(token);
+          localStorage.setItem("ku_notify_enabled", "1");
+          setNotifyBtn("on");
+          toast("PWA通知を有効化しました", "ok");
+        } catch (e) {
+          console.error(e);
+          toast("通知設定でエラーが発生しました", "error");
+        }
+      }
+      function browserNotify(title, body) {
+        toast(`${title}：${body}`);
+        if ("Notification" in window && Notification.permission === "granted") {
+          try {
+            new Notification(title, { body, tag: title });
+          } catch (e) {}
+        }
+        if (navigator.vibrate) {
+          try {
+            navigator.vibrate([120, 40, 120]);
+          } catch (e) {}
+        }
+      }
+      async function setupForegroundMessaging() {
+        messaging.onMessage(async (payload) => {
+          const data = payload?.data || {};
+          const title =
+            data.title || payload?.notification?.title || "新しいお知らせ";
+          const body =
+            data.body || payload?.notification?.body || "新しい更新があります";
+          browserNotify(title, body);
+          if (data.type === "announcement") {
+            await loadDashboard();
+            if (data.boardId)
+              setTimeout(() => highlightBoard(data.boardId), 500);
+          }
+        });
+      }
+      function setupInstallPrompt() {
+        window.addEventListener("beforeinstallprompt", (e) => {
+          e.preventDefault();
+          deferredPrompt = e;
+          $("installBtn")?.classList.remove("hide");
+        });
+        $("installBtn")?.addEventListener("click", async () => {
+          if (!deferredPrompt) return;
+          deferredPrompt.prompt();
+          await deferredPrompt.userChoice;
+          deferredPrompt = null;
+          $("installBtn").classList.add("hide");
+        });
+        window.addEventListener("appinstalled", () =>
+          $("installBtn")?.classList.add("hide"),
+        );
+      }
+      function setTabAlert(tabId, on = true) {
+        const btn = document.querySelector(`.tab[data-id="${tabId}"]`);
+        if (btn) btn.classList.toggle("alertDot", !!on);
+      }
+      function handleDeepLink() {
+        const params = new URLSearchParams(location.search);
+        const tab = params.get("tab");
+        const boardId = params.get("board");
+        const surveyId = params.get("survey");
+        if (tab) {
+          const btn = document.querySelector(`.tab[data-id="${tab}"]`);
+          if (btn) showTab(tab, btn);
+        }
+        if (boardId) setTimeout(() => highlightBoard(boardId), 700);
+        if (surveyId) setTimeout(() => highlightSurvey(surveyId), 700);
+      }
+      function highlightBoard(boardId) {
+        const el = document.getElementById(`board-${boardId}`);
+        if (!el) return;
+        const btn = document.querySelector('.tab[data-id="dashboard"]');
+        if (btn) showTab("dashboard", btn);
+        markBoardRead(boardId, true);
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add("flashTarget");
+        setTimeout(() => el.classList.remove("flashTarget"), 2500);
+      }
+      function highlightSurvey(surveyId) {
+        const el = document.getElementById(`survey-${surveyId}`);
+        if (!el) return;
+        const btn = document.querySelector('.tab[data-id="survey"]');
+        if (btn) showTab("survey", btn);
+        markSurveySeen(surveyId, true);
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add("flashTarget");
+        setTimeout(() => el.classList.remove("flashTarget"), 2500);
+      }
+      async function autoRestorePushToken() {
+        if (localStorage.getItem("ku_notify_enabled") !== "1") return;
+        if (Notification.permission !== "granted") return;
+        if (!VAPID_PUBLIC_KEY || VAPID_PUBLIC_KEY === "YOUR_PUBLIC_VAPID_KEY")
+          return;
+        try {
+          const token = await messaging.getToken({
+            vapidKey: VAPID_PUBLIC_KEY,
+            serviceWorkerRegistration: swReg,
+          });
+          if (token) {
+            await saveFcmToken(token);
+            setNotifyBtn("on");
+          }
+        } catch (e) {}
+      }
+      async function copyElementImage(id) {
+        const el = document.getElementById(id);
+        if (!el) return toast("コピー対象が見つかりません", "error");
+        try {
+          const canvas = await html2canvas(el, {
+            backgroundColor: "#ffffff",
+            scale: 2,
+            useCORS: true,
+          });
+          if (!navigator.clipboard || !window.ClipboardItem)
+            throw new Error("clipboard unsupported");
+          const blob = await new Promise((r) => canvas.toBlob(r, "image/png"));
+          await navigator.clipboard.write([
+            new ClipboardItem({ "image/png": blob }),
+          ]);
+          toast("画像をクリップボードにコピーしました", "ok");
+        } catch (e) {
+          console.error(e);
+          toast("画像コピーに失敗しました。PNG保存をご利用ください", "error");
+        }
+      }
+      async function copyCanvasImage(canvasId) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return toast("グラフが見つかりません", "error");
+        try {
+          const blob = await new Promise((r) => canvas.toBlob(r, "image/png"));
+          await navigator.clipboard.write([
+            new ClipboardItem({ "image/png": blob }),
+          ]);
+          toast("グラフ画像をコピーしました", "ok");
+        } catch (e) {
+          console.error(e);
+          toast("グラフコピーに失敗しました", "error");
+        }
+      }
+      function downloadCanvasImage(canvasId, fileName = "chart.png") {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const a = document.createElement("a");
+        a.href = canvas.toDataURL("image/png");
+        a.download = fileName;
+        a.click();
+      }
+      function fileIcon(n = "") {
+        const e = (n.split(".").pop() || "").toLowerCase();
+        if (["pdf"].includes(e)) return "fa-file-pdf";
+        if (["xls", "xlsx", "csv"].includes(e)) return "fa-file-excel";
+        if (["doc", "docx"].includes(e)) return "fa-file-word";
+        if (["ppt", "pptx"].includes(e)) return "fa-file-powerpoint";
+        if (["jpg", "jpeg", "png", "gif", "webp"].includes(e))
+          return "fa-file-image";
+        return "fa-file-lines";
+      }
+      function getAnnFiles(a) {
+        let files = [];
+        if (Array.isArray(a.attachments)) files = a.attachments;
+        else if (typeof a.attachments === "string") {
+          try {
+            files = JSON.parse(a.attachments) || [];
+          } catch (e) {}
+        }
+        if (a.fileUrl && !files.length)
+          files = [{ name: a.fileName || "添付ファイル", url: a.fileUrl }];
+        if (a.externalUrl)
+          files.push({
+            name: "外部リンク",
+            url: a.externalUrl,
+            external: true,
+          });
+        return files;
+      }
+      async function deleteAnnFiles(a) {
+        for (const f of getAnnFiles(a).filter((x) => x.url && !x.external)) {
+          try {
+            await storage.refFromURL(f.url).delete();
+          } catch (e) {}
+        }
+      }
+      async function loadStaffHints() {
+        staffCache = await list("users");
+        $("staffNames").innerHTML = staffCache
+          .map((s) => `<option value="${esc(s.name || "")}"></option>`)
+          .join("");
+        const empty = staffCache.length === 0;
+        $("firstSetupBox").classList.toggle("hide", !empty);
+        $("loginFields").classList.toggle("hide", empty);
+      }
+      async function login() {
+        const name = $("loginName").value.trim();
+        const email = $("loginEmail").value.trim().toLowerCase();
+        if (!name || !email)
+          return toast("名前とメールアドレスを入力してください", "error");
+        const users = staffCache.length ? staffCache : await list("users");
+        const user = users.find(
+          (u) =>
+            (u.name || "") === name &&
+            String(u.email || "").toLowerCase() === email,
+        );
+        if (!user) return toast("ログイン情報が一致しません", "error");
+        saveMe(user);
+        boot();
+      }
+      async function createInitialAdmin() {
+        const name = $("setupName").value.trim();
+        const email = $("setupEmail").value.trim().toLowerCase();
+        const department = $("setupDept").value;
+        const extension = $("setupExt").value.trim();
+        if (!name || !email)
+          return toast("管理者名とメールアドレスを入力してください", "error");
+        const now = await list("users");
+        if (now.length)
+          return toast("すでにスタッフが登録されています", "error");
+        await add("users", {
+          id: "u_admin_" + Date.now(),
+          name,
+          email,
+          department,
+          extension,
+          role: "admin",
+          note: "初期管理者",
+        });
+        await loadStaffHints();
+        $("loginName").value = name;
+        $("loginEmail").value = email;
+        toast("初期管理者を作成しました。そのままログインできます", "ok");
+      }
+      async function logout() {
+        if (!confirm("ログアウトしますか？")) return;
+        try {
+          if (
+            swReg &&
+            VAPID_PUBLIC_KEY &&
+            VAPID_PUBLIC_KEY !== "YOUR_PUBLIC_VAPID_KEY"
+          ) {
+            const token = await messaging.getToken({
+              vapidKey: VAPID_PUBLIC_KEY,
+              serviceWorkerRegistration: swReg,
+            });
+            if (token)
+              await db
+                .collection("fcmTokens")
+                .doc(encodeURIComponent(token))
+                .delete()
+                .catch(() => {});
+          }
+        } catch (e) {}
+        localStorage.removeItem("ku_user");
+        watchers.forEach((u) => u && u());
+        location.reload();
+      }
+
+      async function boot() {
+        const u = me();
+        if (!u) {
+          $("loginScreen").classList.remove("hide");
+          $("app").classList.add("hide");
+          await loadStaffHints();
+          return;
+        }
+        $("loginScreen").classList.add("hide");
+        $("app").classList.remove("hide");
+        $("av").textContent = (u.name || "?").slice(0, 1);
+        $("meName").textContent = u.name || "";
+        $("meRole").textContent =
+          (u.role === "admin" ? "管理者" : "スタッフ") +
+          " / " +
+          (u.department || "未設定");
+        $("adminTab").classList.toggle("hide", !admin());
+        $("addBoardBtn").classList.toggle("hide", !admin());
+        setNotifyBtn(
+          localStorage.getItem("ku_notify_enabled") === "1" ? "on" : "default",
+        );
+        setupInstallPrompt();
+        await registerServiceWorker().catch(() => null);
+        await setupForegroundMessaging();
+        await Promise.all([
+          loadDashboard(),
+          loadProfile(),
+          loadTasks(),
+          loadSurveys(),
+          renderRoomCards(),
+        ]);
+        if (admin()) await Promise.all([loadAdmin(), loadStaffHints()]);
+        renderQuickLinks();
+        if ($("directoryKeyword")) {
+          $("directoryKeyword").addEventListener("input", () => renderMiniDirectory());
+        }
+        if ($("directoryDeptFilter")) {
+          $("directoryDeptFilter").addEventListener("change", () => renderMiniDirectory());
+        }
+        if ($("globalSearch")) {
+          $("globalSearch").addEventListener("keypress", (e) => e.key === "Enter" && runGlobalSearch());
+        }
+        setupRealtimeWatch();
+        cleanupExpiredData(true);
+        setInterval(() => cleanupExpiredData(true), 12 * 60 * 60 * 1000);
+        await autoRestorePushToken();
+        handleDeepLink();
+      }
+      function showTab(id, btn) {
+        document
+          .querySelectorAll(".tab")
+          .forEach((t) => t.classList.remove("active"));
+        if (btn) btn.classList.add("active");
+        document
+          .querySelectorAll(".screen")
+          .forEach((s) => s.classList.remove("active"));
+        $(id).classList.add("active");
+        (
+          ({
+            dashboard: loadDashboard,
+            profile: loadProfile,
+            tasks: loadTasks,
+            rooms: renderRoomCards,
+            survey: loadSurveys,
+            admin: loadAdmin,
+          })[id] || (() => {})
+        )();
+      }
+
+      async function loadDashboard() {
+        const u = me();
+        const [tasks, surveys, anns, settings, responses, users, roomInfo] = await Promise.all([
+          list("tasks"),
+          list("surveys"),
+          list("announcements"),
+          list("settings"),
+          list("surveyResponses").catch(() => []),
+          list("users"),
+          Promise.all(Object.entries(ROOMS).map(async ([key, label]) => {
+            const rows = await list("rooms_" + key).catch(() => []);
+            const sorted = rows.sort((a, b) => ms(b.createdAtMs || b.createdAt) - ms(a.createdAtMs || a.createdAt));
+            const unread = rows.filter((m) => m.userId !== u.id && ms(m.createdAtMs || m.createdAt) > getRoomReadMs(key, u.id)).length;
+            return { key, label, rows, unread, last: sorted[0] || null };
+          })),
+        ]);
+        staffCache = users;
+        $("stTask").textContent = tasks.filter((t) => t.userId === u.id && !t.completed).length;
+        $("stTrain").textContent = 1;
+        const visibleSurveys = surveys.filter((s) => canUserSeeSurvey(s, u));
+        $("stSurvey").textContent = visibleSurveys.filter((s) => isSurveyOpen(s) && !hasUserAnsweredSurvey(s, u, responses)).length;
+        $("stRoom").textContent = roomInfo.filter((r) => r.unread > 0).length;
+        setTabAlert("dashboard", anns.some((a) => !isBoardRead(a, u)));
+        setTabAlert("rooms", roomInfo.some((r) => r.unread > 0));
+        const b = settings.find((x) => x.type === "banner");
+        if (b?.imageUrl) {
+          $("bannerArea").innerHTML = `<img src="${esc(b.imageUrl)}" alt="banner">`;
+          $("bannerArea").classList.remove("hide");
+        } else $("bannerArea").classList.add("hide");
+        buildTodayHome(tasks, surveys, responses, anns, roomInfo, users);
+        renderQuickLinks();
+        renderBoard(anns);
+        renderMiniDirectory(users);
+      }
+      function renderBoard(anns) {
+        const u = me();
+        const el = $("boardList");
+        if (!anns.length) {
+          el.innerHTML = '<div class="empty">掲示板はまだありません</div>';
+          return;
+        }
+        el.innerHTML = anns
+          .sort((a, b) => ms(b.createdAtMs || b.createdAt) - ms(a.createdAtMs || a.createdAt))
+          .map((a) => {
+            const files = getAnnFiles(a);
+            const badge = a.priority === "urgent" ? "b4" : a.priority === "important" ? "b3" : "b1";
+            const label = a.priority === "urgent" ? "緊急" : a.priority === "important" ? "重要" : "通常";
+            const read = isBoardRead(a, u);
+            return `<div class="item" id="board-${a.docId}"><div class="itemTop"><div><div class="title">${esc(a.title)}</div><div class="meta"><span>${esc(a.creatorName || "")}</span><span>${fmt(a.createdAt)}</span><span>${files.length ? files.length + "件添付" : "添付なし"}</span><span class="readBadge ${read ? "read" : "unread"}">${read ? "既読" : "未読"}</span></div></div><div class="right"><span class="badge ${badge}">${label}</span>${!read ? `<button class="btn out sm" onclick="markBoardRead('${a.docId}')"><i class="fas fa-check"></i> 確認</button>` : ""}</div></div><div style="margin-top:10px;white-space:pre-wrap;line-height:1.6">${esc(a.content || "")}</div>${files.length ? `<div class="files">${files.map((f) => `<div class="file"><div><i class="fas ${fileIcon(f.name || "")}"></i> ${esc(f.name || "添付ファイル")}</div><div class="right"><a class="btn out sm" href="${esc(f.url)}" target="_blank" onclick="markBoardRead('${a.docId}',true)"><i class="fas fa-arrow-up-right-from-square"></i> 開く</a></div></div>`).join("")}</div>` : ""}${admin() ? `<div style="margin-top:10px" class="right"><button class="btn dan sm" onclick="deleteBoard('${a.docId}')"><i class="fas fa-trash"></i> 削除</button></div>` : ""}</div>`;
+          })
+          .join("");
+      }
+      function openBoardModal() {
+        $("bTitle").value = "";
+        $("bBody").value = "";
+        $("bPri").value = "normal";
+        $("bFiles").value = "";
+        $("bUrl").value = "";
+        openModal("boardModal");
+      }
+      async function createBoard() {
+        const u = me(),
+          title = $("bTitle").value.trim(),
+          content = $("bBody").value.trim();
+        if (!title || !content)
+          return toast("タイトルと本文は必須です", "error");
+        try {
+          const attachments = await uploadMany(
+            $("bFiles").files,
+            "announcements",
+          );
+          await add("announcements", {
+            title,
+            content,
+            priority: $("bPri").value,
+            creatorId: u.id,
+            creatorName: u.name,
+            attachments,
+            externalUrl: $("bUrl").value.trim(),
+          });
+          closeModal("boardModal");
+          await loadDashboard();
+          toast("掲示板に投稿しました", "ok");
+        } catch (e) {
+          toast("投稿エラー: " + e.message, "error");
+        }
+      }
+      async function deleteBoard(id) {
+        if (!confirm("掲示板を削除しますか？")) return;
+        const ann = (await list("announcements")).find((x) => x.docId === id);
+        if (ann) await deleteAnnFiles(ann);
+        await del("announcements", id);
+        await loadDashboard();
+        toast("削除しました", "ok");
+      }
+
+      async function loadProfile() {
+        const u = me();
+        $("pName").value = u.name || "";
+        $("pEmail").value = u.email || "";
+        $("pDept").value = u.department || "2階介護";
+        $("pExt").value = u.extension || "";
+        $("pBio").value = u.bio || "";
+        staffCache = staffCache.length ? staffCache : await list("users");
+        renderMiniDirectory(staffCache);
+      }
+      async function saveProfile() {
+        const u = me();
+        const patch = {
+          department: $("pDept").value,
+          extension: $("pExt").value.trim(),
+          bio: $("pBio").value.trim(),
+        };
+        if (u.docId) await upd("users", u.docId, patch);
+        const nu = { ...u, ...patch };
+        saveMe(nu);
+        $("meRole").textContent =
+          (nu.role === "admin" ? "管理者" : "スタッフ") +
+          " / " +
+          (nu.department || "未設定");
+        await loadProfile();
+        await renderRoomCards();
+        toast("プロフィールを保存しました", "ok");
+      }
+
+      async function loadTasks() {
+        const u = me();
+        const rows = (await list("tasks"))
+          .filter((t) => t.userId === u.id)
+          .sort((a, b) => Number(!!a.completed) - Number(!!b.completed));
+        const el = $("taskList");
+        if (!rows.length) {
+          el.innerHTML = '<div class="empty">タスクはありません</div>';
+          return;
+        }
+        el.innerHTML = rows
+          .map(
+            (t) =>
+              `<div class="item" id="task-${t.docId}"><div class="itemTop"><div><div class="title" style="${t.completed ? "text-decoration:line-through;color:#889" : ""}">${esc(t.title)}</div><div class="meta"><span class="badge ${t.priority === "high" ? "b4" : t.priority === "medium" ? "b3" : "b1"}">${t.priority === "high" ? "高" : t.priority === "medium" ? "中" : "低"}</span></div></div><div class="right"><button class="btn ${t.completed ? "sec" : "pri"} sm" onclick="toggleTask('${t.docId}',${!t.completed})"><i class="fas fa-${t.completed ? "rotate-left" : "check"}"></i></button><button class="btn dan sm" onclick="removeTask('${t.docId}')"><i class="fas fa-trash"></i></button></div></div></div>`,
+          )
+          .join("");
+      }
+      async function addTask() {
+        const u = me();
+        const title = $("taskTitle").value.trim();
+        if (!title) return toast("タスク名を入力してください", "error");
+        await add("tasks", {
+          userId: u.id,
+          title,
+          priority: $("taskPri").value,
+          completed: false,
+        });
+        $("taskTitle").value = "";
+        $("taskPri").value = "low";
+        await loadTasks();
+        await loadDashboard();
+        toast("タスクを追加しました", "ok");
+      }
+      async function toggleTask(id, completed) {
+        await upd("tasks", id, { completed });
+        await loadTasks();
+        await loadDashboard();
+      }
+      async function removeTask(id) {
+        if (!confirm("削除しますか？")) return;
+        await del("tasks", id);
+        await loadTasks();
+        await loadDashboard();
+        toast("削除しました", "ok");
+      }
+
+      async function renderRoomCards() {
+        const u = me();
+        const el = $("roomCards");
+        if (!u || !el) return;
+        const rows = await Promise.all(
+          Object.entries(ROOMS).map(async ([k, v]) => {
+            const msgs = await list("rooms_" + k).catch(() => []);
+            const sorted = msgs.sort((a, b) => ms(b.createdAtMs || b.createdAt) - ms(a.createdAtMs || a.createdAt));
+            const unread = msgs.filter((m) => m.userId !== u.id && ms(m.createdAtMs || m.createdAt) > getRoomReadMs(k, u.id)).length;
+            return { key: k, label: v, last: sorted[0] || null, unread };
+          }),
+        );
+        setTabAlert("rooms", rows.some((r) => r.unread > 0));
+        el.innerHTML = rows
+          .map((r) => `<div class="card roomBtn" onclick="openRoom('${r.key}')"><div class="itemTop"><div><h3>${esc(r.label)}</h3><p class="muted" style="margin-top:8px">${r.key === "leaders" ? "役職者向け共有ルーム" : "部署・役割ごとの情報共有ルーム"}</p></div>${r.unread ? `<span class="badge b4">未読 ${r.unread}</span>` : `<span class="badge b2">既読</span>`}</div><div class="roomMeta">${r.last ? `<span class="tiny">最終: ${esc(r.last.userName || "")} / ${fmt(r.last.createdAt)}</span>` : '<span class="tiny">まだ投稿がありません</span>'}</div></div>`)
+          .join("");
+      }
+      async function openRoom(key) {
+        activeRoom = key;
+        $("roomTitle").textContent = ROOMS[key];
+        openModal("roomModal");
+        await loadRoomMsgs();
+        $("roomInput").focus();
+      }
+      async function loadRoomMsgs() {
+        if (!activeRoom) return;
+        const msgs = (await list("rooms_" + activeRoom)).sort(
+          (a, b) => ms(a.createdAtMs || a.createdAt) - ms(b.createdAtMs || b.createdAt),
+        );
+        const el = $("roomMsgs");
+        const lastMs = msgs.length ? ms(msgs[msgs.length - 1].createdAtMs || msgs[msgs.length - 1].createdAt) : Date.now();
+        setRoomReadMs(activeRoom, lastMs);
+        if (!msgs.length) {
+          el.innerHTML = '<div class="empty">まだメッセージがありません</div>';
+          await renderRoomCards();
+          return;
+        }
+        el.innerHTML = msgs
+          .map(
+            (m) =>
+              `<div class="msg"><div class="avatar" style="width:36px;height:36px;font-size:13px">${esc((m.userName || "?").slice(0, 1))}</div><div class="bubble"><div class="meta"><b>${esc(m.userName || "")}</b> <span>${fmt(m.createdAt)}</span></div><div style="white-space:pre-wrap">${esc(m.text || "")}</div></div></div>`,
+          )
+          .join("");
+        el.scrollTop = el.scrollHeight;
+        await renderRoomCards();
+      }
+      async function sendRoomMsg() {
+        const text = $("roomInput").value.trim();
+        const u = me();
+        if (!text || !activeRoom) return;
+        await add("rooms_" + activeRoom, {
+          userId: u.id,
+          userName: u.name,
+          text,
+          room: activeRoom,
+        });
+        $("roomInput").value = "";
+        await loadRoomMsgs();
+        await loadDashboard();
+      }
+
+      function clearWatchers() {
+        watchers.forEach((u) => u && u());
+        watchers = [];
+      }
+      function watchLatest(col, key, handler) {
+        const viewer = me();
+        const storageKey = `watch_${viewer?.id || "guest"}_${key}`;
+        const unsub = db
+          .collection(col)
+          .orderBy("createdAt", "desc")
+          .limit(1)
+          .onSnapshot((s) => {
+            if (s.empty) return;
+            const d = s.docs[0];
+            const prev = localStorage.getItem(storageKey);
+            if (!prev) {
+              localStorage.setItem(storageKey, d.id);
+              return;
+            }
+            if (prev !== d.id) {
+              localStorage.setItem(storageKey, d.id);
+              handler({ docId: d.id, ...d.data() });
+            }
+          });
+        watchers.push(unsub);
+      }
+      function setupRealtimeWatch() {
+        clearWatchers();
+        const u = me();
+        if (!u) return;
+        watchLatest("announcements", "ann", async (d) => {
+          if (d.creatorId !== u.id) {
+            setTabAlert("dashboard", true);
+            browserNotify("新しい掲示板", d.title || "投稿がありました");
+            await loadDashboard();
+            if ($("dashboard").classList.contains("active")) {
+              setTimeout(() => highlightBoard(d.docId), 250);
+            }
+          }
+        });
+        watchLatest("surveys", "survey", async (d) => {
+          if (d.creatorId !== u.id && canUserSeeSurvey(d, u)) {
+            setTabAlert("survey", true);
+            browserNotify("新しいアンケート", d.title || "アンケートが追加されました");
+            await Promise.all([loadSurveys(), loadDashboard()]);
+            if ($("survey").classList.contains("active")) {
+              setTimeout(() => highlightSurvey(d.docId), 250);
+            }
+          }
+        });
+        Object.keys(ROOMS).forEach((r) =>
+          watchLatest("rooms_" + r, "room_" + r, async (d) => {
+            if (d.userId !== u.id) {
+              setTabAlert("rooms", true);
+              browserNotify(
+                ROOMS[r],
+                `${d.userName || ""}: ${String(d.text || "").slice(0, 40)}`,
               );
               if (activeRoom === r && $("roomModal").classList.contains("show")) {
                 await loadRoomMsgs();
@@ -980,5 +3537,6 @@ ring(d.text || "").slice(0, 40)}`,
       );
       window.addEventListener("load", boot);
     </script>
-  </body>
+  <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
 </html>
