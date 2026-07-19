@@ -576,7 +576,162 @@
           background: #fff;
         }
       }
+      .searchRow {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+      }
+      .searchRow .inp {
+        flex: 1 1 280px;
+      }
+      .homeGrid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      .homeCard {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 14px;
+        background: linear-gradient(180deg, #ffffff, #f8fbff);
+      }
+      .homeCard h4 {
+        font-size: 15px;
+        margin-bottom: 8px;
+      }
+      .actionList {
+        display: grid;
+        gap: 8px;
+      }
+      .actionItem {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        align-items: flex-start;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px;
+        background: #fff;
+      }
+      .linkGrid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 10px;
+      }
+      .linkCard {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #fff;
+      }
+      .searchResults {
+        display: grid;
+        gap: 8px;
+      }
+      .searchHit {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px 12px;
+        background: #fff;
+      }
+      .directoryToolbar {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+      }
+      .directoryToolbar .inp,
+      .directoryToolbar select {
+        flex: 1 1 220px;
+      }
+      .directoryList {
+        display: grid;
+        gap: 10px;
+      }
+      .personCard {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 12px;
+        background: #fff;
+      }
+      .roomMeta {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+      }
+      .pinBadge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 9px;
+        border-radius: 999px;
+        background: #fff3cd;
+        color: #8a5b00;
+        font-size: 11px;
+        font-weight: 800;
+      }
+      .readBadge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 9px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 800;
+      }
+      .readBadge.unread {
+        background: #ffe8e8;
+        color: #b42318;
+      }
+      .readBadge.read {
+        background: #ebf7ee;
+        color: #1f7a3d;
+      }
+      .splitCols {
+        display: grid;
+        grid-template-columns: 1.2fr .8fr;
+        gap: 16px;
+      }
+      .subtleBox {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 12px;
+        background: #fbfdff;
+      }
+      .miniLinks {
+        display: grid;
+        gap: 8px;
+      }
+      .miniLinks a,
+      .miniLinks button {
+        justify-content: space-between;
+        width: 100%;
+      }
+      .summaryList {
+        display: grid;
+        gap: 8px;
+      }
+      .summaryRow {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: center;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px;
+        background: #fff;
+      }
       @media (max-width: 768px) {
+        .splitCols {
+          grid-template-columns: 1fr;
+        }
         .hdr {
           align-items: flex-start;
           flex-direction: column;
@@ -654,10 +809,15 @@
           />
           <select id="setupDept">
             <option>事務</option>
+            <option>2階介護</option>
+            <option>3階介護</option>
             <option>介護</option>
             <option>看護</option>
             <option>リハビリ</option>
             <option>栄養</option>
+            <option>相談課</option>
+            <option>施設長</option>
+            <option>所長</option>
           </select>
           <input id="setupExt" class="inp" placeholder="内線番号（任意）" />
           <button class="btn sec w100" onclick="createInitialAdmin()">
@@ -748,42 +908,88 @@
 
         <section id="dashboard" class="screen active">
           <div id="bannerArea" class="banner hide card"></div>
-          <div class="stats">
-            <div class="card stat">
-              <i
-                class="fas fa-list-check"
-                style="background: linear-gradient(135deg, #2f80ed, #56ccf2)"
-              ></i>
+          <div class="card stack">
+            <div class="cardHd">
               <div>
-                <b id="stTask">0</b><span class="muted">未完了タスク</span>
+                <h3>今日やることホーム</h3>
+                <div class="tiny">未読・未回答・未完了を最初に確認できる簡潔なホームです</div>
+              </div>
+              <button class="btn out sm" onclick="loadDashboard()">
+                <i class="fas fa-rotate"></i> 更新
+              </button>
+            </div>
+            <div class="searchRow">
+              <input id="globalSearch" class="inp" placeholder="掲示板・アンケート・ルーム・職員名をまとめて検索" />
+              <button class="btn pri" onclick="runGlobalSearch()">
+                <i class="fas fa-magnifying-glass"></i> 検索
+              </button>
+            </div>
+            <div id="searchResult" class="searchResults"></div>
+            <div class="stats">
+              <div class="card stat">
+                <i
+                  class="fas fa-list-check"
+                  style="background: linear-gradient(135deg, #2f80ed, #56ccf2)"
+                ></i>
+                <div>
+                  <b id="stTask">0</b><span class="muted">未完了タスク</span>
+                </div>
+              </div>
+              <div class="card stat">
+                <i
+                  class="fas fa-book-open"
+                  style="background: linear-gradient(135deg, #9b51e0, #f2994a)"
+                ></i>
+                <div>
+                  <b id="stTrain">0</b><span class="muted">未完了研修</span>
+                </div>
+              </div>
+              <div class="card stat">
+                <i
+                  class="fas fa-comments"
+                  style="background: linear-gradient(135deg, #27ae60, #6fcf97)"
+                ></i>
+                <div>
+                  <b id="stRoom">0</b><span class="muted">未読ルーム</span>
+                </div>
+              </div>
+              <div class="card stat">
+                <i
+                  class="fas fa-poll"
+                  style="background: linear-gradient(135deg, #eb5757, #f2994a)"
+                ></i>
+                <div>
+                  <b id="stSurvey">0</b><span class="muted">未回答アンケート</span>
+                </div>
               </div>
             </div>
-            <div class="card stat">
-              <i
-                class="fas fa-book-open"
-                style="background: linear-gradient(135deg, #9b51e0, #f2994a)"
-              ></i>
-              <div>
-                <b id="stTrain">0</b><span class="muted">未完了研修</span>
+            <div id="todayHome" class="homeGrid"></div>
+          </div>
+          <div class="grid">
+            <div class="card stack">
+              <div class="cardHd">
+                <div>
+                  <h3>よく使うリンク / マイリンク</h3>
+                  <div class="tiny">内部ショートカットと個人用リンクを分けて整理します</div>
+                </div>
+                <button class="btn pri sm" onclick="addMyLink()">
+                  <i class="fas fa-plus"></i> マイリンク追加
+                </button>
               </div>
+              <div id="quickLinks" class="linkGrid"></div>
             </div>
-            <div class="card stat">
-              <i
-                class="fas fa-comments"
-                style="background: linear-gradient(135deg, #27ae60, #6fcf97)"
-              ></i>
-              <div>
-                <b id="stRoom">5</b><span class="muted">部署チャット数</span>
+            <div class="card stack">
+              <div class="cardHd">
+                <div>
+                  <h3>ホームの見方</h3>
+                  <div class="tiny">複雑にしすぎないよう、よく使う項目だけに絞っています</div>
+                </div>
               </div>
-            </div>
-            <div class="card stat">
-              <i
-                class="fas fa-poll"
-                style="background: linear-gradient(135deg, #eb5757, #f2994a)"
-              ></i>
-              <div>
-                <b id="stSurvey">0</b
-                ><span class="muted">未回答アンケート</span>
+              <div class="summaryList">
+                <div class="summaryRow"><b>未読掲示板</b><span class="tiny">確認ボタンで既読化</span></div>
+                <div class="summaryRow"><b>未回答アンケート</b><span class="tiny">回答または集計表示で確認</span></div>
+                <div class="summaryRow"><b>未読ルーム</b><span class="tiny">ルームを開くと未読が消えます</span></div>
+                <div class="summaryRow"><b>検索窓</b><span class="tiny">掲示板・アンケート・ルーム・職員を横断検索</span></div>
               </div>
             </div>
           </div>
@@ -791,7 +997,7 @@
             <div class="cardHd">
               <div>
                 <h3>掲示板</h3>
-                <div class="tiny">追加通知対応 / 通知から該当投稿へ遷移</div>
+                <div class="tiny">既読/未読表示つき。確認ボタンで既読にできます。</div>
               </div>
               <button
                 id="addBoardBtn"
@@ -806,46 +1012,94 @@
         </section>
 
         <section id="profile" class="screen">
+          <div class="splitCols">
+            <div class="card stack">
+              <div>
+                <h3>マイプロフィール</h3>
+                <div class="tiny">ログイン情報・所属情報</div>
+              </div>
+              <div class="row">
+                <div class="grow">
+                  <label class="tiny">名前</label
+                  ><input id="pName" class="inp" readonly />
+                </div>
+                <div class="grow">
+                  <label class="tiny">メールアドレス</label
+                  ><input id="pEmail" class="inp" readonly />
+                </div>
+              </div>
+              <div class="row">
+                <div class="grow">
+                  <label class="tiny">所属部署</label
+                  ><select id="pDept">
+                    <option>2階介護</option>
+                    <option>3階介護</option>
+                    <option>介護</option>
+                    <option>看護</option>
+                    <option>リハビリ</option>
+                    <option>栄養</option>
+                    <option>事務</option>
+                    <option>相談課</option>
+                    <option>施設長</option>
+                    <option>所長</option>
+                  </select>
+                </div>
+                <div class="grow">
+                  <label class="tiny">内線番号</label
+                  ><input id="pExt" class="inp" />
+                </div>
+              </div>
+              <div>
+                <label class="tiny">自己紹介</label
+                ><textarea id="pBio"></textarea>
+              </div>
+              <div>
+                <button class="btn pri" onclick="saveProfile()">
+                  <i class="fas fa-save"></i> 保存
+                </button>
+              </div>
+            </div>
+            <div class="card stack">
+              <div class="cardHd">
+                <div>
+                  <h3>マイリンク補足</h3>
+                  <div class="tiny">ダッシュボードのマイリンクから、勤怠やシフト表への個人ショートカットを登録できます</div>
+                </div>
+              </div>
+              <div class="subtleBox">
+                <div class="tiny">おすすめの登録例</div>
+                <div class="miniLinks">
+                  <button class="btn out sm" type="button" onclick="seedSampleLinks()"><i class="fas fa-wand-magic-sparkles"></i> サンプルを入れる</button>
+                  <div class="tiny">例：シフト表 / 勤怠 / 介護記録 / 研修資料</div>
+                </div>
+              </div>
+            </div>
+          </div>
           <div class="card stack">
-            <div>
-              <h3>マイプロフィール</h3>
-              <div class="tiny">ログイン情報・所属情報</div>
-            </div>
-            <div class="row">
-              <div class="grow">
-                <label class="tiny">名前</label
-                ><input id="pName" class="inp" readonly />
+            <div class="cardHd">
+              <div>
+                <h3>職員連絡先ミニ名簿</h3>
+                <div class="tiny">氏名・部署・役割・内線だけに絞ったシンプルな名簿です</div>
               </div>
-              <div class="grow">
-                <label class="tiny">メールアドレス</label
-                ><input id="pEmail" class="inp" readonly />
-              </div>
+              <div class="tiny" id="directoryCount">0件</div>
             </div>
-            <div class="row">
-              <div class="grow">
-                <label class="tiny">所属部署</label
-                ><select id="pDept">
-                  <option>介護</option>
-                  <option>看護</option>
-                  <option>リハビリ</option>
-                  <option>栄養</option>
-                  <option>事務</option>
-                </select>
-              </div>
-              <div class="grow">
-                <label class="tiny">内線番号</label
-                ><input id="pExt" class="inp" />
-              </div>
+            <div class="directoryToolbar">
+              <input id="directoryKeyword" class="inp" placeholder="氏名・部署・役割・メモで検索" />
+              <select id="directoryDeptFilter">
+                <option value="all">全部署</option>
+                <option value="2階介護">2階介護</option>
+                <option value="3階介護">3階介護</option>
+                <option value="介護">介護（旧）</option>
+                <option value="看護">看護</option>
+                <option value="リハビリ">リハビリ</option>
+                <option value="栄養">栄養</option>
+                <option value="事務">事務</option>
+                <option value="相談課">相談課</option>
+                <option value="施設長">施設長</option>
+                <option value="所長">所長</option>
+              </select>
             </div>
-            <div>
-              <label class="tiny">自己紹介</label
-              ><textarea id="pBio"></textarea>
-            </div>
-            <div>
-              <button class="btn pri" onclick="saveProfile()">
-                <i class="fas fa-save"></i> 保存
-              </button>
-            </div>
+            <div id="miniDirectoryList" class="directoryList"></div>
           </div>
         </section>
 
@@ -912,7 +1166,18 @@
         </section>
 
         <section id="rooms" class="screen">
-          <div class="grid" id="roomCards"></div>
+          <div class="card stack">
+            <div class="cardHd">
+              <div>
+                <h3>チャットルーム</h3>
+                <div class="tiny">2階介護 / 3階介護 に分割し、相談課・施設長・所長・役職者ルームを追加しました</div>
+              </div>
+              <button class="btn out sm" onclick="renderRoomCards()">
+                <i class="fas fa-rotate"></i> 更新
+              </button>
+            </div>
+            <div class="grid" id="roomCards"></div>
+          </div>
         </section>
 
         <section id="survey" class="screen">
@@ -1048,11 +1313,16 @@
         />
         <div class="row">
           <select id="sfDept" class="grow">
+            <option>2階介護</option>
+            <option>3階介護</option>
             <option>介護</option>
             <option>看護</option>
             <option>リハビリ</option>
             <option>栄養</option>
-            <option>事務</option></select
+            <option>事務</option>
+            <option>相談課</option>
+            <option>施設長</option>
+            <option>所長</option></select
           ><select id="sfRole" class="grow">
             <option value="staff">スタッフ</option>
             <option value="admin">管理者</option>
@@ -1115,11 +1385,16 @@
             <label class="tiny">対象部署</label
             ><select id="svTargetDept">
               <option value="all">全部署</option>
-              <option value="介護">介護</option>
+              <option value="2階介護">2階介護</option>
+              <option value="3階介護">3階介護</option>
+              <option value="介護">介護（旧）</option>
               <option value="看護">看護</option>
               <option value="リハビリ">リハビリ</option>
               <option value="栄養">栄養</option>
               <option value="事務">事務</option>
+              <option value="相談課">相談課</option>
+              <option value="施設長">施設長</option>
+              <option value="所長">所長</option>
             </select>
           </div>
         </div>
@@ -1263,18 +1538,29 @@
       const messaging = firebase.messaging();
 
       const ROOMS = {
-        care: "介護部署",
-        nurse: "看護部署",
-        rehab: "リハビリ部署",
-        nutrition: "栄養部署",
-        office: "事務所",
+        care2: "2階介護",
+        care3: "3階介護",
+        nurse: "看護",
+        rehab: "リハビリ",
+        nutrition: "栄養",
+        office: "事務",
+        consult: "相談課",
+        director: "施設長",
+        chief: "所長",
+        leaders: "役職者",
       };
-      const DEPT_ROOM = {
-        介護: "care",
-        看護: "nurse",
-        リハビリ: "rehab",
-        栄養: "nutrition",
-        事務: "office",
+      const DEPT
+_ROOM = {
+        "2階介護": "care2",
+        "3階介護": "care3",
+        "介護": "care2",
+        "看護": "nurse",
+        "リハビリ": "rehab",
+        "栄養": "nutrition",
+        "事務": "office",
+        "相談課": "consult",
+        "施設長": "director",
+        "所長": "chief",
       };
       const SURVEY_TYPES = {
         text: "記述式",
@@ -1377,6 +1663,170 @@
       const fmtNum = (n) => (Number.isFinite(n) ? Number(n).toFixed(1) : "-");
       const draftKey = (surveyId, userId) =>
         `surveyDraft_${surveyId}_${userId}`;
+      const boardReadKey = (boardId, userId = me()?.id || "guest") =>
+        `ku_board_read_${userId}_${boardId}`;
+      const surveySeenKey = (surveyId, userId = me()?.id || "guest") =>
+        `ku_survey_seen_${userId}_${surveyId}`;
+      const roomReadKey = (roomId, userId = me()?.id || "guest") =>
+        `ku_room_read_${userId}_${roomId}`;
+      const myLinksKey = (userId = me()?.id || "guest") =>
+        `ku_my_links_${userId}`;
+      function isBoardRead(board, user = me()) {
+        if (!user || !board) return true;
+        if (board.creatorId === user.id) return true;
+        return localStorage.getItem(boardReadKey(board.docId, user.id)) === "1";
+      }
+      function markBoardRead(boardId, silent = false) {
+        localStorage.setItem(boardReadKey(boardId), "1");
+        if (!silent) toast("掲示板を確認済みにしました", "ok");
+        loadDashboard().catch(() => {});
+      }
+      function isSurveySeen(survey, user = me(), responses = []) {
+        if (!user || !survey) return true;
+        if (survey.creatorId === user.id) return true;
+        if (hasUserAnsweredSurvey(survey, user, responses)) return true;
+        return localStorage.getItem(surveySeenKey(survey.docId, user.id)) === "1";
+      }
+      function markSurveySeen(surveyId, silent = true) {
+        localStorage.setItem(surveySeenKey(surveyId), "1");
+        if (!silent) toast("アンケートを確認済みにしました", "ok");
+        loadSurveys().catch(() => {});
+        loadDashboard().catch(() => {});
+      }
+      function getRoomReadMs(roomId, userId = me()?.id || "guest") {
+        return Number(localStorage.getItem(roomReadKey(roomId, userId)) || 0);
+      }
+      function setRoomReadMs(roomId, value = Date.now(), userId = me()?.id || "guest") {
+        localStorage.setItem(roomReadKey(roomId, userId), String(value || Date.now()));
+      }
+      function getMyLinks() {
+        return parseJSON(localStorage.getItem(myLinksKey()), []);
+      }
+      function saveMyLinks(links) {
+        localStorage.setItem(myLinksKey(), JSON.stringify((links || []).slice(0, 8)));
+      }
+      function addMyLink() {
+        const label = prompt("リンク名");
+        if (!label) return;
+        const url = prompt("URL", "https://");
+        if (!url) return;
+        const links = getMyLinks();
+        links.push({ label: label.trim(), url: url.trim() });
+        saveMyLinks(links);
+        renderQuickLinks();
+        toast("マイリンクを追加しました", "ok");
+      }
+      function editMyLink(index) {
+        const links = getMyLinks();
+        const item = links[index];
+        if (!item) return;
+        const label = prompt("リンク名", item.label || "");
+        if (!label) return;
+        const url = prompt("URL", item.url || "https://");
+        if (!url) return;
+        links[index] = { label: label.trim(), url: url.trim() };
+        saveMyLinks(links);
+        renderQuickLinks();
+        toast("マイリンクを更新しました", "ok");
+      }
+      function removeMyLink(index) {
+        const links = getMyLinks();
+        if (!links[index]) return;
+        if (!confirm("このマイリンクを削除しますか？")) return;
+        links.splice(index, 1);
+        saveMyLinks(links);
+        renderQuickLinks();
+        toast("マイリンクを削除しました", "ok");
+      }
+      function seedSampleLinks() {
+        saveMyLinks([
+          { label: "シフト表", url: "https://example.com/shift" },
+          { label: "勤怠", url: "https://example.com/time" },
+          { label: "介護記録", url: "https://example.com/record" },
+        ]);
+        renderQuickLinks();
+        toast("サンプルのマイリンクを入れました。必要に応じて編集してください", "ok");
+      }
+      function renderQuickLinks() {
+        const el = $("quickLinks");
+        if (!el) return;
+        const internal = [
+          { label: "掲示板", icon: "bullhorn", action: "showTab('dashboard',document.querySelector('.tab[data-id=\"dashboard\"]'))" },
+          { label: "未回答アンケート", icon: "poll", action: "showTab('survey',document.querySelector('.tab[data-id=\"survey\"]'))" },
+          { label: "チャットルーム", icon: "comments", action: "showTab('rooms',document.querySelector('.tab[data-id=\"rooms\"]'))" },
+          { label: "職員名簿", icon: "address-book", action: "showTab('profile',document.querySelector('.tab[data-id=\"profile\"]'))" },
+        ];
+        const mine = getMyLinks();
+        el.innerHTML = `${internal.map((x) => `<div class="linkCard"><div><div class="title">${esc(x.label)}</div><div class="tiny">内部ショートカット</div></div><button class="btn out sm" onclick="${x.action}"><i class="fas fa-${x.icon}"></i> 開く</button></div>`).join("")}${mine.map((x, i) => `<div class="linkCard"><div><div class="title">${esc(x.label || "")}</div><div class="tiny">${esc(x.url || "")}</div></div><div class="right"><a class="btn out sm" href="${esc(x.url || "#")}" target="_blank"><i class="fas fa-arrow-up-right-from-square"></i> 開く</a><button class="btn out sm" onclick="editMyLink(${i})"><i class="fas fa-pen"></i></button><button class="btn dan sm" onclick="removeMyLink(${i})"><i class="fas fa-trash"></i></button></div></div>`).join("")}`;
+      }
+      function renderMiniDirectory(users = staffCache) {
+        const listData = Array.isArray(users) && users.length ? users : staffCache;
+        const q = String($("directoryKeyword")?.value || "").trim().toLowerCase();
+        const dept = $("directoryDeptFilter")?.value || "all";
+        const filtered = (listData || []).filter((u) => {
+          if (dept !== "all" && (u.department || "") !== dept) return false;
+          if (!q) return true;
+          return [u.name, u.department, u.email, u.extension, u.note, u.role]
+            .join(" ")
+            .toLowerCase()
+            .includes(q);
+        });
+        if ($("directoryCount")) $("directoryCount").textContent = `${filtered.length}件`;
+        if (!$("miniDirectoryList")) return;
+        $("miniDirectoryList").innerHTML = filtered.length
+          ? filtered
+              .sort((a, b) => String(a.department || "").localeCompare(String(b.department || "")) || String(a.name || "").localeCompare(String(b.name || ""), "ja"))
+              .map((u) => `<div class="personCard"><div class="itemTop"><div><div class="title">${esc(u.name || "")}</div><div class="meta"><span>${esc(u.department || "")}</span><span>${u.role === "admin" ? "管理者" : "スタッフ"}</span>${u.extension ? `<span>内線 ${esc(u.extension)}</span>` : ""}</div></div><a class="btn out sm" href="mailto:${esc(u.email || "")}"><i class="fas fa-envelope"></i> メール</a></div>${u.note ? `<div style="margin-top:8px" class="tiny">${esc(u.note)}</div>` : ""}</div>`)
+              .join("")
+          : '<div class="empty">該当する職員がいません</div>';
+      }
+      async function runGlobalSearch(forceWord = "") {
+        const input = $("globalSearch");
+        const word = String(forceWord || input?.value || "").trim().toLowerCase();
+        if (input && forceWord) input.value = forceWord;
+        if (!$("searchResult")) return;
+        if (!word) {
+          $("searchResult").innerHTML = "";
+          return;
+        }
+        $("searchResult").innerHTML = '<div class="tiny">検索中...</div>';
+        const u = me();
+        const [anns, surveys, users] = await Promise.all([
+          list("announcements"),
+          list("surveys"),
+          list("users"),
+        ]);
+        const boardHits = anns
+          .filter((a) => [a.title, a.content, a.creatorName].join(" ").toLowerCase().includes(word))
+          .slice(0, 5);
+        const surveyHits = surveys
+          .filter((s) => canUserSeeSurvey(s, u) && [s.title, s.desc, s.creatorName].join(" ").toLowerCase().includes(word))
+          .slice(0, 5);
+        const peopleHits = users
+          .filter((x) => [x.name, x.department, x.email, x.extension, x.note].join(" ").toLowerCase().includes(word))
+          .slice(0, 5);
+        const roomHits = Object.entries(ROOMS)
+          .filter(([, label]) => label.toLowerCase().includes(word))
+          .slice(0, 5);
+        const blocks = [];
+        boardHits.forEach((a) => blocks.push(`<div class="searchHit"><div class="itemTop"><div><div class="title">掲示板: ${esc(a.title || "")}</div><div class="tiny">${esc(a.creatorName || "")} / ${fmt(a.createdAt)}</div></div><button class="btn out sm" onclick="showTab('dashboard',document.querySelector('.tab[data-id=\"dashboard\"]'));setTimeout(()=>highlightBoard('${a.docId}'),180)"><i class="fas fa-arrow-right"></i> 開く</button></div></div>`));
+        surveyHits.forEach((s) => blocks.push(`<div class="searchHit"><div class="itemTop"><div><div class="title">アンケート: ${esc(s.title || "")}</div><div class="tiny">${esc(s.targetDept || "全部署")} / ${esc(s.creatorName || "")}</div></div><button class="btn out sm" onclick="showTab('survey',document.querySelector('.tab[data-id=\"survey\"]'));setTimeout(()=>highlightSurvey('${s.docId}'),180)"><i class="fas fa-arrow-right"></i> 開く</button></div></div>`));
+        peopleHits.forEach((x) => blocks.push(`<div class="searchHit"><div class="itemTop"><div><div class="title">職員: ${esc(x.name || "")}</div><div class="tiny">${esc(x.department || "")} ${x.extension ? '/ 内線 ' + esc(x.extension) : ''}</div></div><button class="btn out sm" onclick="showTab('profile',document.querySelector('.tab[data-id=\"profile\"]'));setTimeout(()=>{if($('directoryKeyword')){$('directoryKeyword').value='${esc(x.name || "")}';renderMiniDirectory();}},180)"><i class="fas fa-address-book"></i> 名簿で見る</button></div></div>`));
+        roomHits.forEach(([key, label]) => blocks.push(`<div class="searchHit"><div class="itemTop"><div><div class="title">ルーム: ${esc(label)}</div><div class="tiny">チャットルーム</div></div><button class="btn out sm" onclick="showTab('rooms',document.querySelector('.tab[data-id=\"rooms\"]'));setTimeout(()=>openRoom('${key}'),180)"><i class="fas fa-comments"></i> 開く</button></div></div>`));
+        $("searchResult").innerHTML = blocks.length ? blocks.join("") : '<div class="empty">一致する結果がありません</div>';
+      }
+      function buildTodayHome(tasks, surveys, responses, anns, roomInfo, users = staffCache) {
+        const u = me();
+        const unreadBoards = anns.filter((a) => !isBoardRead(a, u)).slice(0, 4);
+        const todoSurveys = surveys.filter((s) => canUserSeeSurvey(s, u) && isSurveyOpen(s) && !hasUserAnsweredSurvey(s, u, responses)).slice(0, 4);
+        const unreadRooms = roomInfo.filter((r) => r.unread > 0).slice(0, 4);
+        const myTasks = tasks.filter((t) => t.userId === u.id && !t.completed).slice(0, 4);
+        $("todayHome").innerHTML = `
+          <div class="homeCard"><h4><i class="fas fa-bullhorn"></i> 未読掲示板</h4><div class="actionList">${unreadBoards.length ? unreadBoards.map((a) => `<div class="actionItem"><div><div class="title">${esc(a.title || '')}</div><div class="tiny">${fmt(a.createdAt)}</div></div><div class="right"><button class="btn out sm" onclick="highlightBoard('${a.docId}');markBoardRead('${a.docId}',true)">確認</button></div></div>`).join('') : '<div class="tiny">未読はありません</div>'}</div></div>
+          <div class="homeCard"><h4><i class="fas fa-poll"></i> 未回答アンケート</h4><div class="actionList">${todoSurveys.length ? todoSurveys.map((s) => `<div class="actionItem"><div><div class="title">${esc(s.title || '')}</div><div class="tiny">${esc(s.targetDept || '全部署')}</div></div><div class="right"><button class="btn pri sm" onclick="markSurveySeen('${s.docId}',true);openSurveyAnswer('${s.docId}')">回答</button></div></div>`).join('') : '<div class="tiny">未回答はありません</div>'}</div></div>
+          <div class="homeCard"><h4><i class="fas fa-comments"></i> 未読ルーム</h4><div class="actionList">${unreadRooms.length ? unreadRooms.map((r) => `<div class="actionItem"><div><div class="title">${esc(r.label)}</div><div class="tiny">未読 ${r.unread} 件${r.last ? ' / ' + esc(r.last.userName || '') : ''}</div></div><div class="right"><button class="btn out sm" onclick="openRoom('${r.key}')">開く</button></div></div>`).join('') : '<div class="tiny">未読ルームはありません</div>'}</div></div>
+          <div class="homeCard"><h4><i class="fas fa-list-check"></i> 自分のタスク</h4><div class="actionList">${myTasks.length ? myTasks.map((t) => `<div class="actionItem"><div><div class="title">${esc(t.title || '')}</div><div class="tiny">優先度 ${t.priority === 'high' ? '高' : t.priority === 'medium' ? '中' : '低'}</div></div><div class="right"><button class="btn sec sm" onclick="toggleTask('${t.docId}',true)">完了</button></div></div>`).join('') : '<div class="tiny">未完了タスクはありません</div>'}</div></div>`;
+      }
 
       async function list(col) {
         try {
@@ -1566,6 +2016,7 @@
         if (!el) return;
         const btn = document.querySelector('.tab[data-id="dashboard"]');
         if (btn) showTab("dashboard", btn);
+        markBoardRead(boardId, true);
         el.scrollIntoView({ behavior: "smooth", block: "center" });
         el.classList.add("flashTarget");
         setTimeout(() => el.classList.remove("flashTarget"), 2500);
@@ -1575,6 +2026,7 @@
         if (!el) return;
         const btn = document.querySelector('.tab[data-id="survey"]');
         if (btn) showTab("survey", btn);
+        markSurveySeen(surveyId, true);
         el.scrollIntoView({ behavior: "smooth", block: "center" });
         el.classList.add("flashTarget");
         setTimeout(() => el.classList.remove("flashTarget"), 2500);
@@ -1767,7 +2219,6 @@
         setNotifyBtn(
           localStorage.getItem("ku_notify_enabled") === "1" ? "on" : "default",
         );
-        renderRoomCards();
         setupInstallPrompt();
         await registerServiceWorker().catch(() => null);
         await setupForegroundMessaging();
@@ -1776,8 +2227,19 @@
           loadProfile(),
           loadTasks(),
           loadSurveys(),
+          renderRoomCards(),
         ]);
         if (admin()) await Promise.all([loadAdmin(), loadStaffHints()]);
+        renderQuickLinks();
+        if ($("directoryKeyword")) {
+          $("directoryKeyword").addEventListener("input", () => renderMiniDirectory());
+        }
+        if ($("directoryDeptFilter")) {
+          $("directoryDeptFilter").addEventListener("change", () => renderMiniDirectory());
+        }
+        if ($("globalSearch")) {
+          $("globalSearch").addEventListener("keypress", (e) => e.key === "Enter" && runGlobalSearch());
+        }
         setupRealtimeWatch();
         cleanupExpiredData(true);
         setInterval(() => cleanupExpiredData(true), 12 * 60 * 60 * 1000);
@@ -1793,12 +2255,12 @@
           .querySelectorAll(".screen")
           .forEach((s) => s.classList.remove("active"));
         $(id).classList.add("active");
-        if (id === "dashboard" || id === "survey") setTabAlert(id, false);
         (
           ({
             dashboard: loadDashboard,
             profile: loadProfile,
             tasks: loadTasks,
+            rooms: renderRoomCards,
             survey: loadSurveys,
             admin: loadAdmin,
           })[id] || (() => {})
@@ -1807,58 +2269,53 @@
 
       async function loadDashboard() {
         const u = me();
-        const [tasks, surveys, anns, settings, responses] = await Promise.all([
+        const [tasks, surveys, anns, settings, responses, users, roomInfo] = await Promise.all([
           list("tasks"),
           list("surveys"),
           list("announcements"),
           list("settings"),
           list("surveyResponses").catch(() => []),
+          list("users"),
+          Promise.all(Object.entries(ROOMS).map(async ([key, label]) => {
+            const rows = await list("rooms_" + key).catch(() => []);
+            const sorted = rows.sort((a, b) => ms(b.createdAtMs || b.createdAt) - ms(a.createdAtMs || a.createdAt));
+            const unread = rows.filter((m) => m.userId !== u.id && ms(m.createdAtMs || m.createdAt) > getRoomReadMs(key, u.id)).length;
+            return { key, label, rows, unread, last: sorted[0] || null };
+          })),
         ]);
-        $("stTask").textContent = tasks.filter(
-          (t) => t.userId === u.id && !t.completed,
-        ).length;
+        staffCache = users;
+        $("stTask").textContent = tasks.filter((t) => t.userId === u.id && !t.completed).length;
         $("stTrain").textContent = 1;
-        $("stSurvey").textContent = surveys.filter(
-          (s) =>
-            canUserSeeSurvey(s, u) &&
-            isSurveyOpen(s) &&
-            !hasUserAnsweredSurvey(s, u, responses),
-        ).length;
+        const visibleSurveys = surveys.filter((s) => canUserSeeSurvey(s, u));
+        $("stSurvey").textContent = visibleSurveys.filter((s) => isSurveyOpen(s) && !hasUserAnsweredSurvey(s, u, responses)).length;
+        $("stRoom").textContent = roomInfo.filter((r) => r.unread > 0).length;
+        setTabAlert("dashboard", anns.some((a) => !isBoardRead(a, u)));
+        setTabAlert("rooms", roomInfo.some((r) => r.unread > 0));
         const b = settings.find((x) => x.type === "banner");
         if (b?.imageUrl) {
-          $("bannerArea").innerHTML =
-            `<img src="${esc(b.imageUrl)}" alt="banner">`;
+          $("bannerArea").innerHTML = `<img src="${esc(b.imageUrl)}" alt="banner">`;
           $("bannerArea").classList.remove("hide");
         } else $("bannerArea").classList.add("hide");
+        buildTodayHome(tasks, surveys, responses, anns, roomInfo, users);
+        renderQuickLinks();
         renderBoard(anns);
+        renderMiniDirectory(users);
       }
       function renderBoard(anns) {
+        const u = me();
         const el = $("boardList");
         if (!anns.length) {
           el.innerHTML = '<div class="empty">掲示板はまだありません</div>';
           return;
         }
         el.innerHTML = anns
-          .sort(
-            (a, b) =>
-              ms(b.createdAtMs || b.createdAt) -
-              ms(a.createdAtMs || a.createdAt),
-          )
+          .sort((a, b) => ms(b.createdAtMs || b.createdAt) - ms(a.createdAtMs || a.createdAt))
           .map((a) => {
             const files = getAnnFiles(a);
-            const badge =
-              a.priority === "urgent"
-                ? "b4"
-                : a.priority === "important"
-                  ? "b3"
-                  : "b1";
-            const label =
-              a.priority === "urgent"
-                ? "緊急"
-                : a.priority === "important"
-                  ? "重要"
-                  : "通常";
-            return `<div class="item" id="board-${a.docId}"><div class="itemTop"><div><div class="title">${esc(a.title)}</div><div class="meta"><span>${esc(a.creatorName || "")}</span><span>${fmt(a.createdAt)}</span><span>${files.length ? files.length + "件添付" : "添付なし"}</span></div></div><span class="badge ${badge}">${label}</span></div><div style="margin-top:10px;white-space:pre-wrap;line-height:1.6">${esc(a.content || "")}</div>${files.length ? `<div class="files">${files.map((f) => `<div class="file"><div><i class="fas ${fileIcon(f.name || "")}"></i> ${esc(f.name || "添付ファイル")}</div><div class="right"><a class="btn out sm" href="${esc(f.url)}" target="_blank"><i class="fas fa-arrow-up-right-from-square"></i> 開く</a></div></div>`).join("")}</div>` : ""}${admin() ? `<div style="margin-top:10px"><button class="btn dan sm" onclick="deleteBoard('${a.docId}')"><i class="fas fa-trash"></i> 削除</button></div>` : ""}</div>`;
+            const badge = a.priority === "urgent" ? "b4" : a.priority === "important" ? "b3" : "b1";
+            const label = a.priority === "urgent" ? "緊急" : a.priority === "important" ? "重要" : "通常";
+            const read = isBoardRead(a, u);
+            return `<div class="item" id="board-${a.docId}"><div class="itemTop"><div><div class="title">${esc(a.title)}</div><div class="meta"><span>${esc(a.creatorName || "")}</span><span>${fmt(a.createdAt)}</span><span>${files.length ? files.length + "件添付" : "添付なし"}</span><span class="readBadge ${read ? "read" : "unread"}">${read ? "既読" : "未読"}</span></div></div><div class="right"><span class="badge ${badge}">${label}</span>${!read ? `<button class="btn out sm" onclick="markBoardRead('${a.docId}')"><i class="fas fa-check"></i> 確認</button>` : ""}</div></div><div style="margin-top:10px;white-space:pre-wrap;line-height:1.6">${esc(a.content || "")}</div>${files.length ? `<div class="files">${files.map((f) => `<div class="file"><div><i class="fas ${fileIcon(f.name || "")}"></i> ${esc(f.name || "添付ファイル")}</div><div class="right"><a class="btn out sm" href="${esc(f.url)}" target="_blank" onclick="markBoardRead('${a.docId}',true)"><i class="fas fa-arrow-up-right-from-square"></i> 開く</a></div></div>`).join("")}</div>` : ""}${admin() ? `<div style="margin-top:10px" class="right"><button class="btn dan sm" onclick="deleteBoard('${a.docId}')"><i class="fas fa-trash"></i> 削除</button></div>` : ""}</div>`;
           })
           .join("");
       }
@@ -1906,13 +2363,15 @@
         toast("削除しました", "ok");
       }
 
-      function loadProfile() {
+      async function loadProfile() {
         const u = me();
         $("pName").value = u.name || "";
         $("pEmail").value = u.email || "";
-        $("pDept").value = u.department || "介護";
+        $("pDept").value = u.department || "2階介護";
         $("pExt").value = u.extension || "";
         $("pBio").value = u.bio || "";
+        staffCache = staffCache.length ? staffCache : await list("users");
+        renderMiniDirectory(staffCache);
       }
       async function saveProfile() {
         const u = me();
@@ -1928,6 +2387,8 @@
           (nu.role === "admin" ? "管理者" : "スタッフ") +
           " / " +
           (nu.department || "未設定");
+        await loadProfile();
+        await renderRoomCards();
         toast("プロフィールを保存しました", "ok");
       }
 
@@ -1977,13 +2438,21 @@
         toast("削除しました", "ok");
       }
 
-      function renderRoomCards() {
+      async function renderRoomCards() {
+        const u = me();
         const el = $("roomCards");
-        el.innerHTML = Object.entries(ROOMS)
-          .map(
-            ([k, v]) =>
-              `<div class="card roomBtn" onclick="openRoom('${k}')"><h3>${esc(v)}</h3><p class="muted" style="margin-top:8px">${k === "office" ? "事務所ルームを追加済みです。" : "部署内の情報共有ができます。"}</p></div>`,
-          )
+        if (!u || !el) return;
+        const rows = await Promise.all(
+          Object.entries(ROOMS).map(async ([k, v]) => {
+            const msgs = await list("rooms_" + k).catch(() => []);
+            const sorted = msgs.sort((a, b) => ms(b.createdAtMs || b.createdAt) - ms(a.createdAtMs || a.createdAt));
+            const unread = msgs.filter((m) => m.userId !== u.id && ms(m.createdAtMs || m.createdAt) > getRoomReadMs(k, u.id)).length;
+            return { key: k, label: v, last: sorted[0] || null, unread };
+          }),
+        );
+        setTabAlert("rooms", rows.some((r) => r.unread > 0));
+        el.innerHTML = rows
+          .map((r) => `<div class="card roomBtn" onclick="openRoom('${r.key}')"><div class="itemTop"><div><h3>${esc(r.label)}</h3><p class="muted" style="margin-top:8px">${r.key === "leaders" ? "役職者向け共有ルーム" : "部署・役割ごとの情報共有ルーム"}</p></div>${r.unread ? `<span class="badge b4">未読 ${r.unread}</span>` : `<span class="badge b2">既読</span>`}</div><div class="roomMeta">${r.last ? `<span class="tiny">最終: ${esc(r.last.userName || "")} / ${fmt(r.last.createdAt)}</span>` : '<span class="tiny">まだ投稿がありません</span>'}</div></div>`)
           .join("");
       }
       async function openRoom(key) {
@@ -1996,12 +2465,14 @@
       async function loadRoomMsgs() {
         if (!activeRoom) return;
         const msgs = (await list("rooms_" + activeRoom)).sort(
-          (a, b) =>
-            ms(a.createdAtMs || a.createdAt) - ms(b.createdAtMs || b.createdAt),
+          (a, b) => ms(a.createdAtMs || a.createdAt) - ms(b.createdAtMs || b.createdAt),
         );
         const el = $("roomMsgs");
+        const lastMs = msgs.length ? ms(msgs[msgs.length - 1].createdAtMs || msgs[msgs.length - 1].createdAt) : Date.now();
+        setRoomReadMs(activeRoom, lastMs);
         if (!msgs.length) {
           el.innerHTML = '<div class="empty">まだメッセージがありません</div>';
+          await renderRoomCards();
           return;
         }
         el.innerHTML = msgs
@@ -2011,6 +2482,7 @@
           )
           .join("");
         el.scrollTop = el.scrollHeight;
+        await renderRoomCards();
       }
       async function sendRoomMsg() {
         const text = $("roomInput").value.trim();
@@ -2024,6 +2496,7 @@
         });
         $("roomInput").value = "";
         await loadRoomMsgs();
+        await loadDashboard();
       }
 
       function clearWatchers() {
@@ -2063,7 +2536,6 @@
             await loadDashboard();
             if ($("dashboard").classList.contains("active")) {
               setTimeout(() => highlightBoard(d.docId), 250);
-              setTabAlert("dashboard", false);
             }
           }
         });
@@ -2074,22 +2546,23 @@
             await Promise.all([loadSurveys(), loadDashboard()]);
             if ($("survey").classList.contains("active")) {
               setTimeout(() => highlightSurvey(d.docId), 250);
-              setTabAlert("survey", false);
             }
           }
         });
-        const roomTargets = admin()
-          ? Object.keys(ROOMS)
-          : [DEPT_ROOM[u.department] || "office", "office"];
-        [...new Set(roomTargets)].forEach((r) =>
-          watchLatest("rooms_" + r, "room_" + r, (d) => {
+        Object.keys(ROOMS).forEach((r) =>
+          watchLatest("rooms_" + r, "room_" + r, async (d) => {
             if (d.userId !== u.id) {
+              setTabAlert("rooms", true);
               browserNotify(
                 ROOMS[r],
-                `${d.userName || ""}: ${String(d.text || "").slice(0, 40)}`,
+                `${d.userName || ""}: ${St
+ring(d.text || "").slice(0, 40)}`,
               );
-              if (activeRoom === r && $("roomModal").classList.contains("show"))
-                loadRoomMsgs();
+              if (activeRoom === r && $("roomModal").classList.contains("show")) {
+                await loadRoomMsgs();
+              } else {
+                await Promise.all([renderRoomCards(), loadDashboard()]);
+              }
             }
           }),
         );
@@ -2119,7 +2592,7 @@
         $("sfId").value = "";
         $("sfName").value = "";
         $("sfEmail").value = "";
-        $("sfDept").value = "介護";
+        $("sfDept").value = "2階介護";
         $("sfRole").value = "staff";
         $("sfExt").value = "";
         $("sfNote").value = "";
@@ -2155,13 +2628,13 @@
         if (id) await upd("users", id, data);
         else await add("users", { ...data, id: "u_" + Date.now() });
         closeModal("staffModal");
-        await Promise.all([loadAdmin(), loadStaffHints()]);
+        await Promise.all([loadAdmin(), loadStaffHints(), loadProfile()]);
         toast("保存しました", "ok");
       }
       async function deleteStaff(id, name) {
         if (!confirm(`「${name}」を削除しますか？`)) return;
         await del("users", id);
-        await Promise.all([loadAdmin(), loadStaffHints()]);
+        await Promise.all([loadAdmin(), loadStaffHints(), loadProfile()]);
         toast("削除しました", "ok");
       }
       function openBannerModal() {
@@ -2284,7 +2757,6 @@
       }
       function getSurveyResponses(s, allResponses = []) {
         const current = (allResponses || [])
-
           .filter((r) => r.surveyId === s.docId)
           .map((r) => ({ ...r, answers: parseJSON(r.answers, {}) }));
         const legacy = parseJSON(s.responses, []).map((r, i) => ({
@@ -2689,23 +3161,16 @@
         ]);
         const visible = surveys
           .filter((s) => canUserSeeSurvey(s, u))
-          .sort(
-            (a, b) =>
-              ms(b.createdAtMs || b.createdAt) -
-              ms(a.createdAtMs || a.createdAt),
-          );
+          .sort((a, b) => ms(b.createdAtMs || b.createdAt) - ms(a.createdAtMs || a.createdAt));
         const openCount = visible.filter(isSurveyOpen).length;
-        const doneCount = visible.filter((s) =>
-          hasUserAnsweredSurvey(s, u, responses),
-        ).length;
-        const todoCount = visible.filter(
-          (s) => isSurveyOpen(s) && !hasUserAnsweredSurvey(s, u, responses),
-        ).length;
+        const doneCount = visible.filter((s) => hasUserAnsweredSurvey(s, u, responses)).length;
+        const todoCount = visible.filter((s) => isSurveyOpen(s) && !hasUserAnsweredSurvey(s, u, responses)).length;
         const mineCount = visible.filter((s) => s.creatorId === u.id).length;
         $("svStatOpen").textContent = openCount;
         $("svStatDone").textContent = doneCount;
         $("svStatTodo").textContent = todoCount;
         $("svStatMine").textContent = mineCount;
+        setTabAlert("survey", visible.some((s) => isSurveyOpen(s) && !isSurveySeen(s, u, responses)));
         const el = $("surveyList");
         if (!visible.length) {
           el.innerHTML = '<div class="empty">アンケートはありません</div>';
@@ -2716,13 +3181,12 @@
             const qs = normalizeQuestions(parseJSON(s.questions, []));
             const rs = getSurveyResponses(s, responses);
             const answered = rs.some((r) => r.userId === u.id);
+            const seen = isSurveySeen(s, u, responses);
             const targetUsers = getTargetUsers(users, s).length || 0;
-            const rate = targetUsers
-              ? Math.round((rs.length / targetUsers) * 100)
-              : 0;
+            const rate = targetUsers ? Math.round((rs.length / targetUsers) * 100) : 0;
             const open = isSurveyOpen(s);
             const owner = surveyOwner(s, u);
-            return `<div class="item" id="survey-${s.docId}"><div class="itemTop"><div><div class="title">${esc(s.title || "")}</div><div class="meta"><span>${esc(s.creatorName || "")}</span><span>${s.targetDept === "all" || !s.targetDept ? "全部署" : esc(s.targetDept)}</span><span>${qs.length}問</span><span>${rs.length}件回答</span><span>回答率 ${rate}%</span>${s.anonymous ? '<span class="badge b2">匿名表示</span>' : '<span class="badge b1">記名</span>'}${open ? '<span class="badge b2">受付中</span>' : '<span class="badge b4">締切</span>'}${answered ? '<span class="badge b2">回答済</span>' : open ? '<span class="badge b3">未回答</span>' : ""}</div></div><div class="right">${!answered && open ? `<button class="btn pri sm" onclick="openSurveyAnswer('${s.docId}')">回答</button>` : ""}<button class="btn out sm" onclick="openSurveyResult('${s.docId}')">集計</button>${owner ? `<button class="btn out sm" onclick="editSurvey('${s.docId}')">編集</button><button class="btn out sm" onclick="duplicateSurvey('${s.docId}')">複製</button><button class="btn ${open ? "warn" : "sec"} sm" onclick="toggleSurveyStatus('${s.docId}','${open ? "closed" : "open"}')">${open ? "締切" : "再開"}</button><button class="btn dan sm" onclick="deleteSurvey('${s.docId}')">削除</button>` : ""}</div></div>${s.desc ? `<div style="margin-top:10px;white-space:pre-wrap;line-height:1.6">${esc(s.desc)}</div>` : ""}${s.dueDate ? `<div class="meta"><span>締切: ${esc(s.dueDate)}</span></div>` : ""}</div>`;
+            return `<div class="item" id="survey-${s.docId}"><div class="itemTop"><div><div class="title">${esc(s.title || "")}</div><div class="meta"><span>${esc(s.creatorName || "")}</span><span>${s.targetDept === "all" || !s.targetDept ? "全部署" : esc(s.targetDept)}</span><span>${qs.length}問</span><span>${rs.length}件回答</span><span>回答率 ${rate}%</span>${s.anonymous ? '<span class="badge b2">匿名表示</span>' : '<span class="badge b1">記名</span>'}${open ? '<span class="badge b2">受付中</span>' : '<span class="badge b4">締切</span>'}${answered ? '<span class="badge b2">回答済</span>' : open ? '<span class="badge b3">未回答</span>' : ''}${!seen && open ? '<span class="badge b4">NEW</span>' : ''}</div></div><div class="right">${!answered && open ? `<button class="btn pri sm" onclick="markSurveySeen('${s.docId}',true);openSurveyAnswer('${s.docId}')">回答</button>` : ""}<button class="btn out sm" onclick="markSurveySeen('${s.docId}',true);openSurveyResult('${s.docId}')">集計</button>${!seen && !answered ? `<button class="btn out sm" onclick="markSurveySeen('${s.docId}',false)">確認</button>` : ''}${owner ? `<button class="btn out sm" onclick="editSurvey('${s.docId}')">編集</button><button class="btn out sm" onclick="duplicateSurvey('${s.docId}')">複製</button><button class="btn ${open ? "warn" : "sec"} sm" onclick="toggleSurveyStatus('${s.docId}','${open ? "closed" : "open"}')">${open ? "締切" : "再開"}</button><button class="btn dan sm" onclick="deleteSurvey('${s.docId}')">削除</button>` : ""}</div></div>${s.desc ? `<div style="margin-top:10px;white-space:pre-wrap;line-height:1.6">${esc(s.desc)}</div>` : ""}${s.dueDate ? `<div class="meta"><span>締切: ${esc(s.dueDate)}</span></div>` : ""}</div>`;
           })
           .join("");
       }
@@ -2818,24 +3282,18 @@
         ]);
         const survey = surveys.find((s) => s.docId === id);
         if (!survey) return;
-        if (!canUserSeeSurvey(survey, u))
-          return toast("このアンケートは対象外です", "error");
-        if (!isSurveyOpen(survey))
-          return toast("このアンケートは締め切られています", "error");
-        if (hasUserAnsweredSurvey(survey, u, responses))
-          return toast("すでに回答済みです", "error");
+        if (!canUserSeeSurvey(survey, u)) return toast("このアンケートは対象外です", "error");
+        if (!isSurveyOpen(survey)) return toast("このアンケートは締め切られています", "error");
+        if (hasUserAnsweredSurvey(survey, u, responses)) return toast("すでに回答済みです", "error");
+        markSurveySeen(id, true);
         activeSurveyId = id;
         activeSurveyData = survey;
         const qs = normalizeQuestions(parseJSON(survey.questions, []));
         const draft = parseJSON(localStorage.getItem(draftKey(id, u.id)), {});
         $("ansTitle").textContent = survey.title || "アンケート回答";
-        $("ansSub").textContent =
-          `${survey.targetDept === "all" || !survey.targetDept ? "全部署" : survey.targetDept} / ${survey.anonymous ? "匿名表示" : "記名"}`;
-        $("ansBody").innerHTML =
-          `${survey.desc ? `<div class="noteBox">${esc(survey.desc)}</div>` : ""}${qs.map((q, i) => `<div class="q"><div style="font-weight:800;margin-bottom:8px">Q${i + 1}. ${esc(q.text)} ${q.required ? '<span class="badge b4">必須</span>' : '<span class="badge b1">任意</span>'}</div>${renderAnswerInput(q, i, draft)}</div>`).join("")}`;
-        $("ansDraftInfo").textContent = Object.keys(draft || {}).length
-          ? "保存済みの下書きを読み込みました"
-          : "";
+        $("ansSub").textContent = `${survey.targetDept === "all" || !survey.targetDept ? "全部署" : survey.targetDept} / ${survey.anonymous ? "匿名表示" : "記名"}`;
+        $("ansBody").innerHTML = `${survey.desc ? `<div class="noteBox">${esc(survey.desc)}</div>` : ""}${qs.map((q, i) => `<div class="q"><div style="font-weight:800;margin-bottom:8px">Q${i + 1}. ${esc(q.text)} ${q.required ? '<span class="badge b4">必須</span>' : '<span class="badge b1">任意</span>'}</div>${renderAnswerInput(q, i, draft)}</div>`).join("")}`;
+        $("ansDraftInfo").textContent = Object.keys(draft || {}).length ? "保存済みの下書きを読み込みました" : "";
         openModal("surveyAnswerModal");
         wireDraftAutosave();
       }
@@ -2948,26 +3406,22 @@
         ]);
         const survey = surveys.find((s) => s.docId === id);
         if (!survey) return;
-        if (!canUserSeeSurvey(survey, u))
-          return toast("このアンケートは対象外です", "error");
+        if (!canUserSeeSurvey(survey, u)) return toast("このアンケートは対象外です", "error");
         if (survey.password && !surveyOwner(survey, u)) {
           const pw = prompt("集計パスワード");
           if (pw === null) return;
-          if (pw !== survey.password)
-            return toast("パスワードが違います", "error");
+          if (pw !== survey.password) return toast("パスワードが違います", "error");
         }
+        markSurveySeen(id, true);
         Object.values(charts).forEach((c) => c.destroy());
         charts = {};
         const qs = normalizeQuestions(parseJSON(survey.questions, []));
         const rs = getSurveyResponses(survey, responses);
         const targetUsers = getTargetUsers(users, survey);
-        const rate = targetUsers.length
-          ? Math.round((rs.length / targetUsers.length) * 100)
-          : 0;
+        const rate = targetUsers.length ? Math.round((rs.length / targetUsers.length) * 100) : 0;
         surveyResultCurrent = { survey, qs, rs, users };
         $("svResultTitle").textContent = `${survey.title || ""} 集計結果`;
-        $("svResultSub").textContent =
-          `${survey.targetDept === "all" || !survey.targetDept ? "全部署" : survey.targetDept} / 回答率 ${rate}% / ${survey.anonymous ? "匿名表示" : "記名"}`;
+        $("svResultSub").textContent = `${survey.targetDept === "all" || !survey.targetDept ? "全部署" : survey.targetDept} / 回答率 ${rate}% / ${survey.anonymous ? "匿名表示" : "記名"}`;
         const numericValues = [];
         qs.forEach((q, i) => {
           if (["rating5", "rating10", "number"].includes(q.type)) {
@@ -2977,95 +3431,45 @@
             });
           }
         });
-        $("svSummary").innerHTML =
-          `<div class="resultStat"><b>${rs.length}</b><div class="tiny">回答人数</div></div><div class="resultStat"><b>${targetUsers.length}</b><div class="tiny">対象人数</div></div><div class="resultStat"><b>${rate}%</b><div class="tiny">回答率</div></div><div class="resultStat"><b>${numericValues.length ? fmtNum(avg(numericValues)) : "-"}</b><div class="tiny">平均点</div></div>`;
-        $("svResult").innerHTML = qs
+        const respondentNames = !survey.anonymous
+          ? rs.map((r) => `<span class="kw">${esc(r.userName || "")}${r.department ? ` / ${esc(r.department)}` : ""}</span>`).join("")
+          : '<span class="tiny">匿名表示のため回答者名は表示しません</span>';
+        const unanswered = targetUsers.filter((u2) => !rs.some((r) => r.userId === u2.id));
+        $("svSummary").innerHTML = `<div class="resultStat"><b>${rs.length}</b><div class="tiny">回答人数</div></div><div class="resultStat"><b>${targetUsers.length}</b><div class="tiny">対象人数</div></div><div class="resultStat"><b>${rate}%</b><div class="tiny">回答率</div></div><div class="resultStat"><b>${numericValues.length ? fmtNum(avg(numericValues)) : "-"}</b><div class="tiny">平均点</div></div><div class="resultStat"><b>${survey.anonymous ? "匿名" : rs.length}</b><div class="tiny">記名回答の確認</div></div>`;
+        $("svResult").innerHTML = `<div class="q"><div style="font-weight:800;margin-bottom:10px">回答状況</div><div class="meta"><span>${survey.anonymous ? "匿名表示" : "記名"}</span><span>回答率 ${rate}%</span></div><div style="margin-top:10px"><div class="tiny" style="margin-bottom:6px">回答者一覧</div>${respondentNames}</div><div style="margin-top:14px"><div class="tiny" style="margin-bottom:6px">未回答者一覧</div>${unanswered.length ? unanswered.map((u2) => `<span class="kw">${esc(u2.name || "")}${u2.department ? ` / ${esc(u2.department)}` : ""}</span>`).join("") : '<span class="tiny">全員回答済みです</span>'}</div></div>` + qs
           .map((q, i) => {
             const key = q.id || `q${i}`;
-            const vals = rs
-              .map((r) => parseJSON(r.answers, {})[key])
-              .filter(
-                (v) =>
-                  !(Array.isArray(v)
-                    ? !v.length
-                    : String(v ?? "").trim() === ""),
-              );
+            const vals = rs.map((r) => parseJSON(r.answers, {})[key]).filter((v) => !(Array.isArray(v) ? !v.length : String(v ?? "").trim() === ""));
             const cid = `chart_${Date.now()}_${i}`;
             let body = "";
             if (["yesno", "single", "dropdown"].includes(q.type)) {
               const count = {};
               q.options.forEach((o) => (count[o] = 0));
               vals.forEach((v) => (count[v] = (count[v] || 0) + 1));
-              body = `<div class="right"><button class="btn out sm" onclick="copyCanvasImage('${cid}')"><i class="fas fa-copy"></i> グラフコピー</button><button class="btn out sm" onclick="downloadCanvasImage('${cid}','${cid}.png')"><i class="fas fa-image"></i> PNG保存</button></div><div class="meta"><span>回答数 ${vals.length}</span></div><div class="chartWrap"><canvas id="${cid}"></canvas></div><div class="meta">${Object.entries(
-                count,
-              )
-                .map(([k, v]) => `<span>${esc(k)}: ${v}</span>`)
-                .join("")}</div>`;
-              setTimeout(
-                () =>
-                  makeChart(
-                    cid,
-                    "pie",
-                    Object.keys(count),
-                    Object.values(count),
-                  ),
-                0,
-              );
+              body = `<div class="right"><button class="btn out sm" onclick="copyCanvasImage('${cid}')"><i class="fas fa-copy"></i> グラフコピー</button><button class="btn out sm" onclick="downloadCanvasImage('${cid}','${cid}.png')"><i class="fas fa-image"></i> PNG保存</button></div><div class="meta"><span>回答数 ${vals.length}</span></div><div class="chartWrap"><canvas id="${cid}"></canvas></div><div class="meta">${Object.entries(count).map(([k, v]) => `<span>${esc(k)}: ${v}</span>`).join("")}</div>`;
+              setTimeout(() => makeChart(cid, "pie", Object.keys(count), Object.values(count)), 0);
             } else if (q.type === "multi") {
               const count = {};
               q.options.forEach((o) => (count[o] = 0));
-              vals.forEach((arr) =>
-                (arr || []).forEach((v) => (count[v] = (count[v] || 0) + 1)),
-              );
+              vals.forEach((arr) => (arr || []).forEach((v) => (count[v] = (count[v] || 0) + 1)));
               body = `<div class="right"><button class="btn out sm" onclick="copyCanvasImage('${cid}')"><i class="fas fa-copy"></i> グラフコピー</button><button class="btn out sm" onclick="downloadCanvasImage('${cid}','${cid}.png')"><i class="fas fa-image"></i> PNG保存</button></div><div class="meta"><span>回答数 ${vals.length}</span></div><div class="chartWrap"><canvas id="${cid}"></canvas></div>`;
-              setTimeout(
-                () =>
-                  makeChart(
-                    cid,
-                    "bar",
-                    Object.keys(count),
-                    Object.values(count),
-                  ),
-                0,
-              );
+              setTimeout(() => makeChart(cid, "bar", Object.keys(count), Object.values(count)), 0);
             } else if (["rating5", "rating10", "number"].includes(q.type)) {
-              const nums = vals
-                .map((v) => Number(v))
-                .filter((v) => Number.isFinite(v));
-              const labels = [...new Set(nums)]
-                .sort((a, b) => a - b)
-                .map(String);
-              const count = labels.map(
-                (lb) => nums.filter((v) => String(v) === lb).length,
-              );
+              const nums = vals.map((v) => Number(v)).filter((v) => Number.isFinite(v));
+              const labels = [...new Set(nums)].sort((a, b) => a - b).map(String);
+              const count = labels.map((lb) => nums.filter((v) => String(v) === lb).length);
               body = `<div class="right"><button class="btn out sm" onclick="copyCanvasImage('${cid}')"><i class="fas fa-copy"></i> グラフコピー</button><button class="btn out sm" onclick="downloadCanvasImage('${cid}','${cid}.png')"><i class="fas fa-image"></i> PNG保存</button></div><div class="row"><div class="resultStat"><b>${nums.length ? fmtNum(avg(nums)) : "-"}</b><div class="tiny">平均</div></div><div class="resultStat"><b>${nums.length ? fmtNum(calcMedian(nums)) : "-"}</b><div class="tiny">中央値</div></div><div class="resultStat"><b>${nums.length ? Math.max(...nums) : "-"}</b><div class="tiny">最高</div></div><div class="resultStat"><b>${nums.length ? Math.min(...nums) : "-"}</b><div class="tiny">最低</div></div></div><div class="chartWrap"><canvas id="${cid}"></canvas></div>`;
               setTimeout(() => makeChart(cid, "bar", labels, count), 0);
             } else if (q.type === "text") {
-              const texts = vals
-                .map((v) => String(v || "").trim())
-                .filter(Boolean);
+              const texts = vals.map((v) => String(v || "").trim()).filter(Boolean);
               const kws = extractKeywords(texts);
               const sum = summarizeComments(texts);
-              body = `<div class="meta"><span>記述件数 ${texts.length}</span></div><div>${Object.entries(
-                sum,
-              )
-                .map(([k, v]) => `<span class="kw">${esc(k)} ${v}</span>`)
-                .join(
-                  "",
-                )}</div><div style="margin-top:8px">${kws.length ? kws.map(([k, v]) => `<span class="kw">${esc(k)} ${v}</span>`).join("") : '<span class="tiny">頻出語なし</span>'}</div><div class="files">${
-                texts.length
-                  ? texts
-                      .slice(0, 12)
-                      .map((t) => `<div class="file">${esc(t)}</div>`)
-                      .join("")
-                  : '<div class="empty">回答なし</div>'
-              }</div>`;
+              body = `<div class="meta"><span>記述件数 ${texts.length}</span></div><div>${Object.entries(sum).map(([k, v]) => `<span class="kw">${esc(k)} ${v}</span>`).join("")}</div><div style="margin-top:8px">${kws.length ? kws.map(([k, v]) => `<span class="kw">${esc(k)} ${v}</span>`).join("") : '<span class="tiny">頻出語なし</span>'}</div><div class="files">${texts.length ? texts.slice(0, 12).map((t) => `<div class="file">${esc(t)}</div>`).join("") : '<div class="empty">回答なし</div>'}</div>`;
             } else {
               body = `<div class="files">${vals.length ? vals.map((v) => `<div class="file">${esc(Array.isArray(v) ? v.join(" / ") : v)}</div>`).join("") : '<div class="empty">回答なし</div>'}</div>`;
             }
             return `<div class="q" id="result_block_${i}"><div class="right" style="justify-content:space-between"><div style="font-weight:800">Q${i + 1}. ${esc(q.text)}</div><button class="btn out sm" onclick="copyElementImage('result_block_${i}')"><i class="fas fa-copy"></i> 設問を画像コピー</button></div>${body}</div>`;
-          })
-          .join("");
+          }).join("");
         openModal("surveyResultModal");
       }
       function downloadSurveyCsv() {
