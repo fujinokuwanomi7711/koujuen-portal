@@ -319,12 +319,18 @@
       .file {
         display: flex;
         justify-content: space-between;
-        align-items: center;
+        align-items: flex-start;
         gap: 8px;
         border: 1px solid var(--line);
         border-radius: 12px;
         padding: 10px;
         background: #f8fbff;
+        flex-wrap: wrap;
+      }
+      .file > div:first-child {
+        min-width: 0;
+        flex: 1 1 220px;
+        overflow-wrap: anywhere;
       }
       .roomBtn {
         cursor: pointer;
@@ -624,12 +630,23 @@
       .linkCard {
         display: flex;
         justify-content: space-between;
-        align-items: center;
+        align-items: flex-start;
         gap: 10px;
         padding: 12px;
         border: 1px solid var(--line);
         border-radius: 14px;
         background: #fff;
+        flex-wrap: wrap;
+      }
+      .linkCard > div:first-child {
+        min-width: 0;
+        flex: 1 1 220px;
+      }
+      .linkCard .tiny {
+        overflow-wrap: anywhere;
+      }
+      .linkCard .right {
+        margin-left: auto;
       }
       .searchResults {
         display: grid;
@@ -715,6 +732,64 @@
         justify-content: space-between;
         width: 100%;
       }
+      .calendarHead {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .calendarGrid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 8px;
+      }
+      .calendarWeek {
+        text-align: center;
+        font-size: 12px;
+        color: var(--mut);
+        font-weight: 800;
+      }
+      .calendarCell {
+        min-height: 110px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #fff;
+        padding: 8px;
+        display: grid;
+        align-content: start;
+        gap: 6px;
+      }
+      .calendarCell.muted {
+        background: #f8fafc;
+        color: #9aa8b6;
+      }
+      .calendarDay {
+        font-weight: 800;
+        font-size: 13px;
+      }
+      .calendarEvent {
+        font-size: 12px;
+        padding: 6px 8px;
+        border-radius: 10px;
+        background: #eef5ff;
+        color: #2458a6;
+        overflow-wrap: anywhere;
+      }
+      .calendarEditorList {
+        display: grid;
+        gap: 8px;
+      }
+      .calendarEditorItem {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        align-items: flex-start;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px;
+        background: #fff;
+      }
       .summaryList {
         display: grid;
         gap: 8px;
@@ -754,6 +829,12 @@
         }
         .scale {
           grid-template-columns: repeat(3, 1fr);
+        }
+        .calendarGrid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .calendarWeek {
+          display: none;
         }
       }
     </style>
@@ -978,6 +1059,16 @@
                 </button>
               </div>
               <div id="quickLinks" class="linkGrid"></div>
+            </div>
+            <div class="card stack">
+              <div class="calendarHead">
+                <div>
+                  <h3>月間施設予定</h3>
+                  <div class="tiny">管理者が更新する月ごとの予定を確認できます</div>
+                </div>
+                <input id="facilityMonthView" class="inp" type="month" style="max-width:180px" />
+              </div>
+              <div id="facilityCalendar" class="stack"></div>
             </div>
             <div class="card stack">
               <div class="cardHd">
@@ -1245,10 +1336,30 @@
                 <button class="btn pri" onclick="openBannerModal()">
                   <i class="fas fa-image"></i> バナー変更</button
                 ><button class="btn warn" onclick="cleanupExpiredData(false)">
-                  <i class="fas fa-broom"></i> 1か月超データ整理
+                  <i class="fas fa-broom"></i> 10日超データ整理
                 </button>
               </div>
               <div id="adminStats" class="muted"></div>
+            </div>
+            <div class="card stack">
+              <div class="calendarHead">
+                <div>
+                  <h3>月間施設予定カレンダー</h3>
+                  <div class="tiny">管理者のみ編集できます</div>
+                </div>
+                <input id="facilityMonthAdmin" class="inp" type="month" style="max-width:180px" />
+              </div>
+              <div class="row">
+                <input id="facilityDate" class="inp grow" type="date" />
+                <input id="facilityText" class="inp grow" placeholder="予定内容" />
+                <button class="btn pri" onclick="addFacilityEvent()"><i class="fas fa-plus"></i> 追加</button>
+              </div>
+              <div id="facilityEventList" class="calendarEditorList"></div>
+              <div class="row">
+                <button class="btn sec" onclick="saveFacilityCalendar()"><i class="fas fa-save"></i> 月予定を保存</button>
+                <button class="btn out" onclick="loadAdmin()"><i class="fas fa-rotate"></i> 読み直し</button>
+              </div>
+              <div id="facilityCalendarAdminPreview" class="stack"></div>
             </div>
           </div>
         </section>
@@ -1586,6 +1697,10 @@
       let surveyDraftTimer = null;
       let swReg = null;
       let deferredPrompt = null;
+      let facilityCalendarDocId = "";
+      let facilityCalendarItems = [];
+      const DATA_RETENTION_DAYS = 10;
+      const ROOM_VISIBLE_LIMIT = 100;
 
       const $ = (id) => document.getElementById(id);
       const esc = (s) =>
@@ -1747,17 +1862,35 @@
         renderQuickLinks();
         toast("サンプルのマイリンクを入れました。必要に応じて編集してください", "ok");
       }
+      function openInternalTarget(target, payload = "") {
+        const tabMap = {
+          dashboard: '.tab[data-id="dashboard"]',
+          survey: '.tab[data-id="survey"]',
+          rooms: '.tab[data-id="rooms"]',
+          profile: '.tab[data-id="profile"]',
+        };
+        const btn = document.querySelector(tabMap[target] || tabMap.dashboard);
+        if (target === "directory") {
+          showTab("profile", btn || document.querySelector(tabMap.profile));
+          setTimeout(() => {
+            if ($("directoryKeyword")) $("directoryKeyword").value = payload || "";
+            renderMiniDirectory();
+          }, 160);
+          return;
+        }
+        showTab(target, btn);
+      }
       function renderQuickLinks() {
         const el = $("quickLinks");
         if (!el) return;
         const internal = [
-          { label: "掲示板", icon: "bullhorn", action: "showTab('dashboard',document.querySelector('.tab[data-id=\"dashboard\"]'))" },
-          { label: "未回答アンケート", icon: "poll", action: "showTab('survey',document.querySelector('.tab[data-id=\"survey\"]'))" },
-          { label: "チャットルーム", icon: "comments", action: "showTab('rooms',document.querySelector('.tab[data-id=\"rooms\"]'))" },
-          { label: "職員名簿", icon: "address-book", action: "showTab('profile',document.querySelector('.tab[data-id=\"profile\"]'))" },
+          { label: "掲示板", icon: "bullhorn", target: "dashboard" },
+          { label: "未回答アンケート", icon: "poll", target: "survey" },
+          { label: "チャットルーム", icon: "comments", target: "rooms" },
+          { label: "職員名簿", icon: "address-book", target: "directory" },
         ];
         const mine = getMyLinks();
-        el.innerHTML = `${internal.map((x) => `<div class="linkCard"><div><div class="title">${esc(x.label)}</div><div class="tiny">内部ショートカット</div></div><button class="btn out sm" onclick="${x.action}"><i class="fas fa-${x.icon}"></i> 開く</button></div>`).join("")}${mine.map((x, i) => `<div class="linkCard"><div><div class="title">${esc(x.label || "")}</div><div class="tiny">${esc(x.url || "")}</div></div><div class="right"><a class="btn out sm" href="${esc(x.url || "#")}" target="_blank"><i class="fas fa-arrow-up-right-from-square"></i> 開く</a><button class="btn out sm" onclick="editMyLink(${i})"><i class="fas fa-pen"></i></button><button class="btn dan sm" onclick="removeMyLink(${i})"><i class="fas fa-trash"></i></button></div></div>`).join("")}`;
+        el.innerHTML = `${internal.map((x) => `<div class="linkCard"><div><div class="title">${esc(x.label)}</div><div class="tiny">内部ショートカット</div></div><div class="right"><button class="btn out sm" onclick="openInternalTarget('${x.target}')"><i class="fas fa-${x.icon}"></i> 開く</button></div></div>`).join("")}${mine.map((x, i) => `<div class="linkCard"><div><div class="title">${esc(x.label || "")}</div><div class="tiny">${esc(x.url || "")}</div></div><div class="right"><a class="btn out sm" href="${esc(x.url || "#")}" target="_blank"><i class="fas fa-arrow-up-right-from-square"></i> 開く</a><button class="btn out sm" onclick="editMyLink(${i})"><i class="fas fa-pen"></i></button><button class="btn dan sm" onclick="removeMyLink(${i})"><i class="fas fa-trash"></i></button></div></div>`).join("")}`;
       }
       function renderMiniDirectory(users = staffCache) {
         const listData = Array.isArray(users) && users.length ? users : staffCache;
@@ -1766,7 +1899,7 @@
         const filtered = (listData || []).filter((u) => {
           if (dept !== "all" && (u.department || "") !== dept) return false;
           if (!q) return true;
-          return [u.name, u.department, u.email, u.extension, u.note, u.role]
+          return [u.name, u.department, u.extension, u.note, u.role]
             .join(" ")
             .toLowerCase()
             .includes(q);
@@ -1776,9 +1909,95 @@
         $("miniDirectoryList").innerHTML = filtered.length
           ? filtered
               .sort((a, b) => String(a.department || "").localeCompare(String(b.department || "")) || String(a.name || "").localeCompare(String(b.name || ""), "ja"))
-              .map((u) => `<div class="personCard"><div class="itemTop"><div><div class="title">${esc(u.name || "")}</div><div class="meta"><span>${esc(u.department || "")}</span><span>${u.role === "admin" ? "管理者" : "スタッフ"}</span>${u.extension ? `<span>内線 ${esc(u.extension)}</span>` : ""}</div></div><a class="btn out sm" href="mailto:${esc(u.email || "")}"><i class="fas fa-envelope"></i> メール</a></div>${u.note ? `<div style="margin-top:8px" class="tiny">${esc(u.note)}</div>` : ""}</div>`)
+              .map((u) => `<div class="personCard"><div class="itemTop"><div><div class="title">${esc(u.name || "")}</div><div class="meta"><span>${esc(u.department || "")}</span><span>${u.role === "admin" ? "管理者" : "スタッフ"}</span>${u.extension ? `<span>内線 ${esc(u.extension)}</span>` : ""}</div></div></div>${u.note ? `<div style="margin-top:8px" class="tiny">${esc(u.note)}</div>` : ""}</div>`)
               .join("")
           : '<div class="empty">該当する職員がいません</div>';
+      }
+      function monthStr(date = new Date()) {
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      }
+      function parseMonthInfo(month) {
+        const [y, m] = String(month || monthStr()).split("-").map(Number);
+        return { y, m, first: new Date(y, m - 1, 1), lastDate: new Date(y, m, 0).getDate() };
+      }
+      function normalizeFacilityItems(items = [], month = monthStr()) {
+        return (items || [])
+          .filter((x) => x && x.date && x.text)
+          .filter((x) => String(x.date).startsWith(month))
+          .sort((a, b) => String(a.date).localeCompare(String(b.date), "ja"));
+      }
+      function renderFacilityCalendarGrid(targetId, month, items = []) {
+        const el = $(targetId);
+        if (!el) return;
+        const { y, m, first, lastDate } = parseMonthInfo(month);
+        const weekLabels = ["日", "月", "火", "水", "木", "金", "土"];
+        const byDate = new Map();
+        normalizeFacilityItems(items, month).forEach((x) => {
+          const key = String(x.date);
+          if (!byDate.has(key)) byDate.set(key, []);
+          byDate.get(key).push(x.text);
+        });
+        const blanks = first.getDay();
+        const cells = [];
+        for (let i = 0; i < blanks; i++) cells.push('<div class="calendarCell muted"></div>');
+        for (let d = 1; d <= lastDate; d++) {
+          const date = `${month}-${String(d).padStart(2, "0")}`;
+          const entries = byDate.get(date) || [];
+          cells.push(`<div class="calendarCell"><div class="calendarDay">${m}/${d}</div>${entries.length ? entries.map((t) => `<div class="calendarEvent">${esc(t)}</div>`).join("") : '<div class="tiny">予定なし</div>'}</div>`);
+        }
+        el.innerHTML = `<div class="calendarGrid">${weekLabels.map((w) => `<div class="calendarWeek">${w}</div>`).join("")}${cells.join("")}</div>`;
+      }
+      function renderFacilityEventEditor() {
+        const el = $("facilityEventList");
+        if (!el) return;
+        const month = $("facilityMonthAdmin")?.value || monthStr();
+        const items = normalizeFacilityItems(facilityCalendarItems, month);
+        el.innerHTML = items.length
+          ? items.map((x, i) => `<div class="calendarEditorItem"><div><div class="title">${esc(x.date)}</div><div class="tiny">${esc(x.text)}</div></div><button class="btn dan sm" onclick="removeFacilityEvent(${i})"><i class="fas fa-trash"></i> 削除</button></div>`).join("")
+          : '<div class="empty">この月の予定はまだありません</div>';
+        renderFacilityCalendarGrid("facilityCalendarAdminPreview", month, items);
+      }
+      async function loadFacilityCalendar(settings = null) {
+        const month = $("facilityMonthView")?.value || monthStr();
+        const all = settings || await list("settings");
+        const row = all.find((x) => x.type === "facilityCalendar" && x.month === month);
+        renderFacilityCalendarGrid("facilityCalendar", month, parseJSON(row?.items, []));
+      }
+      async function loadFacilityCalendarAdmin(settings = null) {
+        if (!admin()) return;
+        const month = $("facilityMonthAdmin")?.value || monthStr();
+        const all = settings || await list("settings");
+        const row = all.find((x) => x.type === "facilityCalendar" && x.month === month);
+        facilityCalendarDocId = row?.docId || "";
+        facilityCalendarItems = normalizeFacilityItems(parseJSON(row?.items, []), month);
+        if ($("facilityDate")) $("facilityDate").value = `${month}-01`;
+        if ($("facilityText")) $("facilityText").value = "";
+        renderFacilityEventEditor();
+      }
+      function addFacilityEvent() {
+        if (!admin()) return;
+        const month = $("facilityMonthAdmin")?.value || monthStr();
+        const date = $("facilityDate")?.value;
+        const text = $("facilityText")?.value.trim();
+        if (!date || !text) return toast("日付と予定内容を入力してください", "error");
+        if (!String(date).startsWith(month)) return toast("選択中の月と同じ日付を指定してください", "error");
+        facilityCalendarItems.push({ date, text });
+        facilityCalendarItems = normalizeFacilityItems(facilityCalendarItems, month);
+        $("facilityText").value = "";
+        renderFacilityEventEditor();
+      }
+      function removeFacilityEvent(index) {
+        facilityCalendarItems.splice(index, 1);
+        renderFacilityEventEditor();
+      }
+      async function saveFacilityCalendar() {
+        if (!admin()) return;
+        const month = $("facilityMonthAdmin")?.value || monthStr();
+        const payload = { type: "facilityCalendar", month, items: facilityCalendarItems };
+        if (facilityCalendarDocId) await upd("settings", facilityCalendarDocId, payload);
+        else facilityCalendarDocId = await add("settings", payload);
+        toast("月間施設予定を保存しました", "ok");
+        await Promise.all([loadAdmin(), loadDashboard()]);
       }
       async function runGlobalSearch(forceWord = "") {
         const input = $("globalSearch");
@@ -1811,7 +2030,7 @@
         const blocks = [];
         boardHits.forEach((a) => blocks.push(`<div class="searchHit"><div class="itemTop"><div><div class="title">掲示板: ${esc(a.title || "")}</div><div class="tiny">${esc(a.creatorName || "")} / ${fmt(a.createdAt)}</div></div><button class="btn out sm" onclick="showTab('dashboard',document.querySelector('.tab[data-id=\"dashboard\"]'));setTimeout(()=>highlightBoard('${a.docId}'),180)"><i class="fas fa-arrow-right"></i> 開く</button></div></div>`));
         surveyHits.forEach((s) => blocks.push(`<div class="searchHit"><div class="itemTop"><div><div class="title">アンケート: ${esc(s.title || "")}</div><div class="tiny">${esc(s.targetDept || "全部署")} / ${esc(s.creatorName || "")}</div></div><button class="btn out sm" onclick="showTab('survey',document.querySelector('.tab[data-id=\"survey\"]'));setTimeout(()=>highlightSurvey('${s.docId}'),180)"><i class="fas fa-arrow-right"></i> 開く</button></div></div>`));
-        peopleHits.forEach((x) => blocks.push(`<div class="searchHit"><div class="itemTop"><div><div class="title">職員: ${esc(x.name || "")}</div><div class="tiny">${esc(x.department || "")} ${x.extension ? '/ 内線 ' + esc(x.extension) : ''}</div></div><button class="btn out sm" onclick="showTab('profile',document.querySelector('.tab[data-id=\"profile\"]'));setTimeout(()=>{if($('directoryKeyword')){$('directoryKeyword').value='${esc(x.name || "")}';renderMiniDirectory();}},180)"><i class="fas fa-address-book"></i> 名簿で見る</button></div></div>`));
+        peopleHits.forEach((x) => blocks.push(`<div class="searchHit"><div class="itemTop"><div><div class="title">職員: ${esc(x.name || "")}</div><div class="tiny">${esc(x.department || "")} ${x.extension ? '/ 内線 ' + esc(x.extension) : ''}</div></div><button class="btn out sm" onclick="openInternalTarget('directory','${esc(x.name || "")}')"><i class="fas fa-address-book"></i> 名簿で見る</button></div></div>`));
         roomHits.forEach(([key, label]) => blocks.push(`<div class="searchHit"><div class="itemTop"><div><div class="title">ルーム: ${esc(label)}</div><div class="tiny">チャットルーム</div></div><button class="btn out sm" onclick="showTab('rooms',document.querySelector('.tab[data-id=\"rooms\"]'));setTimeout(()=>openRoom('${key}'),180)"><i class="fas fa-comments"></i> 開く</button></div></div>`));
         $("searchResult").innerHTML = blocks.length ? blocks.join("") : '<div class="empty">一致する結果がありません</div>';
       }
@@ -1835,6 +2054,15 @@
         } catch (e) {
           const s = await db.collection(col).get();
           return s.docs.map((d) => ({ docId: d.id, ...d.data() }));
+        }
+      }
+      async function listLatest(col, limit = ROOM_VISIBLE_LIMIT) {
+        try {
+          const s = await db.collection(col).orderBy("createdAt", "desc").limit(limit).get();
+          return s.docs.map((d) => ({ docId: d.id, ...d.data() }));
+        } catch (e) {
+          const s = await db.collection(col).get();
+          return s.docs.map((d) => ({ docId: d.id, ...d.data() })).sort((a, b) => ms(b.createdAtMs || b.createdAt) - ms(a.createdAtMs || a.createdAt)).slice(0, limit);
         }
       }
       async function add(col, data) {
@@ -2216,6 +2444,8 @@
           (u.department || "未設定");
         $("adminTab").classList.toggle("hide", !admin());
         $("addBoardBtn").classList.toggle("hide", !admin());
+        if ($("facilityMonthView") && !$("facilityMonthView").value) $("facilityMonthView").value = monthStr();
+        if ($("facilityMonthAdmin") && !$("facilityMonthAdmin").value) $("facilityMonthAdmin").value = monthStr();
         setNotifyBtn(
           localStorage.getItem("ku_notify_enabled") === "1" ? "on" : "default",
         );
@@ -2239,6 +2469,12 @@
         }
         if ($("globalSearch")) {
           $("globalSearch").addEventListener("keypress", (e) => e.key === "Enter" && runGlobalSearch());
+        }
+        if ($("facilityMonthView")) {
+          $("facilityMonthView").addEventListener("change", () => loadDashboard());
+        }
+        if ($("facilityMonthAdmin")) {
+          $("facilityMonthAdmin").addEventListener("change", () => loadAdmin());
         }
         setupRealtimeWatch();
         cleanupExpiredData(true);
@@ -2277,7 +2513,7 @@
           list("surveyResponses").catch(() => []),
           list("users"),
           Promise.all(Object.entries(ROOMS).map(async ([key, label]) => {
-            const rows = await list("rooms_" + key).catch(() => []);
+            const rows = await listLatest("rooms_" + key, ROOM_VISIBLE_LIMIT).catch(() => []);
             const sorted = rows.sort((a, b) => ms(b.createdAtMs || b.createdAt) - ms(a.createdAtMs || a.createdAt));
             const unread = rows.filter((m) => m.userId !== u.id && ms(m.createdAtMs || m.createdAt) > getRoomReadMs(key, u.id)).length;
             return { key, label, rows, unread, last: sorted[0] || null };
@@ -2300,6 +2536,7 @@
         renderQuickLinks();
         renderBoard(anns);
         renderMiniDirectory(users);
+        await loadFacilityCalendar(settings);
       }
       function renderBoard(anns) {
         const u = me();
@@ -2444,7 +2681,7 @@
         if (!u || !el) return;
         const rows = await Promise.all(
           Object.entries(ROOMS).map(async ([k, v]) => {
-            const msgs = await list("rooms_" + k).catch(() => []);
+            const msgs = await listLatest("rooms_" + k, ROOM_VISIBLE_LIMIT).catch(() => []);
             const sorted = msgs.sort((a, b) => ms(b.createdAtMs || b.createdAt) - ms(a.createdAtMs || a.createdAt));
             const unread = msgs.filter((m) => m.userId !== u.id && ms(m.createdAtMs || m.createdAt) > getRoomReadMs(k, u.id)).length;
             return { key: k, label: v, last: sorted[0] || null, unread };
@@ -2464,7 +2701,7 @@
       }
       async function loadRoomMsgs() {
         if (!activeRoom) return;
-        const msgs = (await list("rooms_" + activeRoom)).sort(
+        const msgs = (await listLatest("rooms_" + activeRoom, ROOM_VISIBLE_LIMIT)).sort(
           (a, b) => ms(a.createdAtMs || a.createdAt) - ms(b.createdAtMs || b.createdAt),
         );
         const el = $("roomMsgs");
@@ -2569,6 +2806,7 @@
 
       async function loadAdmin() {
         if (!admin()) return;
+        if ($("facilityMonthAdmin") && !$("facilityMonthAdmin").value) $("facilityMonthAdmin").value = monthStr();
         const [users, tasks, surveys, anns, settings] = await Promise.all([
           list("users"),
           list("tasks"),
@@ -2585,6 +2823,7 @@
         $("bannerStatus").innerHTML = b?.imageUrl
           ? `<span class="badge b2">設定済み</span> ${esc(b.fileName || "")}`
           : "未設定";
+        await loadFacilityCalendarAdmin(settings);
       }
       function openStaffModal() {
         $("staffModalTitle").textContent = "スタッフ追加";
@@ -2675,7 +2914,7 @@
       }
       async function cleanupExpiredData(silent = true) {
         try {
-          const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+          const cutoff = Date.now() - DATA_RETENTION_DAYS * 24 * 60 * 60 * 1000;
           let removed = 0;
           const anns = await list("announcements");
           for (const a of anns.filter(
@@ -2700,7 +2939,7 @@
           }
           if (!silent && removed)
             toast(
-              `1か月超の掲示板・チャット ${removed} 件を整理しました`,
+              `${DATA_RETENTION_DAYS}日超の掲示板・チャット ${removed} 件を整理しました`,
               "ok",
             );
           if (admin()) loadAdmin();
