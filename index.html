@@ -732,6 +732,23 @@
         justify-content: space-between;
         width: 100%;
       }
+      .adminSubnav {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+      }
+      .adminSubtab.active {
+        background: var(--pri);
+        color: #fff;
+        border-color: var(--pri);
+      }
+      .adminPane {
+        display: none;
+      }
+      .adminPane.active {
+        display: block;
+      }
       .calendarHead {
         display: flex;
         justify-content: space-between;
@@ -1313,7 +1330,12 @@
         </section>
 
         <section id="admin" class="screen">
-          <div class="grid">
+          <div class="adminSubnav">
+            <button class="btn out adminSubtab active" data-pane="staff" onclick="showAdminPane('staff', this)"><i class="fas fa-users"></i> スタッフ</button>
+            <button class="btn out adminSubtab" data-pane="calendar" onclick="showAdminPane('calendar', this)"><i class="fas fa-calendar-days"></i> 月間予定</button>
+            <button class="btn out adminSubtab" data-pane="other" onclick="showAdminPane('other', this)"><i class="fas fa-sliders"></i> その他管理</button>
+          </div>
+          <div id="adminPaneStaff" class="adminPane active">
             <div class="card">
               <div class="cardHd">
                 <div>
@@ -1326,21 +1348,8 @@
               </div>
               <div id="staffList"></div>
             </div>
-            <div class="card stack">
-              <div>
-                <h3>システム設定</h3>
-                <div class="tiny">バナーと統計</div>
-              </div>
-              <div id="bannerStatus" class="muted">未設定</div>
-              <div class="row">
-                <button class="btn pri" onclick="openBannerModal()">
-                  <i class="fas fa-image"></i> バナー変更</button
-                ><button class="btn warn" onclick="cleanupExpiredData(false)">
-                  <i class="fas fa-broom"></i> 10日超データ整理
-                </button>
-              </div>
-              <div id="adminStats" class="muted"></div>
-            </div>
+          </div>
+          <div id="adminPaneCalendar" class="adminPane">
             <div class="card stack">
               <div class="calendarHead">
                 <div>
@@ -1360,6 +1369,23 @@
                 <button class="btn out" onclick="loadAdmin()"><i class="fas fa-rotate"></i> 読み直し</button>
               </div>
               <div id="facilityCalendarAdminPreview" class="stack"></div>
+            </div>
+          </div>
+          <div id="adminPaneOther" class="adminPane">
+            <div class="card stack">
+              <div>
+                <h3>システム設定</h3>
+                <div class="tiny">バナーと統計</div>
+              </div>
+              <div id="bannerStatus" class="muted">未設定</div>
+              <div class="row">
+                <button class="btn pri" onclick="openBannerModal()">
+                  <i class="fas fa-image"></i> バナー変更</button
+                ><button class="btn warn" onclick="cleanupExpiredData(false)">
+                  <i class="fas fa-broom"></i> 10日超データ整理
+                </button>
+              </div>
+              <div id="adminStats" class="muted"></div>
             </div>
           </div>
         </section>
@@ -2482,6 +2508,19 @@
         await autoRestorePushToken();
         handleDeepLink();
       }
+      function showAdminPane(pane, btn = null) {
+        document.querySelectorAll('.adminPane').forEach((p) => p.classList.remove('active'));
+        document.querySelectorAll('.adminSubtab').forEach((b) => b.classList.remove('active'));
+        const paneMap = {
+          staff: 'adminPaneStaff',
+          calendar: 'adminPaneCalendar',
+          other: 'adminPaneOther',
+        };
+        const el = $(paneMap[pane] || paneMap.staff);
+        if (el) el.classList.add('active');
+        const activeBtn = btn || document.querySelector(`.adminSubtab[data-pane="${pane}"]`);
+        if (activeBtn) activeBtn.classList.add('active');
+      }
       function showTab(id, btn) {
         document
           .querySelectorAll(".tab")
@@ -2501,6 +2540,7 @@
             admin: loadAdmin,
           })[id] || (() => {})
         )();
+        if (id === 'admin') showAdminPane('staff');
       }
 
       async function loadDashboard() {
@@ -2807,23 +2847,37 @@
       async function loadAdmin() {
         if (!admin()) return;
         if ($("facilityMonthAdmin") && !$("facilityMonthAdmin").value) $("facilityMonthAdmin").value = monthStr();
-        const [users, tasks, surveys, anns, settings] = await Promise.all([
-          list("users"),
-          list("tasks"),
-          list("surveys"),
-          list("announcements"),
-          list("settings"),
-        ]);
+        let users = [];
+        try {
+          users = await list("users");
+        } catch (e) {
+          console.error(e);
+          $("staffList").innerHTML = '<div class="noteBox">スタッフ一覧の読込に失敗しました。権限設定または通信状態をご確認ください。</div>';
+          return;
+        }
+        staffCache = users;
         $("staffList").innerHTML = !users.length
           ? '<div class="empty">スタッフがいません</div>'
           : `<table class="table"><thead><tr><th>氏名</th><th>メール</th><th>部署</th><th>権限</th><th></th></tr></thead><tbody>${users.map((u) => `<tr><td>${esc(u.name || "")}</td><td>${esc(u.email || "")}</td><td>${esc(u.department || "")}</td><td>${u.role === "admin" ? "管理者" : "スタッフ"}</td><td><div class="right"><button class="btn out sm" onclick="editStaff('${u.docId}')">編集</button><button class="btn dan sm" onclick="deleteStaff('${u.docId}','${esc(u.name || "")}')">削除</button></div></td></tr>`).join("")}</tbody></table>`;
+        const [tasks, surveys, anns, settings] = await Promise.all([
+          list("tasks").catch(() => []),
+          list("surveys").catch(() => []),
+          list("announcements").catch(() => []),
+          list("settings").catch(() => []),
+        ]);
         $("adminStats").innerHTML =
           `登録スタッフ: <b>${users.length}</b> 名<br>タスク: <b>${tasks.length}</b> 件<br>アンケート: <b>${surveys.length}</b> 件<br>掲示板: <b>${anns.length}</b> 件`;
         const b = settings.find((x) => x.type === "banner");
         $("bannerStatus").innerHTML = b?.imageUrl
           ? `<span class="badge b2">設定済み</span> ${esc(b.fileName || "")}`
           : "未設定";
-        await loadFacilityCalendarAdmin(settings);
+        try {
+          await loadFacilityCalendarAdmin(settings);
+        } catch (e) {
+          console.error(e);
+          const box = $("facilityEventList");
+          if (box) box.innerHTML = '<div class="noteBox">月間施設予定の読込でエラーがありましたが、スタッフ管理は利用できます。</div>';
+        }
       }
       function openStaffModal() {
         $("staffModalTitle").textContent = "スタッフ追加";
@@ -2837,17 +2891,23 @@
         openModal("staffModal");
       }
       async function editStaff(id) {
-        const u = (await list("users")).find((x) => x.docId === id);
-        if (!u) return;
-        $("staffModalTitle").textContent = "スタッフ編集";
-        $("sfId").value = id;
-        $("sfName").value = u.name || "";
-        $("sfEmail").value = u.email || "";
-        $("sfDept").value = u.department || "介護";
-        $("sfRole").value = u.role || "staff";
-        $("sfExt").value = u.extension || "";
-        $("sfNote").value = u.note || "";
-        openModal("staffModal");
+        try {
+          const users = staffCache.length ? staffCache : await list("users");
+          const u = users.find((x) => x.docId === id);
+          if (!u) return toast("スタッフ情報を読み込めませんでした", "error");
+          $("staffModalTitle").textContent = "スタッフ編集";
+          $("sfId").value = id;
+          $("sfName").value = u.name || "";
+          $("sfEmail").value = u.email || "";
+          $("sfDept").value = u.department || "介護";
+          $("sfRole").value = u.role || "staff";
+          $("sfExt").value = u.extension || "";
+          $("sfNote").value = u.note || "";
+          openModal("staffModal");
+        } catch (e) {
+          console.error(e);
+          toast("スタッフ編集画面を開けませんでした", "error");
+        }
       }
       async function saveStaff() {
         const id = $("sfId").value;
@@ -3776,6 +3836,6 @@
       );
       window.addEventListener("load", boot);
     </script>
-  <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 </body>
 </html>
