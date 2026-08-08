@@ -1342,7 +1342,7 @@
                   <h3>スタッフ管理</h3>
                   <div class="tiny">ログインは 名前 + メールアドレス</div>
                 </div>
-                <button class="btn pri sm" onclick="openStaffModal()">
+                <button id="addStaffBtn" class="btn pri sm" onclick="openStaffModal()">
                   <i class="fas fa-user-plus"></i> 追加
                 </button>
               </div>
@@ -1354,7 +1354,7 @@
               <div class="calendarHead">
                 <div>
                   <h3>月間施設予定カレンダー</h3>
-                  <div class="tiny">管理者のみ編集できます</div>
+                  <div id="facilityEditorHint" class="tiny">管理者と共有権限者が編集できます</div>
                 </div>
                 <input id="facilityMonthAdmin" class="inp" type="month" style="max-width:180px" />
               </div>
@@ -1397,6 +1397,7 @@
           <h3>掲示板投稿</h3>
           <button class="close" onclick="closeModal('boardModal')">×</button>
         </div>
+        <div id="boardModalHint" class="tiny">タイトル・本文・優先度・URLは自動で下書き保存されます</div>
         <input id="bTitle" class="inp" placeholder="タイトル" />
         <textarea id="bBody" placeholder="本文"></textarea>
         <select id="bPri">
@@ -1410,9 +1411,15 @@
           ><input id="bFiles" class="inp" type="file" multiple />
         </div>
         <input id="bUrl" class="inp" placeholder="外部共有URL（任意）" />
-        <button class="btn pri" onclick="createBoard()">
-          <i class="fas fa-paper-plane"></i> 投稿する
-        </button>
+        <div id="boardDraftInfo" class="tiny"></div>
+        <div class="row">
+          <button class="btn out" type="button" onclick="clearBoardDraft(true)">
+            <i class="fas fa-eraser"></i> 下書き消去
+          </button>
+          <button class="btn pri" onclick="createBoard()">
+            <i class="fas fa-paper-plane"></i> 投稿する
+          </button>
+        </div>
       </div>
     </div>
 
@@ -1463,6 +1470,7 @@
             <option>所長</option></select
           ><select id="sfRole" class="grow">
             <option value="staff">スタッフ</option>
+            <option value="sharedEditor">共有権限者</option>
             <option value="admin">管理者</option>
           </select>
         </div>
@@ -1721,6 +1729,7 @@
       let editingSurveyId = "";
       let surveyResultCurrent = null;
       let surveyDraftTimer = null;
+      let boardDraftTimer = null;
       let swReg = null;
       let deferredPrompt = null;
       let facilityCalendarDocId = "";
@@ -1744,6 +1753,12 @@
       const me = () => JSON.parse(localStorage.getItem("ku_user") || "null");
       const saveMe = (u) => localStorage.setItem("ku_user", JSON.stringify(u));
       const admin = () => me()?.role === "admin";
+      const sharedEditor = () => me()?.role === "sharedEditor";
+      const canAccessAdminTab = () => admin() || sharedEditor();
+      const canPostBoard = () => admin() || sharedEditor();
+      const canEditFacilityCalendar = () => admin() || sharedEditor();
+      const roleLabel = (role) =>
+        role === "admin" ? "管理者" : role === "sharedEditor" ? "共有権限者" : "スタッフ";
       const uid = (p = "id") =>
         `${p}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       const parseJSON = (v, d = []) => {
@@ -1804,6 +1819,8 @@
       const fmtNum = (n) => (Number.isFinite(n) ? Number(n).toFixed(1) : "-");
       const draftKey = (surveyId, userId) =>
         `surveyDraft_${surveyId}_${userId}`;
+      const boardDraftKey = (userId = me()?.id || "guest") =>
+        `ku_board_draft_${userId}`;
       const boardReadKey = (boardId, userId = me()?.id || "guest") =>
         `ku_board_read_${userId}_${boardId}`;
       const surveySeenKey = (surveyId, userId = me()?.id || "guest") =>
@@ -1839,6 +1856,35 @@
       }
       function setRoomReadMs(roomId, value = Date.now(), userId = me()?.id || "guest") {
         localStorage.setItem(roomReadKey(roomId, userId), String(value || Date.now()));
+      }
+      function canDeleteRoomMessage(msg, user = me()) {
+        return !!user && !!msg && (admin() || msg.userId === user.id);
+      }
+      function syncPermissionUI() {
+        const u = me();
+        if ($("meRole") && u) {
+          $("meRole").textContent = `${roleLabel(u.role)} / ${u.department || "未設定"}`;
+        }
+        if ($("adminTab")) {
+          $("adminTab").classList.toggle("hide", !canAccessAdminTab());
+          $("adminTab").innerHTML = `<i class="fas fa-user-shield"></i> ${sharedEditor() && !admin() ? "共有管理" : "管理者"}`;
+        }
+        if ($("addBoardBtn")) $("addBoardBtn").classList.toggle("hide", !canPostBoard());
+        const staffBtn = document.querySelector('.adminSubtab[data-pane="staff"]');
+        const otherBtn = document.querySelector('.adminSubtab[data-pane="other"]');
+        if (staffBtn) staffBtn.classList.toggle("hide", !admin());
+        if (otherBtn) otherBtn.classList.toggle("hide", !admin());
+        if ($("addStaffBtn")) $("addStaffBtn").classList.toggle("hide", !admin());
+        if ($("facilityEditorHint")) {
+          $("facilityEditorHint").textContent = admin()
+            ? "管理者と共有権限者が編集できます"
+            : "共有権限者として月間予定の追加・保存ができます";
+        }
+        if ($("boardModalHint")) {
+          $("boardModalHint").textContent = canPostBoard()
+            ? "タイトル・本文・優先度・URLは自動で下書き保存されます"
+            : "このアカウントでは掲示板投稿はできません";
+        }
       }
       function getMyLinks() {
         return parseJSON(localStorage.getItem(myLinksKey()), []);
@@ -1935,7 +1981,7 @@
         $("miniDirectoryList").innerHTML = filtered.length
           ? filtered
               .sort((a, b) => String(a.department || "").localeCompare(String(b.department || "")) || String(a.name || "").localeCompare(String(b.name || ""), "ja"))
-              .map((u) => `<div class="personCard"><div class="itemTop"><div><div class="title">${esc(u.name || "")}</div><div class="meta"><span>${esc(u.department || "")}</span><span>${u.role === "admin" ? "管理者" : "スタッフ"}</span>${u.extension ? `<span>内線 ${esc(u.extension)}</span>` : ""}</div></div></div>${u.note ? `<div style="margin-top:8px" class="tiny">${esc(u.note)}</div>` : ""}</div>`)
+              .map((u) => `<div class="personCard"><div class="itemTop"><div><div class="title">${esc(u.name || "")}</div><div class="meta"><span>${esc(u.department || "")}</span><span>${roleLabel(u.role)}</span>${u.extension ? `<span>内線 ${esc(u.extension)}</span>` : ""}</div></div></div>${u.note ? `<div style="margin-top:8px" class="tiny">${esc(u.note)}</div>` : ""}</div>`)
               .join("")
           : '<div class="empty">該当する職員がいません</div>';
       }
@@ -1990,7 +2036,7 @@
         renderFacilityCalendarGrid("facilityCalendar", month, parseJSON(row?.items, []));
       }
       async function loadFacilityCalendarAdmin(settings = null) {
-        if (!admin()) return;
+        if (!canEditFacilityCalendar()) return;
         const month = $("facilityMonthAdmin")?.value || monthStr();
         const all = settings || await list("settings");
         const row = all.find((x) => x.type === "facilityCalendar" && x.month === month);
@@ -2001,7 +2047,7 @@
         renderFacilityEventEditor();
       }
       function addFacilityEvent() {
-        if (!admin()) return;
+        if (!canEditFacilityCalendar()) return;
         const month = $("facilityMonthAdmin")?.value || monthStr();
         const date = $("facilityDate")?.value;
         const text = $("facilityText")?.value.trim();
@@ -2013,11 +2059,12 @@
         renderFacilityEventEditor();
       }
       function removeFacilityEvent(index) {
+        if (!canEditFacilityCalendar()) return;
         facilityCalendarItems.splice(index, 1);
         renderFacilityEventEditor();
       }
       async function saveFacilityCalendar() {
-        if (!admin()) return;
+        if (!canEditFacilityCalendar()) return;
         const month = $("facilityMonthAdmin")?.value || monthStr();
         const payload = { type: "facilityCalendar", month, items: facilityCalendarItems };
         if (facilityCalendarDocId) await upd("settings", facilityCalendarDocId, payload);
@@ -2464,12 +2511,7 @@
         $("app").classList.remove("hide");
         $("av").textContent = (u.name || "?").slice(0, 1);
         $("meName").textContent = u.name || "";
-        $("meRole").textContent =
-          (u.role === "admin" ? "管理者" : "スタッフ") +
-          " / " +
-          (u.department || "未設定");
-        $("adminTab").classList.toggle("hide", !admin());
-        $("addBoardBtn").classList.toggle("hide", !admin());
+        syncPermissionUI();
         if ($("facilityMonthView") && !$("facilityMonthView").value) $("facilityMonthView").value = monthStr();
         if ($("facilityMonthAdmin") && !$("facilityMonthAdmin").value) $("facilityMonthAdmin").value = monthStr();
         setNotifyBtn(
@@ -2485,7 +2527,8 @@
           loadSurveys(),
           renderRoomCards(),
         ]);
-        if (admin()) await Promise.all([loadAdmin(), loadStaffHints()]);
+        if (canAccessAdminTab()) await loadAdmin();
+        if (admin()) await loadStaffHints();
         renderQuickLinks();
         if ($("directoryKeyword")) {
           $("directoryKeyword").addEventListener("input", () => renderMiniDirectory());
@@ -2502,6 +2545,7 @@
         if ($("facilityMonthAdmin")) {
           $("facilityMonthAdmin").addEventListener("change", () => loadAdmin());
         }
+        wireBoardDraftAutosave();
         setupRealtimeWatch();
         cleanupExpiredData(true);
         setInterval(() => cleanupExpiredData(true), 12 * 60 * 60 * 1000);
@@ -2509,6 +2553,8 @@
         handleDeepLink();
       }
       function showAdminPane(pane, btn = null) {
+        if (!canAccessAdminTab()) return;
+        if (!admin() && pane !== 'calendar') pane = 'calendar';
         document.querySelectorAll('.adminPane').forEach((p) => p.classList.remove('active'));
         document.querySelectorAll('.adminSubtab').forEach((b) => b.classList.remove('active'));
         const paneMap = {
@@ -2516,7 +2562,7 @@
           calendar: 'adminPaneCalendar',
           other: 'adminPaneOther',
         };
-        const el = $(paneMap[pane] || paneMap.staff);
+        const el = $(paneMap[pane] || paneMap.calendar);
         if (el) el.classList.add('active');
         const activeBtn = btn || document.querySelector(`.adminSubtab[data-pane="${pane}"]`);
         if (activeBtn) activeBtn.classList.add('active');
@@ -2540,7 +2586,7 @@
             admin: loadAdmin,
           })[id] || (() => {})
         )();
-        if (id === 'admin') showAdminPane('staff');
+        if (id === 'admin') showAdminPane(admin() ? 'staff' : 'calendar');
       }
 
       async function loadDashboard() {
@@ -2596,15 +2642,73 @@
           })
           .join("");
       }
-      function openBoardModal() {
-        $("bTitle").value = "";
-        $("bBody").value = "";
-        $("bPri").value = "normal";
+      function readBoardDraft() {
+        return parseJSON(localStorage.getItem(boardDraftKey()), {});
+      }
+      function saveBoardDraft(silent = true) {
+        if (!$("bTitle") || !$("bBody") || !$("bPri") || !$("bUrl")) return;
+        const payload = {
+          title: $("bTitle").value || "",
+          content: $("bBody").value || "",
+          priority: $("bPri").value || "normal",
+          externalUrl: $("bUrl").value || "",
+          updatedAt: Date.now(),
+        };
+        const hasDraft = [payload.title, payload.content, payload.externalUrl]
+          .some((v) => String(v || "").trim()) || payload.priority !== "normal";
+        if (hasDraft) {
+          localStorage.setItem(boardDraftKey(), JSON.stringify(payload));
+          if ($("boardDraftInfo")) $("boardDraftInfo").textContent = "下書きを自動保存しました";
+          if (!silent) toast("掲示板の下書きを保存しました", "ok");
+        } else {
+          localStorage.removeItem(boardDraftKey());
+          if ($("boardDraftInfo")) $("boardDraftInfo").textContent = "";
+        }
+      }
+      function loadBoardDraft() {
+        const draft = readBoardDraft();
+        const hasDraft = !!Object.keys(draft || {}).length;
+        $("bTitle").value = draft.title || "";
+        $("bBody").value = draft.content || "";
+        $("bPri").value = draft.priority || "normal";
         $("bFiles").value = "";
-        $("bUrl").value = "";
+        $("bUrl").value = draft.externalUrl || "";
+        if ($("boardDraftInfo")) {
+          $("boardDraftInfo").textContent = hasDraft
+            ? "保存済みの下書きを読み込みました"
+            : "タイトル・本文・優先度・URLは自動保存されます";
+        }
+      }
+      function clearBoardDraft(withToast = true) {
+        localStorage.removeItem(boardDraftKey());
+        if ($("bTitle")) $("bTitle").value = "";
+        if ($("bBody")) $("bBody").value = "";
+        if ($("bPri")) $("bPri").value = "normal";
+        if ($("bFiles")) $("bFiles").value = "";
+        if ($("bUrl")) $("bUrl").value = "";
+        if ($("boardDraftInfo")) $("boardDraftInfo").textContent = "下書きを削除しました";
+        if (withToast) toast("掲示板の下書きを削除しました", "ok");
+      }
+      function wireBoardDraftAutosave() {
+        ["bTitle", "bBody", "bPri", "bUrl"].forEach((id) => {
+          const el = $(id);
+          if (!el || el.dataset.boardDraftBound === "1") return;
+          const handler = () => {
+            clearTimeout(boardDraftTimer);
+            boardDraftTimer = setTimeout(() => saveBoardDraft(true), 400);
+          };
+          el.addEventListener("input", handler);
+          el.addEventListener("change", handler);
+          el.dataset.boardDraftBound = "1";
+        });
+      }
+      function openBoardModal() {
+        if (!canPostBoard()) return toast("掲示板投稿の権限がありません", "error");
+        loadBoardDraft();
         openModal("boardModal");
       }
       async function createBoard() {
+        if (!canPostBoard()) return toast("掲示板投稿の権限がありません", "error");
         const u = me(),
           title = $("bTitle").value.trim(),
           content = $("bBody").value.trim();
@@ -2624,6 +2728,7 @@
             attachments,
             externalUrl: $("bUrl").value.trim(),
           });
+          clearBoardDraft(false);
           closeModal("boardModal");
           await loadDashboard();
           toast("掲示板に投稿しました", "ok");
@@ -2660,10 +2765,7 @@
         if (u.docId) await upd("users", u.docId, patch);
         const nu = { ...u, ...patch };
         saveMe(nu);
-        $("meRole").textContent =
-          (nu.role === "admin" ? "管理者" : "スタッフ") +
-          " / " +
-          (nu.department || "未設定");
+        syncPermissionUI();
         await loadProfile();
         await renderRoomCards();
         toast("プロフィールを保存しました", "ok");
@@ -2741,6 +2843,7 @@
       }
       async function loadRoomMsgs() {
         if (!activeRoom) return;
+        const u = me();
         const msgs = (await listLatest("rooms_" + activeRoom, ROOM_VISIBLE_LIMIT)).sort(
           (a, b) => ms(a.createdAtMs || a.createdAt) - ms(b.createdAtMs || b.createdAt),
         );
@@ -2755,7 +2858,7 @@
         el.innerHTML = msgs
           .map(
             (m) =>
-              `<div class="msg"><div class="avatar" style="width:36px;height:36px;font-size:13px">${esc((m.userName || "?").slice(0, 1))}</div><div class="bubble"><div class="meta"><b>${esc(m.userName || "")}</b> <span>${fmt(m.createdAt)}</span></div><div style="white-space:pre-wrap">${esc(m.text || "")}</div></div></div>`,
+              `<div class="msg"><div class="avatar" style="width:36px;height:36px;font-size:13px">${esc((m.userName || "?").slice(0, 1))}</div><div class="bubble"><div class="itemTop"><div class="meta"><b>${esc(m.userName || "")}</b> <span>${fmt(m.createdAt)}</span></div>${canDeleteRoomMessage(m, u) ? `<button class="btn dan sm" onclick="deleteRoomMsg('${m.docId}')"><i class="fas fa-trash"></i> 削除</button>` : ""}</div><div style="white-space:pre-wrap">${esc(m.text || "")}</div></div></div>`,
           )
           .join("");
         el.scrollTop = el.scrollHeight;
@@ -2774,6 +2877,17 @@
         $("roomInput").value = "";
         await loadRoomMsgs();
         await loadDashboard();
+      }
+      async function deleteRoomMsg(id) {
+        if (!activeRoom || !id) return;
+        const rows = await listLatest("rooms_" + activeRoom, ROOM_VISIBLE_LIMIT).catch(() => []);
+        const target = rows.find((x) => x.docId === id);
+        if (!target) return toast("対象メッセージを見つけられませんでした", "error");
+        if (!canDeleteRoomMessage(target)) return toast("削除権限がありません", "error");
+        if (!confirm(`「${target.userName || "投稿"}」の発言を削除しますか？`)) return;
+        await del("rooms_" + activeRoom, id);
+        await Promise.all([loadRoomMsgs(), loadDashboard()]);
+        toast("発言を削除しました", "ok");
       }
 
       function clearWatchers() {
@@ -2845,8 +2959,23 @@
       }
 
       async function loadAdmin() {
-        if (!admin()) return;
+        if (!canAccessAdminTab()) return;
+        syncPermissionUI();
         if ($("facilityMonthAdmin") && !$("facilityMonthAdmin").value) $("facilityMonthAdmin").value = monthStr();
+        if (!admin()) {
+          $("staffList").innerHTML = '<div class="noteBox">スタッフ管理は管理者のみ利用できます。</div>';
+          $("bannerStatus").innerHTML = '<span class="badge b1">管理者専用</span>';
+          $("adminStats").innerHTML = '共有権限者ではその他管理機能は利用できません。';
+          try {
+            const settings = await list("settings").catch(() => []);
+            await loadFacilityCalendarAdmin(settings);
+          } catch (e) {
+            console.error(e);
+            const box = $("facilityEventList");
+            if (box) box.innerHTML = '<div class="noteBox">月間施設予定の読込に失敗しました。</div>';
+          }
+          return;
+        }
         let users = [];
         try {
           users = await list("users");
@@ -2858,7 +2987,7 @@
         staffCache = users;
         $("staffList").innerHTML = !users.length
           ? '<div class="empty">スタッフがいません</div>'
-          : `<table class="table"><thead><tr><th>氏名</th><th>メール</th><th>部署</th><th>権限</th><th></th></tr></thead><tbody>${users.map((u) => `<tr><td>${esc(u.name || "")}</td><td>${esc(u.email || "")}</td><td>${esc(u.department || "")}</td><td>${u.role === "admin" ? "管理者" : "スタッフ"}</td><td><div class="right"><button class="btn out sm" onclick="editStaff('${u.docId}')">編集</button><button class="btn dan sm" onclick="deleteStaff('${u.docId}','${esc(u.name || "")}')">削除</button></div></td></tr>`).join("")}</tbody></table>`;
+          : `<table class="table"><thead><tr><th>氏名</th><th>メール</th><th>部署</th><th>権限</th><th></th></tr></thead><tbody>${users.map((u) => `<tr><td>${esc(u.name || "")}</td><td>${esc(u.email || "")}</td><td>${esc(u.department || "")}</td><td>${roleLabel(u.role)}</td><td><div class="right"><button class="btn out sm" onclick="editStaff('${u.docId}')">編集</button><button class="btn dan sm" onclick="deleteStaff('${u.docId}','${esc(u.name || "")}')">削除</button></div></td></tr>`).join("")}</tbody></table>`;
         const [tasks, surveys, anns, settings] = await Promise.all([
           list("tasks").catch(() => []),
           list("surveys").catch(() => []),
@@ -2880,6 +3009,7 @@
         }
       }
       function openStaffModal() {
+        if (!admin()) return toast("スタッフ管理は管理者のみ利用できます", "error");
         $("staffModalTitle").textContent = "スタッフ追加";
         $("sfId").value = "";
         $("sfName").value = "";
@@ -2891,6 +3021,7 @@
         openModal("staffModal");
       }
       async function editStaff(id) {
+        if (!admin()) return toast("スタッフ管理は管理者のみ利用できます", "error");
         try {
           const users = staffCache.length ? staffCache : await list("users");
           const u = users.find((x) => x.docId === id);
@@ -2910,6 +3041,7 @@
         }
       }
       async function saveStaff() {
+        if (!admin()) return toast("スタッフ管理は管理者のみ利用できます", "error");
         const id = $("sfId").value;
         const name = $("sfName").value.trim();
         const email = $("sfEmail").value.trim().toLowerCase();
@@ -2925,11 +3057,18 @@
         };
         if (id) await upd("users", id, data);
         else await add("users", { ...data, id: "u_" + Date.now() });
+        const current = me();
+        if (id && current?.docId === id) {
+          const nu = { ...current, ...data };
+          saveMe(nu);
+          syncPermissionUI();
+        }
         closeModal("staffModal");
         await Promise.all([loadAdmin(), loadStaffHints(), loadProfile()]);
         toast("保存しました", "ok");
       }
       async function deleteStaff(id, name) {
+        if (!admin()) return toast("スタッフ管理は管理者のみ利用できます", "error");
         if (!confirm(`「${name}」を削除しますか？`)) return;
         await del("users", id);
         await Promise.all([loadAdmin(), loadStaffHints(), loadProfile()]);
