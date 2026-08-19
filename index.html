@@ -997,6 +997,14 @@
           </button>
           <button
             class="tab hide"
+            id="editorTab"
+            data-id="editor"
+            onclick="showTab('editor',this)"
+          >
+            <i class="fas fa-user-gear"></i> 権限者
+          </button>
+          <button
+            class="tab hide"
             id="adminTab"
             data-id="admin"
             onclick="showTab('admin',this)"
@@ -1329,6 +1337,34 @@
           </div>
         </section>
 
+        <section id="editor" class="screen">
+          <div class="grid">
+            <div class="card stack">
+              <div class="cardHd">
+                <div>
+                  <h3>権限者メニュー</h3>
+                  <div id="editorRoleInfo" class="tiny">掲示板投稿と月間施設予定の更新ができます</div>
+                </div>
+              </div>
+              <div class="summaryList">
+                <div class="summaryRow"><b>掲示板投稿</b><span class="tiny">下書き保存つきで投稿できます</span></div>
+                <div class="summaryRow"><b>月間施設予定</b><span class="tiny">追加・保存は権限者のみ</span></div>
+              </div>
+              <div class="row">
+                <button id="editorBoardBtn" class="btn pri" onclick="openPrivilegeBoard()"><i class="fas fa-bullhorn"></i> 掲示板投稿を開く</button>
+                <button id="editorCalendarBtn" class="btn sec" onclick="openPrivilegeCalendar()"><i class="fas fa-calendar-days"></i> 月間予定編集を開く</button>
+              </div>
+            </div>
+            <div class="card stack">
+              <div>
+                <h3>使い方</h3>
+                <div class="tiny">共有権限者はスタッフ管理やシステム設定はできません。掲示板と月間予定だけを操作します。</div>
+              </div>
+              <div class="noteBox">「月間予定編集を開く」を押すと、既存の月間予定編集画面へ移動します。管理者はそのままスタッフ管理・その他管理も使えます。</div>
+            </div>
+          </div>
+        </section>
+
         <section id="admin" class="screen">
           <div class="adminSubnav">
             <button class="btn out adminSubtab active" data-pane="staff" onclick="showAdminPane('staff', this)"><i class="fas fa-users"></i> スタッフ</button>
@@ -1397,7 +1433,7 @@
           <h3>掲示板投稿</h3>
           <button class="close" onclick="closeModal('boardModal')">×</button>
         </div>
-        <div id="boardModalHint" class="tiny">タイトル・本文・優先度・URLは自動で下書き保存されます</div>
+        <div id="boardModalHint" class="tiny">タイトル・本文・優先度・URL・掲載期間は自動で下書き保存されます</div>
         <input id="bTitle" class="inp" placeholder="タイトル" />
         <textarea id="bBody" placeholder="本文"></textarea>
         <select id="bPri">
@@ -1405,6 +1441,16 @@
           <option value="important">重要</option>
           <option value="urgent">緊急</option>
         </select>
+        <div class="row">
+          <div class="grow">
+            <label class="tiny">掲載開始日（任意 / 空欄は投稿時点から）</label>
+            <input id="bStart" class="inp" type="date" />
+          </div>
+          <div class="grow">
+            <label class="tiny">掲載終了日（任意 / 空欄は10日で自動整理）</label>
+            <input id="bEnd" class="inp" type="date" />
+          </div>
+        </div>
         <div>
           <label class="tiny"
             >添付ファイル（複数可 / PDF・Excel・Word・画像など）</label
@@ -1541,6 +1587,8 @@
               <option value="相談課">相談課</option>
               <option value="施設長">施設長</option>
               <option value="所長">所長</option>
+              <option value="__sharedEditor__">共有権限者</option>
+              <option value="__admin__">管理者</option>
             </select>
           </div>
         </div>
@@ -1759,6 +1807,20 @@
       const canEditFacilityCalendar = () => admin() || sharedEditor();
       const roleLabel = (role) =>
         role === "admin" ? "管理者" : role === "sharedEditor" ? "共有権限者" : "スタッフ";
+      function targetDeptLabel(t) {
+        if (!t || t === "all") return "全部署";
+        if (t === "__admin__") return "管理者";
+        if (t === "__sharedEditor__") return "共有権限者";
+        return t;
+      }
+      function isBoardVisibleNow(a, now = Date.now()) {
+        if (!a) return false;
+        const s = a.publishFrom ? new Date(a.publishFrom + "T00:00:00").getTime() : 0;
+        const e = a.publishUntil ? new Date(a.publishUntil + "T23:59:59").getTime() : 0;
+        if (s && now < s) return false;
+        if (e && now > e) return false;
+        return true;
+      }
       const uid = (p = "id") =>
         `${p}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       const parseJSON = (v, d = []) => {
@@ -1865,11 +1927,21 @@
         if ($("meRole") && u) {
           $("meRole").textContent = `${roleLabel(u.role)} / ${u.department || "未設定"}`;
         }
+        if ($("editorTab")) {
+          $("editorTab").classList.toggle("hide", !canAccessAdminTab());
+        }
         if ($("adminTab")) {
-          $("adminTab").classList.toggle("hide", !canAccessAdminTab());
-          $("adminTab").innerHTML = `<i class="fas fa-user-shield"></i> ${sharedEditor() && !admin() ? "共有管理" : "管理者"}`;
+          $("adminTab").classList.toggle("hide", !admin());
+          $("adminTab").innerHTML = `<i class="fas fa-user-shield"></i> 管理者`;
         }
         if ($("addBoardBtn")) $("addBoardBtn").classList.toggle("hide", !canPostBoard());
+        if ($("editorBoardBtn")) $("editorBoardBtn").classList.toggle("hide", !canPostBoard());
+        if ($("editorCalendarBtn")) $("editorCalendarBtn").classList.toggle("hide", !canEditFacilityCalendar());
+        if ($("editorRoleInfo")) {
+          $("editorRoleInfo").textContent = admin()
+            ? "管理者として掲示板投稿・月間予定編集・管理機能を利用できます"
+            : "共有権限者として掲示板投稿と月間施設予定の更新ができます";
+        }
         const staffBtn = document.querySelector('.adminSubtab[data-pane="staff"]');
         const otherBtn = document.querySelector('.adminSubtab[data-pane="other"]');
         if (staffBtn) staffBtn.classList.toggle("hide", !admin());
@@ -2102,7 +2174,7 @@
           .slice(0, 5);
         const blocks = [];
         boardHits.forEach((a) => blocks.push(`<div class="searchHit"><div class="itemTop"><div><div class="title">掲示板: ${esc(a.title || "")}</div><div class="tiny">${esc(a.creatorName || "")} / ${fmt(a.createdAt)}</div></div><button class="btn out sm" onclick="showTab('dashboard',document.querySelector('.tab[data-id=\"dashboard\"]'));setTimeout(()=>highlightBoard('${a.docId}'),180)"><i class="fas fa-arrow-right"></i> 開く</button></div></div>`));
-        surveyHits.forEach((s) => blocks.push(`<div class="searchHit"><div class="itemTop"><div><div class="title">アンケート: ${esc(s.title || "")}</div><div class="tiny">${esc(s.targetDept || "全部署")} / ${esc(s.creatorName || "")}</div></div><button class="btn out sm" onclick="showTab('survey',document.querySelector('.tab[data-id=\"survey\"]'));setTimeout(()=>highlightSurvey('${s.docId}'),180)"><i class="fas fa-arrow-right"></i> 開く</button></div></div>`));
+        surveyHits.forEach((s) => blocks.push(`<div class="searchHit"><div class="itemTop"><div><div class="title">アンケート: ${esc(s.title || "")}</div><div class="tiny">${esc(targetDeptLabel(s.targetDept))} / ${esc(s.creatorName || "")}</div></div><button class="btn out sm" onclick="showTab('survey',document.querySelector('.tab[data-id=\"survey\"]'));setTimeout(()=>highlightSurvey('${s.docId}'),180)"><i class="fas fa-arrow-right"></i> 開く</button></div></div>`));
         peopleHits.forEach((x) => blocks.push(`<div class="searchHit"><div class="itemTop"><div><div class="title">職員: ${esc(x.name || "")}</div><div class="tiny">${esc(x.department || "")} ${x.extension ? '/ 内線 ' + esc(x.extension) : ''}</div></div><button class="btn out sm" onclick="openInternalTarget('directory','${esc(x.name || "")}')"><i class="fas fa-address-book"></i> 名簿で見る</button></div></div>`));
         roomHits.forEach(([key, label]) => blocks.push(`<div class="searchHit"><div class="itemTop"><div><div class="title">ルーム: ${esc(label)}</div><div class="tiny">チャットルーム</div></div><button class="btn out sm" onclick="showTab('rooms',document.querySelector('.tab[data-id=\"rooms\"]'));setTimeout(()=>openRoom('${key}'),180)"><i class="fas fa-comments"></i> 開く</button></div></div>`));
         $("searchResult").innerHTML = blocks.length ? blocks.join("") : '<div class="empty">一致する結果がありません</div>';
@@ -2185,6 +2257,7 @@
       }
       function closeModal(id) {
         $(id).classList.remove("show");
+        if (id === "roomModal") closeRoomRealtime();
       }
       function closeSurveyModal() {
         editingSurveyId = "";
@@ -2196,6 +2269,7 @@
         activeSurveyData = null;
         closeModal("surveyAnswerModal");
       }
+      function closeModal_hook_room() {}
       function setNotifyBtn(mode = "default") {
         $("notifyBtn").innerHTML =
           `<i class="fas fa-bell"></i> ${mode === "on" ? "通知ON" : mode === "denied" ? "通知拒否" : "通知OFF"}`;
@@ -2523,11 +2597,8 @@
         await Promise.all([
           loadDashboard(),
           loadProfile(),
-          loadTasks(),
-          loadSurveys(),
-          renderRoomCards(),
         ]);
-        if (canAccessAdminTab()) await loadAdmin();
+        // タスク/アンケート/ルーム/管理は showTab で初回だけ読む
         if (admin()) await loadStaffHints();
         renderQuickLinks();
         if ($("directoryKeyword")) {
@@ -2566,7 +2637,11 @@
         if (el) el.classList.add('active');
         const activeBtn = btn || document.querySelector(`.adminSubtab[data-pane="${pane}"]`);
         if (activeBtn) activeBtn.classList.add('active');
+        if (pane === "staff" && admin()) loadAdminStaffPane();
+        else if (pane === "calendar") loadSettingsCached().then((s) => loadFacilityCalendarAdmin(s));
+        else if (pane === "other" && admin()) loadAdminOtherPane();
       }
+      const _tabVisited = {};
       function showTab(id, btn) {
         document
           .querySelectorAll(".tab")
@@ -2576,69 +2651,131 @@
           .querySelectorAll(".screen")
           .forEach((s) => s.classList.remove("active"));
         $(id).classList.add("active");
-        (
-          ({
-            dashboard: loadDashboard,
-            profile: loadProfile,
-            tasks: loadTasks,
-            rooms: renderRoomCards,
-            survey: loadSurveys,
-            admin: loadAdmin,
-          })[id] || (() => {})
-        )();
+        const loaders = {
+          dashboard: loadDashboard,
+          profile: loadProfile,
+          tasks: loadTasks,
+          rooms: renderRoomCards,
+          survey: loadSurveys,
+          editor: syncPermissionUI,
+          admin: loadAdmin,
+        };
+        const fn = loaders[id];
+        if (fn) {
+          // ダッシュボードは毎回、他は初回のみ (更新ボタンで手動再取得)
+          if (id === "dashboard" || !_tabVisited[id]) {
+            fn();
+            _tabVisited[id] = true;
+          }
+        }
         if (id === 'admin') showAdminPane(admin() ? 'staff' : 'calendar');
       }
 
       async function loadDashboard() {
         const u = me();
-        const [tasks, surveys, anns, settings, responses, users, roomInfo] = await Promise.all([
-          list("tasks"),
-          list("surveys"),
-          list("announcements"),
-          list("settings"),
-          list("surveyResponses").catch(() => []),
-          list("users"),
-          Promise.all(Object.entries(ROOMS).map(async ([key, label]) => {
-            const rows = await listLatest("rooms_" + key, ROOM_VISIBLE_LIMIT).catch(() => []);
-            const sorted = rows.sort((a, b) => ms(b.createdAtMs || b.createdAt) - ms(a.createdAtMs || a.createdAt));
-            const unread = rows.filter((m) => m.userId !== u.id && ms(m.createdAtMs || m.createdAt) > getRoomReadMs(key, u.id)).length;
-            return { key, label, rows, unread, last: sorted[0] || null };
-          })),
+        if (!u) return;
+        // 最小サマリだけ取得: 掲示板は最新20件、アンケートは自分の未回答判定のためタイトル+targetDept+status+dueDateだけ、ルームは meta のみ
+        const [myTasks, anns, surveys, roomMeta, settings] = await Promise.all([
+          listMyOpenTasks(u.id).catch(() => []),
+          listLatest("announcements", 20).catch(() => []),
+          listLatest("surveys", 40).catch(() => []),
+          loadRoomMetaSummary(u).catch(() => []),
+          loadSettingsCached().catch(() => []),
         ]);
-        staffCache = users;
-        $("stTask").textContent = tasks.filter((t) => t.userId === u.id && !t.completed).length;
+        $("stTask").textContent = myTasks.length;
         $("stTrain").textContent = 1;
+        const visibleAnns = anns.filter((a) => isBoardVisibleNow(a));
         const visibleSurveys = surveys.filter((s) => canUserSeeSurvey(s, u));
-        $("stSurvey").textContent = visibleSurveys.filter((s) => isSurveyOpen(s) && !hasUserAnsweredSurvey(s, u, responses)).length;
-        $("stRoom").textContent = roomInfo.filter((r) => r.unread > 0).length;
-        setTabAlert("dashboard", anns.some((a) => !isBoardRead(a, u)));
-        setTabAlert("rooms", roomInfo.some((r) => r.unread > 0));
+        // 未回答件数は answeredSurveyIds (ローカル) で判定して reads を増やさない
+        const answeredIds = getAnsweredSurveyIds(u.id);
+        const openTodo = visibleSurveys.filter((s) => isSurveyOpen(s) && !answeredIds.includes(s.docId));
+        $("stSurvey").textContent = openTodo.length;
+        $("stRoom").textContent = roomMeta.filter((r) => r.unread > 0).length;
+        setTabAlert("dashboard", visibleAnns.some((a) => !isBoardRead(a, u)));
+        setTabAlert("rooms", roomMeta.some((r) => r.unread > 0));
         const b = settings.find((x) => x.type === "banner");
         if (b?.imageUrl) {
           $("bannerArea").innerHTML = `<img src="${esc(b.imageUrl)}" alt="banner">`;
           $("bannerArea").classList.remove("hide");
         } else $("bannerArea").classList.add("hide");
-        buildTodayHome(tasks, surveys, responses, anns, roomInfo, users);
+        buildTodayHomeLite(myTasks, openTodo, visibleAnns, roomMeta);
         renderQuickLinks();
-        renderBoard(anns);
-        renderMiniDirectory(users);
+        renderBoard(visibleAnns);
+        // 職員名簿はホームでは読まない (プロフィールタブで表示)
         await loadFacilityCalendar(settings);
+      }
+      async function listMyOpenTasks(userId) {
+        try {
+          const s = await db.collection("tasks").where("userId", "==", userId).get();
+          return s.docs.map((d) => ({ docId: d.id, ...d.data() })).filter((t) => !t.completed);
+        } catch (e) {
+          const all = await list("tasks").catch(() => []);
+          return all.filter((t) => t.userId === userId && !t.completed);
+        }
+      }
+      let settingsCache = null;
+      let settingsCacheAt = 0;
+      async function loadSettingsCached(force = false) {
+        const now = Date.now();
+        if (!force && settingsCache && now - settingsCacheAt < 60 * 1000) return settingsCache;
+        settingsCache = await list("settings").catch(() => []);
+        settingsCacheAt = now;
+        return settingsCache;
+      }
+      function getAnsweredSurveyIds(userId) {
+        return parseJSON(localStorage.getItem(`ku_answered_${userId}`), []);
+      }
+      function addAnsweredSurveyId(userId, surveyId) {
+        const arr = getAnsweredSurveyIds(userId);
+        if (!arr.includes(surveyId)) {
+          arr.push(surveyId);
+          localStorage.setItem(`ku_answered_${userId}`, JSON.stringify(arr));
+        }
+      }
+      async function loadRoomMetaSummary(u) {
+        // 各ルームの meta doc を settings コレクションで管理する (roomMeta_<key>)
+        // meta が無いルームは skip して、開いたときにだけ実データを読む
+        const settings = await loadSettingsCached();
+        return Object.entries(ROOMS).map(([k, v]) => {
+          const row = settings.find((x) => x.type === "roomMeta" && x.roomKey === k) || null;
+          const lastMs = ms(row?.lastMs || row?.updatedAtMs || row?.createdAtMs || 0);
+          const lastUser = row?.lastUser || "";
+          const readMs = getRoomReadMs(k, u.id);
+          const unread = lastMs && lastMs > readMs && row?.lastUserId !== u.id ? 1 : 0;
+          return { key: k, label: v, last: row ? { userName: lastUser, createdAt: lastMs } : null, unread, lastMs };
+        });
+      }
+      function buildTodayHomeLite(myTasks, openTodo, anns, roomMeta) {
+        const u = me();
+        const unreadAnns = (anns || []).filter((a) => !isBoardRead(a, u)).slice(0, 4);
+        const unreadRooms = (roomMeta || []).filter((r) => r.unread > 0).slice(0, 4);
+        const todoSurveys = (openTodo || []).slice(0, 4);
+        const tasksList = (myTasks || []).slice(0, 4);
+        $("todayHome").innerHTML = `
+          <div class="homeCard"><h4><i class="fas fa-bullhorn"></i> 未読掲示板</h4><div class="actionList">${unreadAnns.length ? unreadAnns.map((a) => `<div class="actionItem"><div><div class="title">${esc(a.title || "")}</div><div class="tiny">${esc(a.creatorName || "")} / ${fmt(a.createdAt)}</div></div><div class="right"><button class="btn out sm" onclick="markBoardRead('${a.docId}')">確認</button></div></div>`).join("") : '<div class="tiny">未読の掲示板はありません</div>'}</div></div>
+          <div class="homeCard"><h4><i class="fas fa-poll"></i> 未回答アンケート</h4><div class="actionList">${todoSurveys.length ? todoSurveys.map((s) => `<div class="actionItem"><div><div class="title">${esc(s.title || "")}</div><div class="tiny">${targetDeptLabel(s.targetDept)}</div></div><div class="right"><button class="btn pri sm" onclick="markSurveySeen('${s.docId}',true);openSurveyAnswer('${s.docId}')">回答</button></div></div>`).join("") : '<div class="tiny">未回答はありません</div>'}</div></div>
+          <div class="homeCard"><h4><i class="fas fa-comments"></i> 未読ルーム</h4><div class="actionList">${unreadRooms.length ? unreadRooms.map((r) => `<div class="actionItem"><div><div class="title">${esc(r.label)}</div><div class="tiny">最終: ${esc(r.last?.userName || "")}</div></div><div class="right"><button class="btn out sm" onclick="openRoom('${r.key}')">開く</button></div></div>`).join("") : '<div class="tiny">未読ルームはありません</div>'}</div></div>
+          <div class="homeCard"><h4><i class="fas fa-list-check"></i> 自分のタスク</h4><div class="actionList">${tasksList.length ? tasksList.map((t) => `<div class="actionItem"><div><div class="title">${esc(t.title || "")}</div><div class="tiny">優先度 ${t.priority === "high" ? "高" : t.priority === "medium" ? "中" : "低"}</div></div><div class="right"><button class="btn sec sm" onclick="toggleTask('${t.docId}',true)">完了</button></div></div>`).join("") : '<div class="tiny">未完了タスクはありません</div>'}</div></div>`;
       }
       function renderBoard(anns) {
         const u = me();
         const el = $("boardList");
-        if (!anns.length) {
+        const visible = (anns || []).filter((a) => isBoardVisibleNow(a));
+        if (!visible.length) {
           el.innerHTML = '<div class="empty">掲示板はまだありません</div>';
           return;
         }
-        el.innerHTML = anns
+        el.innerHTML = visible
           .sort((a, b) => ms(b.createdAtMs || b.createdAt) - ms(a.createdAtMs || a.createdAt))
+          .slice(0, 20)
           .map((a) => {
             const files = getAnnFiles(a);
             const badge = a.priority === "urgent" ? "b4" : a.priority === "important" ? "b3" : "b1";
             const label = a.priority === "urgent" ? "緊急" : a.priority === "important" ? "重要" : "通常";
             const read = isBoardRead(a, u);
-            return `<div class="item" id="board-${a.docId}"><div class="itemTop"><div><div class="title">${esc(a.title)}</div><div class="meta"><span>${esc(a.creatorName || "")}</span><span>${fmt(a.createdAt)}</span><span>${files.length ? files.length + "件添付" : "添付なし"}</span><span class="readBadge ${read ? "read" : "unread"}">${read ? "既読" : "未読"}</span></div></div><div class="right"><span class="badge ${badge}">${label}</span>${!read ? `<button class="btn out sm" onclick="markBoardRead('${a.docId}')"><i class="fas fa-check"></i> 確認</button>` : ""}</div></div><div style="margin-top:10px;white-space:pre-wrap;line-height:1.6">${esc(a.content || "")}</div>${files.length ? `<div class="files">${files.map((f) => `<div class="file"><div><i class="fas ${fileIcon(f.name || "")}"></i> ${esc(f.name || "添付ファイル")}</div><div class="right"><a class="btn out sm" href="${esc(f.url)}" target="_blank" onclick="markBoardRead('${a.docId}',true)"><i class="fas fa-arrow-up-right-from-square"></i> 開く</a></div></div>`).join("")}</div>` : ""}${admin() ? `<div style="margin-top:10px" class="right"><button class="btn dan sm" onclick="deleteBoard('${a.docId}')"><i class="fas fa-trash"></i> 削除</button></div>` : ""}</div>`;
+            const periodStr = (a.publishFrom || a.publishUntil)
+              ? `<span class="tiny">掲載 ${esc(a.publishFrom || "")} 〜 ${esc(a.publishUntil || "")}</span>` : "";
+            return `<div class="item" id="board-${a.docId}"><div class="itemTop"><div><div class="title">${esc(a.title)}</div><div class="meta"><span>${esc(a.creatorName || "")}</span><span>${fmt(a.createdAt)}</span><span>${files.length ? files.length + "件添付" : "添付なし"}</span>${periodStr}<span class="readBadge ${read ? "read" : "unread"}">${read ? "既読" : "未読"}</span></div></div><div class="right"><span class="badge ${badge}">${label}</span>${!read ? `<button class="btn out sm" onclick="markBoardRead('${a.docId}')"><i class="fas fa-check"></i> 確認</button>` : ""}</div></div><div style="margin-top:10px;white-space:pre-wrap;line-height:1.6">${esc(a.content || "")}</div>${files.length ? `<div class="files">${files.map((f) => `<div class="file"><div><i class="fas ${fileIcon(f.name || "")}"></i> ${esc(f.name || "添付ファイル")}</div><div class="right"><a class="btn out sm" href="${esc(f.url)}" target="_blank" onclick="markBoardRead('${a.docId}',true)"><i class="fas fa-arrow-up-right-from-square"></i> 開く</a></div></div>`).join("")}</div>` : ""}${(admin() || a.creatorId === u.id) ? `<div style="margin-top:10px" class="right"><button class="btn dan sm" onclick="deleteBoard('${a.docId}')"><i class="fas fa-trash"></i> 削除</button></div>` : ""}</div>`;
           })
           .join("");
       }
@@ -2652,9 +2789,11 @@
           content: $("bBody").value || "",
           priority: $("bPri").value || "normal",
           externalUrl: $("bUrl").value || "",
+          publishFrom: $("bStart")?.value || "",
+          publishUntil: $("bEnd")?.value || "",
           updatedAt: Date.now(),
         };
-        const hasDraft = [payload.title, payload.content, payload.externalUrl]
+        const hasDraft = [payload.title, payload.content, payload.externalUrl, payload.publishFrom, payload.publishUntil]
           .some((v) => String(v || "").trim()) || payload.priority !== "normal";
         if (hasDraft) {
           localStorage.setItem(boardDraftKey(), JSON.stringify(payload));
@@ -2673,10 +2812,12 @@
         $("bPri").value = draft.priority || "normal";
         $("bFiles").value = "";
         $("bUrl").value = draft.externalUrl || "";
+        if ($("bStart")) $("bStart").value = draft.publishFrom || "";
+        if ($("bEnd")) $("bEnd").value = draft.publishUntil || "";
         if ($("boardDraftInfo")) {
           $("boardDraftInfo").textContent = hasDraft
             ? "保存済みの下書きを読み込みました"
-            : "タイトル・本文・優先度・URLは自動保存されます";
+            : "タイトル・本文・優先度・URL・掲載期間は自動保存されます";
         }
       }
       function clearBoardDraft(withToast = true) {
@@ -2686,11 +2827,13 @@
         if ($("bPri")) $("bPri").value = "normal";
         if ($("bFiles")) $("bFiles").value = "";
         if ($("bUrl")) $("bUrl").value = "";
+        if ($("bStart")) $("bStart").value = "";
+        if ($("bEnd")) $("bEnd").value = "";
         if ($("boardDraftInfo")) $("boardDraftInfo").textContent = "下書きを削除しました";
         if (withToast) toast("掲示板の下書きを削除しました", "ok");
       }
       function wireBoardDraftAutosave() {
-        ["bTitle", "bBody", "bPri", "bUrl"].forEach((id) => {
+        ["bTitle", "bBody", "bPri", "bUrl", "bStart", "bEnd"].forEach((id) => {
           const el = $(id);
           if (!el || el.dataset.boardDraftBound === "1") return;
           const handler = () => {
@@ -2701,6 +2844,16 @@
           el.addEventListener("change", handler);
           el.dataset.boardDraftBound = "1";
         });
+      }
+      function openPrivilegeBoard() {
+        if (!canPostBoard()) return toast("掲示板投稿の権限がありません", "error");
+        openBoardModal();
+      }
+      function openPrivilegeCalendar() {
+        if (!canEditFacilityCalendar()) return toast("月間予定編集の権限がありません", "error");
+        const btn = $("editorTab") || $("adminTab");
+        showTab("admin", btn);
+        showAdminPane("calendar");
       }
       function openBoardModal() {
         if (!canPostBoard()) return toast("掲示板投稿の権限がありません", "error");
@@ -2714,6 +2867,11 @@
           content = $("bBody").value.trim();
         if (!title || !content)
           return toast("タイトルと本文は必須です", "error");
+        const publishFrom = $("bStart")?.value || "";
+        const publishUntil = $("bEnd")?.value || "";
+        if (publishFrom && publishUntil && publishFrom > publishUntil) {
+          return toast("掲載開始日は掲載終了日より前にしてください", "error");
+        }
         try {
           const attachments = await uploadMany(
             $("bFiles").files,
@@ -2727,6 +2885,8 @@
             creatorName: u.name,
             attachments,
             externalUrl: $("bUrl").value.trim(),
+            publishFrom,
+            publishUntil,
           });
           clearBoardDraft(false);
           closeModal("boardModal");
@@ -2737,9 +2897,13 @@
         }
       }
       async function deleteBoard(id) {
+        const u = me();
         if (!confirm("掲示板を削除しますか？")) return;
-        const ann = (await list("announcements")).find((x) => x.docId === id);
-        if (ann) await deleteAnnFiles(ann);
+        const anns = await listLatest("announcements", 100).catch(() => []);
+        const ann = anns.find((x) => x.docId === id);
+        if (!ann) return toast("対象掲示板が見つかりませんでした", "error");
+        if (!admin() && ann.creatorId !== u.id) return toast("削除権限がありません", "error");
+        await deleteAnnFiles(ann);
         await del("announcements", id);
         await loadDashboard();
         toast("削除しました", "ok");
@@ -2821,25 +2985,42 @@
         const u = me();
         const el = $("roomCards");
         if (!u || !el) return;
-        const rows = await Promise.all(
-          Object.entries(ROOMS).map(async ([k, v]) => {
-            const msgs = await listLatest("rooms_" + k, ROOM_VISIBLE_LIMIT).catch(() => []);
-            const sorted = msgs.sort((a, b) => ms(b.createdAtMs || b.createdAt) - ms(a.createdAtMs || a.createdAt));
-            const unread = msgs.filter((m) => m.userId !== u.id && ms(m.createdAtMs || m.createdAt) > getRoomReadMs(k, u.id)).length;
-            return { key: k, label: v, last: sorted[0] || null, unread };
-          }),
-        );
+        const rows = await loadRoomMetaSummary(u);
         setTabAlert("rooms", rows.some((r) => r.unread > 0));
         el.innerHTML = rows
-          .map((r) => `<div class="card roomBtn" onclick="openRoom('${r.key}')"><div class="itemTop"><div><h3>${esc(r.label)}</h3><p class="muted" style="margin-top:8px">${r.key === "leaders" ? "役職者向け共有ルーム" : "部署・役割ごとの情報共有ルーム"}</p></div>${r.unread ? `<span class="badge b4">未読 ${r.unread}</span>` : `<span class="badge b2">既読</span>`}</div><div class="roomMeta">${r.last ? `<span class="tiny">最終: ${esc(r.last.userName || "")} / ${fmt(r.last.createdAt)}</span>` : '<span class="tiny">まだ投稿がありません</span>'}</div></div>`)
+          .map((r) => `<div class="card roomBtn" onclick="openRoom('${r.key}')"><div class="itemTop"><div><h3>${esc(r.label)}</h3><p class="muted" style="margin-top:8px">${r.key === "leaders" ? "役職者向け共有ルーム" : "部署・役割ごとの情報共有ルーム"}</p></div>${r.unread ? `<span class="badge b4">未読</span>` : `<span class="badge b2">既読</span>`}</div><div class="roomMeta">${r.last && r.lastMs ? `<span class="tiny">最終: ${esc(r.last.userName || "")} / ${fmt(new Date(r.lastMs))}</span>` : '<span class="tiny">まだ投稿がありません</span>'}</div></div>`)
           .join("");
       }
+      let openRoomUnsub = null;
       async function openRoom(key) {
         activeRoom = key;
         $("roomTitle").textContent = ROOMS[key];
         openModal("roomModal");
         await loadRoomMsgs();
         $("roomInput").focus();
+        startRoomRealtime(key);
+      }
+      function closeRoomRealtime() {
+        if (typeof openRoomUnsub === "function") {
+          try { openRoomUnsub(); } catch (e) {}
+        }
+        openRoomUnsub = null;
+      }
+      function startRoomRealtime(key) {
+        closeRoomRealtime();
+        try {
+          openRoomUnsub = db.collection("rooms_" + key).orderBy("createdAt", "desc").limit(1)
+            .onSnapshot((s) => {
+              if (s.empty) return;
+              const d = s.docs[0];
+              const data = d.data();
+              if (!activeRoom || activeRoom !== key) return;
+              if (data.userId === me()?.id) return; // 自分の投稿は appendRoomMsgToDom 済み
+              if (document.querySelector(`#roomMsgs [data-msg-id="${d.id}"]`)) return;
+              appendRoomMsgToDom({ docId: d.id, ...data });
+              setRoomReadMs(key, ms(data.createdAtMs || data.createdAt));
+            });
+        } catch (e) { console.warn("room realtime failed", e); }
       }
       async function loadRoomMsgs() {
         if (!activeRoom) return;
@@ -2852,42 +3033,83 @@
         setRoomReadMs(activeRoom, lastMs);
         if (!msgs.length) {
           el.innerHTML = '<div class="empty">まだメッセージがありません</div>';
-          await renderRoomCards();
           return;
         }
         el.innerHTML = msgs
           .map(
             (m) =>
-              `<div class="msg"><div class="avatar" style="width:36px;height:36px;font-size:13px">${esc((m.userName || "?").slice(0, 1))}</div><div class="bubble"><div class="itemTop"><div class="meta"><b>${esc(m.userName || "")}</b> <span>${fmt(m.createdAt)}</span></div>${canDeleteRoomMessage(m, u) ? `<button class="btn dan sm" onclick="deleteRoomMsg('${m.docId}')"><i class="fas fa-trash"></i> 削除</button>` : ""}</div><div style="white-space:pre-wrap">${esc(m.text || "")}</div></div></div>`,
+              `<div class="msg" data-msg-id="${esc(m.docId)}" data-user-id="${esc(m.userId || "")}" data-user-name="${esc(m.userName || "")}"><div class="avatar" style="width:36px;height:36px;font-size:13px">${esc((m.userName || "?").slice(0, 1))}</div><div class="bubble"><div class="itemTop"><div class="meta"><b>${esc(m.userName || "")}</b> <span>${fmt(m.createdAt)}</span></div>${canDeleteRoomMessage(m, u) ? `<button class="btn dan sm" onclick="deleteRoomMsg('${m.docId}')"><i class="fas fa-trash"></i> 削除</button>` : ""}</div><div style="white-space:pre-wrap">${esc(m.text || "")}</div></div></div>`,
           )
           .join("");
         el.scrollTop = el.scrollHeight;
-        await renderRoomCards();
       }
       async function sendRoomMsg() {
         const text = $("roomInput").value.trim();
         const u = me();
         if (!text || !activeRoom) return;
-        await add("rooms_" + activeRoom, {
-          userId: u.id,
-          userName: u.name,
-          text,
-          room: activeRoom,
-        });
+        const now = Date.now();
+        try {
+          await add("rooms_" + activeRoom, {
+            userId: u.id,
+            userName: u.name,
+            text,
+            room: activeRoom,
+          });
+          await upsertRoomMeta(activeRoom, {
+            lastMs: now,
+            lastUser: u.name || "",
+            lastUserId: u.id,
+            lastText: text.slice(0, 60),
+          });
+        } catch (e) {
+          toast("送信に失敗しました", "error");
+          return;
+        }
         $("roomInput").value = "";
-        await loadRoomMsgs();
-        await loadDashboard();
+        // 画面に1件だけ追記して再取得を避ける
+        appendRoomMsgToDom({ userId: u.id, userName: u.name, text, createdAt: new Date(), docId: "local_" + now });
+        setRoomReadMs(activeRoom, now);
       }
       async function deleteRoomMsg(id) {
         if (!activeRoom || !id) return;
-        const rows = await listLatest("rooms_" + activeRoom, ROOM_VISIBLE_LIMIT).catch(() => []);
-        const target = rows.find((x) => x.docId === id);
+        const el = document.querySelector(`#roomMsgs [data-msg-id="${id}"]`);
+        const cached = el?.dataset?.userId ? { docId: id, userId: el.dataset.userId, userName: el.dataset.userName } : null;
+        let target = cached;
+        if (!target) {
+          const rows = await listLatest("rooms_" + activeRoom, ROOM_VISIBLE_LIMIT).catch(() => []);
+          target = rows.find((x) => x.docId === id) || null;
+        }
         if (!target) return toast("対象メッセージを見つけられませんでした", "error");
         if (!canDeleteRoomMessage(target)) return toast("削除権限がありません", "error");
         if (!confirm(`「${target.userName || "投稿"}」の発言を削除しますか？`)) return;
-        await del("rooms_" + activeRoom, id);
-        await Promise.all([loadRoomMsgs(), loadDashboard()]);
-        toast("発言を削除しました", "ok");
+        try {
+          await del("rooms_" + activeRoom, id);
+          if (el) el.remove();
+          toast("発言を削除しました", "ok");
+        } catch (e) {
+          toast("削除に失敗しました", "error");
+        }
+      }
+      function appendRoomMsgToDom(m) {
+        const u = me();
+        const el = $("roomMsgs");
+        if (!el) return;
+        if (el.querySelector(".empty")) el.innerHTML = "";
+        const html = `<div class="msg" data-msg-id="${esc(m.docId)}" data-user-id="${esc(m.userId || "")}" data-user-name="${esc(m.userName || "")}"><div class="avatar" style="width:36px;height:36px;font-size:13px">${esc((m.userName || "?").slice(0, 1))}</div><div class="bubble"><div class="itemTop"><div class="meta"><b>${esc(m.userName || "")}</b> <span>${fmt(m.createdAt)}</span></div>${canDeleteRoomMessage(m, u) ? `<button class="btn dan sm" onclick="deleteRoomMsg('${m.docId}')"><i class="fas fa-trash"></i> 削除</button>` : ""}</div><div style="white-space:pre-wrap">${esc(m.text || "")}</div></div></div>`;
+        el.insertAdjacentHTML("beforeend", html);
+        el.scrollTop = el.scrollHeight;
+      }
+      async function upsertRoomMeta(roomKey, patch) {
+        try {
+          const settings = await loadSettingsCached(true);
+          const row = settings.find((x) => x.type === "roomMeta" && x.roomKey === roomKey);
+          const data = { type: "roomMeta", roomKey, ...patch };
+          if (row) await upd("settings", row.docId, data);
+          else await add("settings", data);
+          settingsCache = null;
+        } catch (e) {
+          console.warn("roomMeta upsert failed", e);
+        }
       }
 
       function clearWatchers() {
@@ -2920,12 +3142,13 @@
         clearWatchers();
         const u = me();
         if (!u) return;
+        // 掲示板とアンケートは全体で最新1件だけ監視 (ルームは開いた時のみ)
         watchLatest("announcements", "ann", async (d) => {
           if (d.creatorId !== u.id) {
             setTabAlert("dashboard", true);
             browserNotify("新しい掲示板", d.title || "投稿がありました");
-            await loadDashboard();
             if ($("dashboard").classList.contains("active")) {
+              await loadDashboard();
               setTimeout(() => highlightBoard(d.docId), 250);
             }
           }
@@ -2934,78 +3157,81 @@
           if (d.creatorId !== u.id && canUserSeeSurvey(d, u)) {
             setTabAlert("survey", true);
             browserNotify("新しいアンケート", d.title || "アンケートが追加されました");
-            await Promise.all([loadSurveys(), loadDashboard()]);
             if ($("survey").classList.contains("active")) {
+              await loadSurveys();
               setTimeout(() => highlightSurvey(d.docId), 250);
             }
           }
         });
-        Object.keys(ROOMS).forEach((r) =>
-          watchLatest("rooms_" + r, "room_" + r, async (d) => {
-            if (d.userId !== u.id) {
-              setTabAlert("rooms", true);
-              browserNotify(
-                ROOMS[r],
-                `${d.userName || ""}: ${String(d.text || "").slice(0, 40)}`,
-              );
-              if (activeRoom === r && $("roomModal").classList.contains("show")) {
-                await loadRoomMsgs();
-              } else {
-                await Promise.all([renderRoomCards(), loadDashboard()]);
+        // ルーム全体監視は roomMeta の更新で代替 (settings に 1 doc / room)
+        try {
+          const unsub = db.collection("settings").where("type", "==", "roomMeta")
+            .onSnapshot(async (snap) => {
+              let hasUnread = false;
+              snap.docs.forEach((doc) => {
+                const d = doc.data();
+                if (d.lastUserId && d.lastUserId !== u.id) {
+                  const readMs = getRoomReadMs(d.roomKey, u.id);
+                  if (ms(d.lastMs || 0) > readMs) hasUnread = true;
+                }
+              });
+              setTabAlert("rooms", hasUnread);
+              if ($("rooms").classList.contains("active")) {
+                await renderRoomCards();
               }
-            }
-          }),
-        );
+            });
+          watchers.push(unsub);
+        } catch (e) { console.warn("roomMeta watch failed", e); }
       }
 
       async function loadAdmin() {
         if (!canAccessAdminTab()) return;
         syncPermissionUI();
         if ($("facilityMonthAdmin") && !$("facilityMonthAdmin").value) $("facilityMonthAdmin").value = monthStr();
-        if (!admin()) {
+        // どのサブタブが active か判定して、そこだけ読む
+        const activePane = document.querySelector(".adminPane.active")?.id || "adminPaneStaff";
+        if (!admin() && activePane !== "adminPaneCalendar") {
           $("staffList").innerHTML = '<div class="noteBox">スタッフ管理は管理者のみ利用できます。</div>';
-          $("bannerStatus").innerHTML = '<span class="badge b1">管理者専用</span>';
-          $("adminStats").innerHTML = '共有権限者ではその他管理機能は利用できません。';
-          try {
-            const settings = await list("settings").catch(() => []);
-            await loadFacilityCalendarAdmin(settings);
-          } catch (e) {
-            console.error(e);
-            const box = $("facilityEventList");
-            if (box) box.innerHTML = '<div class="noteBox">月間施設予定の読込に失敗しました。</div>';
-          }
-          return;
         }
+        if (activePane === "adminPaneStaff" && admin()) {
+          await loadAdminStaffPane();
+        } else if (activePane === "adminPaneCalendar") {
+          const settings = await loadSettingsCached().catch(() => []);
+          try { await loadFacilityCalendarAdmin(settings); } catch (e) { console.error(e); }
+        } else if (activePane === "adminPaneOther" && admin()) {
+          await loadAdminOtherPane();
+        }
+      }
+      async function loadAdminStaffPane() {
         let users = [];
         try {
           users = await list("users");
         } catch (e) {
           console.error(e);
-          $("staffList").innerHTML = '<div class="noteBox">スタッフ一覧の読込に失敗しました。権限設定または通信状態をご確認ください。</div>';
+          $("staffList").innerHTML = '<div class="noteBox">スタッフ一覧の読込に失敗しました。</div>';
           return;
         }
         staffCache = users;
         $("staffList").innerHTML = !users.length
           ? '<div class="empty">スタッフがいません</div>'
           : `<table class="table"><thead><tr><th>氏名</th><th>メール</th><th>部署</th><th>権限</th><th></th></tr></thead><tbody>${users.map((u) => `<tr><td>${esc(u.name || "")}</td><td>${esc(u.email || "")}</td><td>${esc(u.department || "")}</td><td>${roleLabel(u.role)}</td><td><div class="right"><button class="btn out sm" onclick="editStaff('${u.docId}')">編集</button><button class="btn dan sm" onclick="deleteStaff('${u.docId}','${esc(u.name || "")}')">削除</button></div></td></tr>`).join("")}</tbody></table>`;
-        const [tasks, surveys, anns, settings] = await Promise.all([
-          list("tasks").catch(() => []),
-          list("surveys").catch(() => []),
-          list("announcements").catch(() => []),
-          list("settings").catch(() => []),
-        ]);
-        $("adminStats").innerHTML =
-          `登録スタッフ: <b>${users.length}</b> 名<br>タスク: <b>${tasks.length}</b> 件<br>アンケート: <b>${surveys.length}</b> 件<br>掲示板: <b>${anns.length}</b> 件`;
+      }
+      async function loadAdminOtherPane() {
+        const settings = await loadSettingsCached(true).catch(() => []);
         const b = settings.find((x) => x.type === "banner");
         $("bannerStatus").innerHTML = b?.imageUrl
           ? `<span class="badge b2">設定済み</span> ${esc(b.fileName || "")}`
           : "未設定";
+        // 統計値はキャッシュ済みユーザー数 + 掲示板/アンケートの件数取得(軽い)
         try {
-          await loadFacilityCalendarAdmin(settings);
+          const [anns, surveys] = await Promise.all([
+            listLatest("announcements", 100).catch(() => []),
+            listLatest("surveys", 100).catch(() => []),
+          ]);
+          $("adminStats").innerHTML =
+            `登録スタッフ: <b>${(staffCache || []).length || "取得前"}</b> 名<br>アンケート: <b>${surveys.length}</b> 件<br>掲示板: <b>${anns.length}</b> 件`;
         } catch (e) {
-          console.error(e);
-          const box = $("facilityEventList");
-          if (box) box.innerHTML = '<div class="noteBox">月間施設予定の読込でエラーがありましたが、スタッフ管理は利用できます。</div>';
+          $("adminStats").innerHTML = "統計の読込に失敗しました";
         }
       }
       function openStaffModal() {
@@ -3179,18 +3405,21 @@
         return admin() || s.creatorId === u.id;
       }
       function canUserSeeSurvey(s, u) {
-        return (
-          s.targetDept === "all" ||
-          !s.targetDept ||
-          s.targetDept === u.department ||
-          surveyOwner(s, u)
-        );
+        if (!s || !u) return false;
+        if (surveyOwner(s, u)) return true;
+        const t = s.targetDept;
+        if (!t || t === "all") return true;
+        if (t === "__admin__") return u.role === "admin";
+        if (t === "__sharedEditor__") return u.role === "admin" || u.role === "sharedEditor";
+        return t === u.department;
       }
       function isSurveyOpen(s) {
         return s.status !== "closed" && (!s.dueDate || s.dueDate >= todayStr());
       }
       function hasUserAnsweredSurvey(s, u, responses) {
-        return getSurveyResponses(s, responses).some((r) => r.userId === u.id);
+        if (getSurveyResponses(s, responses).some((r) => r.userId === u.id)) return true;
+        // 軽量判定: 送信時に localStorage に記録した ID を参照
+        return getAnsweredSurveyIds(u?.id).includes(s.docId);
       }
       function getSurveyResponses(s, allResponses = []) {
         const current = (allResponses || [])
@@ -3214,11 +3443,13 @@
         return [...map.values()];
       }
       function getTargetUsers(users, survey) {
-        return (users || []).filter((u) =>
-          survey.targetDept === "all" || !survey.targetDept
-            ? true
-            : u.department === survey.targetDept,
-        );
+        const t = survey?.targetDept;
+        return (users || []).filter((u) => {
+          if (!t || t === "all") return true;
+          if (t === "__admin__") return u.role === "admin";
+          if (t === "__sharedEditor__") return u.role === "admin" || u.role === "sharedEditor";
+          return u.department === t;
+        });
       }
       function defaultQuestion(type = "text") {
         return normalizeQuestion(
@@ -3591,11 +3822,10 @@
 
       async function loadSurveys() {
         const u = me();
-        const [surveys, responses, users] = await Promise.all([
-          list("surveys"),
-          list("surveyResponses").catch(() => []),
-          list("users"),
-        ]);
+        // 集計件数は結果画面で読み込む方針にし、一覧は surveys だけ取得
+        const surveys = await listLatest("surveys", 50).catch(() => []);
+        const responses = [];
+        const users = staffCache.length ? staffCache : [];
         const visible = surveys
           .filter((s) => canUserSeeSurvey(s, u))
           .sort((a, b) => ms(b.createdAtMs || b.createdAt) - ms(a.createdAtMs || a.createdAt));
@@ -3623,7 +3853,7 @@
             const rate = targetUsers ? Math.round((rs.length / targetUsers) * 100) : 0;
             const open = isSurveyOpen(s);
             const owner = surveyOwner(s, u);
-            return `<div class="item" id="survey-${s.docId}"><div class="itemTop"><div><div class="title">${esc(s.title || "")}</div><div class="meta"><span>${esc(s.creatorName || "")}</span><span>${s.targetDept === "all" || !s.targetDept ? "全部署" : esc(s.targetDept)}</span><span>${qs.length}問</span><span>${rs.length}件回答</span><span>回答率 ${rate}%</span>${s.anonymous ? '<span class="badge b2">匿名表示</span>' : '<span class="badge b1">記名</span>'}${open ? '<span class="badge b2">受付中</span>' : '<span class="badge b4">締切</span>'}${answered ? '<span class="badge b2">回答済</span>' : open ? '<span class="badge b3">未回答</span>' : ''}${!seen && open ? '<span class="badge b4">NEW</span>' : ''}</div></div><div class="right">${!answered && open ? `<button class="btn pri sm" onclick="markSurveySeen('${s.docId}',true);openSurveyAnswer('${s.docId}')">回答</button>` : ""}<button class="btn out sm" onclick="markSurveySeen('${s.docId}',true);openSurveyResult('${s.docId}')">集計</button>${!seen && !answered ? `<button class="btn out sm" onclick="markSurveySeen('${s.docId}',false)">確認</button>` : ''}${owner ? `<button class="btn out sm" onclick="editSurvey('${s.docId}')">編集</button><button class="btn out sm" onclick="duplicateSurvey('${s.docId}')">複製</button><button class="btn ${open ? "warn" : "sec"} sm" onclick="toggleSurveyStatus('${s.docId}','${open ? "closed" : "open"}')">${open ? "締切" : "再開"}</button><button class="btn dan sm" onclick="deleteSurvey('${s.docId}')">削除</button>` : ""}</div></div>${s.desc ? `<div style="margin-top:10px;white-space:pre-wrap;line-height:1.6">${esc(s.desc)}</div>` : ""}${s.dueDate ? `<div class="meta"><span>締切: ${esc(s.dueDate)}</span></div>` : ""}</div>`;
+            return `<div class="item" id="survey-${s.docId}"><div class="itemTop"><div><div class="title">${esc(s.title || "")}</div><div class="meta"><span>${esc(s.creatorName || "")}</span><span>${esc(targetDeptLabel(s.targetDept))}</span><span>${qs.length}問</span><span>${rs.length}件回答</span><span>回答率 ${rate}%</span>${s.anonymous ? '<span class="badge b2">匿名表示</span>' : '<span class="badge b1">記名</span>'}${open ? '<span class="badge b2">受付中</span>' : '<span class="badge b4">締切</span>'}${answered ? '<span class="badge b2">回答済</span>' : open ? '<span class="badge b3">未回答</span>' : ''}${!seen && open ? '<span class="badge b4">NEW</span>' : ''}</div></div><div class="right">${!answered && open ? `<button class="btn pri sm" onclick="markSurveySeen('${s.docId}',true);openSurveyAnswer('${s.docId}')">回答</button>` : ""}<button class="btn out sm" onclick="markSurveySeen('${s.docId}',true);openSurveyResult('${s.docId}')">集計</button>${!seen && !answered ? `<button class="btn out sm" onclick="markSurveySeen('${s.docId}',false)">確認</button>` : ''}${owner ? `<button class="btn out sm" onclick="editSurvey('${s.docId}')">編集</button><button class="btn out sm" onclick="duplicateSurvey('${s.docId}')">複製</button><button class="btn ${open ? "warn" : "sec"} sm" onclick="toggleSurveyStatus('${s.docId}','${open ? "closed" : "open"}')">${open ? "締切" : "再開"}</button><button class="btn dan sm" onclick="deleteSurvey('${s.docId}')">削除</button>` : ""}</div></div>${s.desc ? `<div style="margin-top:10px;white-space:pre-wrap;line-height:1.6">${esc(s.desc)}</div>` : ""}${s.dueDate ? `<div class="meta"><span>締切: ${esc(s.dueDate)}</span></div>` : ""}</div>`;
           })
           .join("");
       }
@@ -3728,7 +3958,7 @@
         const qs = normalizeQuestions(parseJSON(survey.questions, []));
         const draft = parseJSON(localStorage.getItem(draftKey(id, u.id)), {});
         $("ansTitle").textContent = survey.title || "アンケート回答";
-        $("ansSub").textContent = `${survey.targetDept === "all" || !survey.targetDept ? "全部署" : survey.targetDept} / ${survey.anonymous ? "匿名表示" : "記名"}`;
+        $("ansSub").textContent = `${targetDeptLabel(survey.targetDept)} / ${survey.anonymous ? "匿名表示" : "記名"}`;
         $("ansBody").innerHTML = `${survey.desc ? `<div class="noteBox">${esc(survey.desc)}</div>` : ""}${qs.map((q, i) => `<div class="q"><div style="font-weight:800;margin-bottom:8px">Q${i + 1}. ${esc(q.text)} ${q.required ? '<span class="badge b4">必須</span>' : '<span class="badge b1">任意</span>'}</div>${renderAnswerInput(q, i, draft)}</div>`).join("")}`;
         $("ansDraftInfo").textContent = Object.keys(draft || {}).length ? "保存済みの下書きを読み込みました" : "";
         openModal("surveyAnswerModal");
@@ -3740,6 +3970,7 @@
         const { answers, errors } = collectAnswerValues(true);
         if (errors.length)
           return toast(`${errors.join(" / ")} を入力してください`, "error");
+        addAnsweredSurveyId(u.id, activeSurveyId);
         await add("surveyResponses", {
           surveyId: activeSurveyId,
           surveyTitle: activeSurveyData.title || "",
@@ -3858,7 +4089,7 @@
         const rate = targetUsers.length ? Math.round((rs.length / targetUsers.length) * 100) : 0;
         surveyResultCurrent = { survey, qs, rs, users };
         $("svResultTitle").textContent = `${survey.title || ""} 集計結果`;
-        $("svResultSub").textContent = `${survey.targetDept === "all" || !survey.targetDept ? "全部署" : survey.targetDept} / 回答率 ${rate}% / ${survey.anonymous ? "匿名表示" : "記名"}`;
+        $("svResultSub").textContent = `${targetDeptLabel(survey.targetDept)} / 回答率 ${rate}% / ${survey.anonymous ? "匿名表示" : "記名"}`;
         const numericValues = [];
         qs.forEach((q, i) => {
           if (["rating5", "rating10", "number"].includes(q.type)) {
