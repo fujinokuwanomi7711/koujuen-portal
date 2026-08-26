@@ -1186,7 +1186,7 @@
         if (!ann) return toast("対象掲示板が見つかりませんでした", "error");
         if (!admin() && ann.creatorId !== u.id) return toast("削除権限がありません", "error");
         await deleteAnnFiles(ann);
-        await del("announcements", id);
+        await del ("announcements", id);
         await loadDashboard();
         toast("削除しました", "ok");
       }
