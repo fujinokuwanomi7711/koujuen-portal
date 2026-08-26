@@ -1,5 +1,8 @@
+.brand h2 {
+      color: #FF0000;
+}
       :root {
-        --pri: #000;
+        --pri: #2f80ed;
         --sec: #27ae60;
         --warn: #f39c12;
         --dan: #e74c3c;
