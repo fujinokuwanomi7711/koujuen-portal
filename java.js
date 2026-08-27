@@ -80,8 +80,101 @@
               "'": "&#39;",
             })[m],
         );
-      const me = () => JSON.parse(localStorage.getItem("ku_user") || "null");
-      const saveMe = (u) => localStorage.setItem("ku_user", JSON.stringify(u));
+      // ===== ログイン状態の永続保存 =====
+      // localStorageを基本にしつつ、IndexedDBにもバックアップして
+      // ブラウザ再起動・PC再起動後のログイン状態を復元しやすくします。
+      const AUTH_KEY = "ku_user";
+      const AUTH_DB = "kuPortalAuthDB";
+      const AUTH_STORE = "auth";
+      let authDbPromise = null;
+
+      const me = () => {
+        try {
+          const raw = localStorage.getItem(AUTH_KEY);
+          return raw ? JSON.parse(raw) : null;
+        } catch (e) {
+          console.warn("localStorage login read failed", e);
+          return null;
+        }
+      };
+
+      const saveMe = (u) => {
+        try {
+          localStorage.setItem(AUTH_KEY, JSON.stringify(u));
+        } catch (e) {
+          console.warn("localStorage login save failed", e);
+        }
+        saveAuthBackup(u);
+      };
+
+      function openAuthDb() {
+        if (authDbPromise) return authDbPromise;
+        if (!("indexedDB" in window)) return Promise.resolve(null);
+        authDbPromise = new Promise((resolve) => {
+          try {
+            const req = indexedDB.open(AUTH_DB, 1);
+            req.onupgradeneeded = () => {
+              const db = req.result;
+              if (!db.objectStoreNames.contains(AUTH_STORE)) {
+                db.createObjectStore(AUTH_STORE);
+              }
+            };
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => resolve(null);
+          } catch (e) {
+            resolve(null);
+          }
+        });
+        return authDbPromise;
+      }
+
+      async function saveAuthBackup(u) {
+        try {
+          const db = await openAuthDb();
+          if (!db) return;
+          const tx = db.transaction(AUTH_STORE, "readwrite");
+          tx.objectStore(AUTH_STORE).put(u, AUTH_KEY);
+        } catch (e) {
+          console.warn("IndexedDB login backup failed", e);
+        }
+      }
+
+      async function getAuthBackup() {
+        try {
+          const db = await openAuthDb();
+          if (!db) return null;
+          return await new Promise((resolve) => {
+            const tx = db.transaction(AUTH_STORE, "readonly");
+            const req = tx.objectStore(AUTH_STORE).get(AUTH_KEY);
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => resolve(null);
+          });
+        } catch (e) {
+          return null;
+        }
+      }
+
+      async function clearAuthBackup() {
+        try {
+          const db = await openAuthDb();
+          if (!db) return;
+          const tx = db.transaction(AUTH_STORE, "readwrite");
+          tx.objectStore(AUTH_STORE).delete(AUTH_KEY);
+        } catch (e) {}
+      }
+
+      async function restoreLoginState() {
+        let u = me();
+        if (u) return u;
+        // localStorageが消えた/読めない場合はIndexedDBバックアップから復元
+        u = await getAuthBackup();
+        if (u) {
+          try {
+            localStorage.setItem(AUTH_KEY, JSON.stringify(u));
+          } catch (e) {}
+        }
+        return u || null;
+      }
       const admin = () => me()?.role === "admin";
       const sharedEditor = () => me()?.role === "sharedEditor";
       const canAccessAdminTab = () => admin() || sharedEditor();
@@ -850,13 +943,15 @@
                 .catch(() => {});
           }
         } catch (e) {}
-        localStorage.removeItem("ku_user");
+        localStorage.removeItem(AUTH_KEY);
+        await clearAuthBackup();
         watchers.forEach((u) => u && u());
         location.reload();
       }
 
       async function boot() {
-        const u = me();
+        // ブラウザ終了・PC再起動後も保存済みログインを復元
+        const u = await restoreLoginState();
         if (!u) {
           $("loginScreen").classList.remove("hide");
           $("app").classList.add("hide");
