@@ -1,6 +1,3 @@
-// 自動ログイン強化版：localStorage + Cookie + IndexedDB
-// ログアウト操作を行った場合のみログイン情報を完全削除します。
-
       const firebaseConfig = {
         apiKey: "AIzaSyB7WyB8qLVOtpYWDrTUyVi6q1f1MPmIEqI",
         authDomain: "tokuyou-portal.firebaseapp.com",
@@ -83,134 +80,24 @@
               "'": "&#39;",
             })[m],
         );
-      // ===== ログイン状態の永続保存（localStorage + Cookie + IndexedDB） =====
-      const LOGIN_STORAGE_KEY = "ku_user";
-      const LOGIN_COOKIE_KEY = "ku_user_backup";
-      const LOGIN_DB_NAME = "ku_portal_login";
-      const LOGIN_DB_STORE = "session";
-      let loginRestorePromise = null;
+      const me = () => {
+  try {
+    const saved = localStorage.getItem("ku_user");
+    return saved ? JSON.parse(saved) : null;
+  } catch (e) {
+    console.error("ログイン情報の読み込みに失敗:", e);
+    return null;
+  }
+};
 
-      function parseSavedUser(v) {
-        try {
-          const u = typeof v === "string" ? JSON.parse(v) : v;
-          return u && u.id ? u : null;
-        } catch (e) {
-          return null;
-        }
-      }
-
-      const me = () => parseSavedUser(localStorage.getItem(LOGIN_STORAGE_KEY));
-
-      function saveLoginCookie(u) {
-        try {
-          const value = encodeURIComponent(JSON.stringify(u));
-          document.cookie = `${LOGIN_COOKIE_KEY}=${value}; Max-Age=31536000; Path=/; SameSite=Lax`;
-        } catch (e) {}
-      }
-
-      function readLoginCookie() {
-        try {
-          const hit = document.cookie.split(";").map(x => x.trim()).find(x => x.startsWith(LOGIN_COOKIE_KEY + "="));
-          return hit ? parseSavedUser(decodeURIComponent(hit.substring(LOGIN_COOKIE_KEY.length + 1))) : null;
-        } catch (e) {
-          return null;
-        }
-      }
-
-      function clearLoginCookie() {
-        try {
-          document.cookie = `${LOGIN_COOKIE_KEY}=; Max-Age=0; Path=/; SameSite=Lax`;
-        } catch (e) {}
-      }
-
-      function openLoginDB() {
-        return new Promise((resolve) => {
-          if (!window.indexedDB) return resolve(null);
-          try {
-            const req = indexedDB.open(LOGIN_DB_NAME, 1);
-            req.onupgradeneeded = () => {
-              try { req.result.createObjectStore(LOGIN_DB_STORE); } catch (e) {}
-            };
-            req.onsuccess = () => resolve(req.result);
-            req.onerror = () => resolve(null);
-          } catch (e) { resolve(null); }
-        });
-      }
-
-      async function saveLoginIndexedDB(u) {
-        const dbi = await openLoginDB();
-        if (!dbi) return;
-        try {
-          await new Promise((resolve) => {
-            const tx = dbi.transaction(LOGIN_DB_STORE, "readwrite");
-            tx.objectStore(LOGIN_DB_STORE).put(u, "current");
-            tx.oncomplete = tx.onerror = tx.onabort = () => resolve();
-          });
-          dbi.close();
-        } catch (e) {}
-      }
-
-      async function readLoginIndexedDB() {
-        const dbi = await openLoginDB();
-        if (!dbi) return null;
-        try {
-          return await new Promise((resolve) => {
-            const tx = dbi.transaction(LOGIN_DB_STORE, "readonly");
-            const req = tx.objectStore(LOGIN_DB_STORE).get("current");
-            req.onsuccess = () => resolve(parseSavedUser(req.result));
-            req.onerror = () => resolve(null);
-          });
-        } catch (e) {
-          return null;
-        } finally {
-          try { dbi.close(); } catch (e) {}
-        }
-      }
-
-      async function clearLoginIndexedDB() {
-        const dbi = await openLoginDB();
-        if (!dbi) return;
-        try {
-          await new Promise((resolve) => {
-            const tx = dbi.transaction(LOGIN_DB_STORE, "readwrite");
-            tx.objectStore(LOGIN_DB_STORE).delete("current");
-            tx.oncomplete = tx.onerror = tx.onabort = () => resolve();
-          });
-        } catch (e) {}
-        try { dbi.close(); } catch (e) {}
-      }
-
-      function saveMe(u) {
-        if (!u) return;
-        const json = JSON.stringify(u);
-        try { localStorage.setItem(LOGIN_STORAGE_KEY, json); } catch (e) {}
-        saveLoginCookie(u);
-        // IndexedDBは非同期バックアップ。localStorageだけでも通常動作します。
-        saveLoginIndexedDB(u).catch(() => {});
-      }
-
-      async function restoreMe() {
-        // まず通常のlocalStorageを使用
-        const current = me();
-        if (current) return current;
-
-        // localStorageが消えていた場合はCookieから復元
-        const cookieUser = readLoginCookie();
-        if (cookieUser) {
-          try { localStorage.setItem(LOGIN_STORAGE_KEY, JSON.stringify(cookieUser)); } catch (e) {}
-          saveLoginIndexedDB(cookieUser).catch(() => {});
-          return cookieUser;
-        }
-
-        // Cookieも無い場合はIndexedDBから復元
-        const dbUser = await readLoginIndexedDB();
-        if (dbUser) {
-          try { localStorage.setItem(LOGIN_STORAGE_KEY, JSON.stringify(dbUser)); } catch (e) {}
-          saveLoginCookie(dbUser);
-          return dbUser;
-        }
-        return null;
-      }
+const saveMe = (u) => {
+  try {
+    localStorage.setItem("ku_user", JSON.stringify(u));
+    localStorage.setItem("ku_auto_login", "1");
+  } catch (e) {
+    console.error("ログイン情報の保存に失敗:", e);
+  }
+};
       const admin = () => me()?.role === "admin";
       const sharedEditor = () => me()?.role === "sharedEditor";
       const canAccessAdminTab = () => admin() || sharedEditor();
@@ -979,22 +866,41 @@
                 .catch(() => {});
           }
         } catch (e) {}
-        localStorage.removeItem(LOGIN_STORAGE_KEY);
-        clearLoginCookie();
-        await clearLoginIndexedDB();
+        localStorage.removeItem("ku_user");
         watchers.forEach((u) => u && u());
         location.reload();
       }
 
       async function boot() {
-        // ページを閉じた後・PC再起動後でも保存済みログインを先に復元
-        const u = await restoreMe();
-        if (!u) {
-          $("loginScreen").classList.remove("hide");
-          $("app").classList.add("hide");
-          await loadStaffHints();
-          return;
-        }
+  let u = me();
+
+  // 保存されたログイン情報があれば自動ログイン
+  if (!u && localStorage.getItem("ku_auto_login") === "1") {
+    try {
+      const saved = localStorage.getItem("ku_user");
+      if (saved) {
+        u = JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error("自動ログイン情報の読み込みに失敗:", e);
+    }
+  }
+
+  if (!u) {
+    $("loginScreen").classList.remove("hide");
+    $("app").classList.add("hide");
+    await loadStaffHints();
+    return;
+  }
+
+  $("loginScreen").classList.add("hide");
+  $("app").classList.remove("hide");
+
+  $("av").textContent = (u.name || "?").slice(0, 1);
+  $("meName").textContent = u.name || "";
+  syncPermissionUI();
+
+  // 以下は現在のboot()の処理をそのまま続ける
         $("loginScreen").classList.add("hide");
         $("app").classList.remove("hide");
         $("av").textContent = (u.name || "?").slice(0, 1);
