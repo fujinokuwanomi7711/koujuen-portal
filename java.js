@@ -1006,7 +1006,7 @@ const saveMe = (u) => {
           loadSettingsCached().catch(() => []),
         ]);
         $("stTask").textContent = myTasks.length;
-        $("stTrain").textContent = 1;
+        $("stTrain").textContent = 0;
         const visibleAnns = anns.filter((a) => isBoardVisibleNow(a));
         const visibleSurveys = surveys.filter((s) => canUserSeeSurvey(s, u));
         // 未回答件数は answeredSurveyIds (ローカル) で判定して reads を増やさない
@@ -1323,6 +1323,10 @@ const saveMe = (u) => {
         await loadRoomMsgs();
         $("roomInput").focus();
         startRoomRealtime(key);
+        // 既読化を即座に一覧へ反映（キャッシュ破棄して最新metaで再描画）
+        if (typeof settingsCache !== "undefined") settingsCache = null;
+        renderRoomCards().catch(() => {});
+        loadDashboard().catch(() => {});
       }
       function closeRoomRealtime() {
         if (typeof openRoomUnsub === "function") {
@@ -2536,23 +2540,46 @@ const saveMe = (u) => {
         if (!box) return toast("集計画面が見つかりません", "error");
         if (!window.jspdf) return toast("PDFライブラリの読み込みに失敗しました", "error");
         toast("PDFを作成しています...", "ok");
+        // モーダル内スクロールの影響を避けるため、一時的に全展開してから全体をキャプチャ
+        const prev = {
+          maxHeight: box.style.maxHeight,
+          overflow: box.style.overflow,
+          width: box.style.width,
+        };
+        box.style.maxHeight = "none";
+        box.style.overflow = "visible";
+        box.style.width = "960px";
         try {
-          const canvas = await html2canvas(box, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
+          const canvas = await html2canvas(box, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: "#ffffff",
+            windowWidth: 1024,
+            scrollX: 0,
+            scrollY: 0,
+          });
           const { jsPDF } = window.jspdf;
           const pdf = new jsPDF("p", "mm", "a4");
           const pageW = 210, pageH = 297, margin = 10;
           const imgW = pageW - margin * 2;
-          const imgH = (canvas.height * imgW) / canvas.width;
-          const img = canvas.toDataURL("image/png");
-          let heightLeft = imgH;
-          let position = margin;
-          pdf.addImage(img, "PNG", margin, position, imgW, imgH);
-          heightLeft -= pageH - margin * 2;
-          while (heightLeft > 0) {
-            position = heightLeft - imgH + margin;
-            pdf.addPage();
-            pdf.addImage(img, "PNG", margin, position, imgW, imgH);
-            heightLeft -= pageH - margin * 2;
+          const pageImgH = pageH - margin * 2;
+          // ページごとに画像を切り出して配置（切り詰めず欠落させない）
+          const pxPerMm = canvas.width / imgW;
+          const pagePxH = Math.floor(pageImgH * pxPerMm);
+          const totalPages = Math.ceil(canvas.height / pagePxH);
+          for (let p = 0; p < totalPages; p++) {
+            const srcY = p * pagePxH;
+            const srcH = Math.min(pagePxH, canvas.height - srcY);
+            const pageCanvas = document.createElement("canvas");
+            pageCanvas.width = canvas.width;
+            pageCanvas.height = srcH;
+            const ctx = pageCanvas.getContext("2d");
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+            ctx.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
+            const img = pageCanvas.toDataURL("image/png");
+            if (p > 0) pdf.addPage();
+            pdf.addImage(img, "PNG", margin, margin, imgW, srcH / pxPerMm);
           }
           const name = (document.getElementById("svResultTitle")?.textContent || "survey_result").trim() || "survey_result";
           pdf.save(name + ".pdf");
@@ -2560,6 +2587,10 @@ const saveMe = (u) => {
         } catch (e) {
           console.error(e);
           toast("PDF作成に失敗しました", "error");
+        } finally {
+          box.style.maxHeight = prev.maxHeight;
+          box.style.overflow = prev.overflow;
+          box.style.width = prev.width;
         }
       }
       function ensureSurveyPdfButton() {
