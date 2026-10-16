@@ -368,9 +368,11 @@ const saveMe = (u) => {
           .filter((x) => String(x.date).startsWith(month))
           .sort((a, b) => String(a.date).localeCompare(String(b.date), "ja"));
       }
+      const facilityCalendarData = {};
       function renderFacilityCalendarGrid(targetId, month, items = []) {
         const el = $(targetId);
         if (!el) return;
+        facilityCalendarData[targetId] = { month, items };
         const { y, m, first, lastDate } = parseMonthInfo(month);
         const weekLabels = ["日", "月", "火", "水", "木", "金", "土"];
         const byDate = new Map();
@@ -385,7 +387,7 @@ const saveMe = (u) => {
         for (let d = 1; d <= lastDate; d++) {
           const date = `${month}-${String(d).padStart(2, "0")}`;
           const entries = byDate.get(date) || [];
-          cells.push(`<div class="calendarCell"><div class="calendarDay">${m}/${d}</div>${entries.length ? entries.map((t) => `<div class="calendarEvent">${esc(t)}</div>`).join("") : '<div class="tiny">予定なし</div>'}</div>`);
+          cells.push(`<div class="calendarCell clickable" onclick="openCalendarDay('${targetId}','${date}')"><div class="calendarDay">${m}/${d}</div>${entries.length ? entries.map((t) => `<div class="calendarEvent">${esc(t)}</div>`).join("") : '<div class="tiny">予定なし</div>'}</div>`);
         }
         el.innerHTML = `<div class="calendarGrid">${weekLabels.map((w) => `<div class="calendarWeek">${w}</div>`).join("")}${cells.join("")}</div>`;
       }
@@ -1009,9 +1011,9 @@ const saveMe = (u) => {
         $("stTrain").textContent = 0;
         const visibleAnns = anns.filter((a) => isBoardVisibleNow(a));
         const visibleSurveys = surveys.filter((s) => canUserSeeSurvey(s, u));
-        // 未回答件数は answeredSurveyIds (ローカル) で判定して reads を増やさない
-        const answeredIds = getAnsweredSurveyIds(u.id);
-        const openTodo = visibleSurveys.filter((s) => isSurveyOpen(s) && !answeredIds.includes(s.docId));
+        // 自分の回答をサーバーと同期してから未回答判定（localStorage + 埋め込み回答の両方で判定）
+        await syncMyAnsweredSurveys(u).catch(() => {});
+        const openTodo = visibleSurveys.filter((s) => isSurveyOpen(s) && !hasUserAnsweredSurvey(s, u, []));
         $("stSurvey").textContent = openTodo.length;
         $("stRoom").textContent = roomMeta.filter((r) => r.unread > 0).length;
         setTabAlert("dashboard", visibleAnns.some((a) => !isBoardRead(a, u)));
@@ -1054,6 +1056,13 @@ const saveMe = (u) => {
           arr.push(surveyId);
           localStorage.setItem(`ku_answered_${userId}`, JSON.stringify(arr));
         }
+      }
+      async function syncMyAnsweredSurveys(u) {
+        // 別端末/別ブラウザで回答した分も拾うため、自分の回答だけ1クエリで取得してローカルに反映
+        try {
+          const s = await db.collection("surveyResponses").where("userId", "==", u.id).get();
+          s.docs.forEach((d) => addAnsweredSurveyId(u.id, d.data().surveyId || ""));
+        } catch (e) { /* 取得失敗時はローカルのみで判定 */ }
       }
       async function loadRoomMetaSummary(u) {
         // 各ルームの meta doc を settings コレクションで管理する (roomMeta_<key>)
@@ -2154,6 +2163,8 @@ const saveMe = (u) => {
         const surveys = await listLatest("surveys", 50).catch(() => []);
         const responses = [];
         const users = staffCache.length ? staffCache : [];
+        // 回答済みかどうかを確実に判定するため、自分の回答だけサーバーから同期
+        await syncMyAnsweredSurveys(u).catch(() => {});
         const visible = surveys
           .filter((s) => canUserSeeSurvey(s, u))
           .sort((a, b) => ms(b.createdAtMs || b.createdAt) - ms(a.createdAtMs || a.createdAt));
@@ -2175,7 +2186,7 @@ const saveMe = (u) => {
           .map((s) => {
             const qs = normalizeQuestions(parseJSON(s.questions, []));
             const rs = getSurveyResponses(s, responses);
-            const answered = rs.some((r) => r.userId === u.id);
+            const answered = hasUserAnsweredSurvey(s, u, responses);
             const seen = isSurveySeen(s, u, responses);
             const targetUsers = getTargetUsers(users, s).length || 0;
             const rate = targetUsers ? Math.round((rs.length / targetUsers) * 100) : 0;
@@ -2603,5 +2614,27 @@ const saveMe = (u) => {
         b.innerHTML = '<i class="fas fa-file-pdf"></i> 結果全体をPDFで保存';
         b.onclick = exportSurveyResultPDF;
         box.appendChild(b);
+      }
+
+      function openCalendarDay(targetId, date) {
+        const store = facilityCalendarData[targetId];
+        if (!store) return;
+        const items = normalizeFacilityItems(store.items, store.month)
+          .filter((x) => String(x.date) === date);
+        const d = new Date(date + "T00:00:00");
+        $("dayModalTitle").textContent = `${d.getMonth() + 1}月${d.getDate()}日 の予定`;
+        $("dayModalBody").innerHTML = items.length
+          ? items.map((x) => `<div class="dayEventBig">${esc(x.text)}</div>`).join("")
+          : '<div class="empty">この日の予定はありません</div>';
+        openModal("dayModal");
+      }
+      function toggleCalendarZoom() {
+        const g = document.querySelector("#facilityCalendar .calendarGrid");
+        if (!g) return;
+        g.classList.toggle("zoomed");
+        const btn = $("calZoomBtn");
+        if (btn) btn.innerHTML = g.classList.contains("zoomed")
+          ? '<i class="fas fa-magnifying-glass-minus"></i> 縮小'
+          : '<i class="fas fa-magnifying-glass-plus"></i> 拡大';
       }
 
