@@ -555,7 +555,10 @@ const saveMe = (u) => {
       }
       function closeModal(id) {
         $(id).classList.remove("show");
-        if (id === "roomModal") closeRoomRealtime();
+        if (id === "roomModal") {
+          if (typeof closeRoomRealtime === "function") closeRoomRealtime();
+          if (activeRoom) setRoomReadMs(activeRoom, Date.now());
+        }
       }
       function closeSurveyModal() {
         editingSurveyId = "";
@@ -1313,6 +1316,7 @@ const saveMe = (u) => {
       }
       let openRoomUnsub = null;
       async function openRoom(key) {
+        if (typeof setRoomReadMs === "function") setRoomReadMs(key, Date.now());
         activeRoom = key;
         $("roomTitle").textContent = ROOMS[key];
         openModal("roomModal");
@@ -1338,7 +1342,7 @@ const saveMe = (u) => {
               if (data.userId === me()?.id) return; // 自分の投稿は appendRoomMsgToDom 済み
               if (document.querySelector(`#roomMsgs [data-msg-id="${d.id}"]`)) return;
               appendRoomMsgToDom({ docId: d.id, ...data });
-              setRoomReadMs(key, ms(data.createdAtMs || data.createdAt));
+              setRoomReadMs(key, Math.max(ms(data.createdAtMs || data.createdAt), Date.now()));
             });
         } catch (e) { console.warn("room realtime failed", e); }
       }
@@ -1350,7 +1354,7 @@ const saveMe = (u) => {
         );
         const el = $("roomMsgs");
         const lastMs = msgs.length ? ms(msgs[msgs.length - 1].createdAtMs || msgs[msgs.length - 1].createdAt) : Date.now();
-        setRoomReadMs(activeRoom, lastMs);
+        setRoomReadMs(activeRoom, Math.max(lastMs, Date.now()));
         if (!msgs.length) {
           el.innerHTML = '<div class="empty">まだメッセージがありません</div>';
           return;
@@ -2459,6 +2463,7 @@ const saveMe = (u) => {
             return `<div class="q" id="result_block_${i}"><div class="right" style="justify-content:space-between"><div style="font-weight:800">Q${i + 1}. ${esc(q.text)}</div><button class="btn out sm" onclick="copyElementImage('result_block_${i}')"><i class="fas fa-copy"></i> 設問を画像コピー</button></div>${body}</div>`;
           }).join("");
         openModal("surveyResultModal");
+        setTimeout(ensureSurveyPdfButton, 50);
       }
       function downloadSurveyCsv() {
         if (!surveyResultCurrent)
@@ -2525,3 +2530,47 @@ const saveMe = (u) => {
         (e) => e.key === "Enter" && sendRoomMsg(),
       );
       window.addEventListener("load", boot);
+
+      async function exportSurveyResultPDF() {
+        const box = document.querySelector("#surveyResultModal .box");
+        if (!box) return toast("集計画面が見つかりません", "error");
+        if (!window.jspdf) return toast("PDFライブラリの読み込みに失敗しました", "error");
+        toast("PDFを作成しています...", "ok");
+        try {
+          const canvas = await html2canvas(box, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF("p", "mm", "a4");
+          const pageW = 210, pageH = 297, margin = 10;
+          const imgW = pageW - margin * 2;
+          const imgH = (canvas.height * imgW) / canvas.width;
+          const img = canvas.toDataURL("image/png");
+          let heightLeft = imgH;
+          let position = margin;
+          pdf.addImage(img, "PNG", margin, position, imgW, imgH);
+          heightLeft -= pageH - margin * 2;
+          while (heightLeft > 0) {
+            position = heightLeft - imgH + margin;
+            pdf.addPage();
+            pdf.addImage(img, "PNG", margin, position, imgW, imgH);
+            heightLeft -= pageH - margin * 2;
+          }
+          const name = (document.getElementById("svResultTitle")?.textContent || "survey_result").trim() || "survey_result";
+          pdf.save(name + ".pdf");
+          toast("PDFを保存しました", "ok");
+        } catch (e) {
+          console.error(e);
+          toast("PDF作成に失敗しました", "error");
+        }
+      }
+      function ensureSurveyPdfButton() {
+        const box = document.querySelector("#surveyResultModal .box");
+        if (!box || document.getElementById("svPdfBtn")) return;
+        const b = document.createElement("button");
+        b.id = "svPdfBtn";
+        b.className = "btn sec";
+        b.style.marginTop = "10px";
+        b.innerHTML = '<i class="fas fa-file-pdf"></i> 結果全体をPDFで保存';
+        b.onclick = exportSurveyResultPDF;
+        box.appendChild(b);
+      }
+
