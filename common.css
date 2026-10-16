@@ -805,6 +805,40 @@
         padding: 10px;
         background: #fff;
       }
+      .calendarCell.clickable {
+        cursor: pointer;
+        transition: box-shadow 0.15s ease, transform 0.15s ease;
+      }
+      .calendarCell.clickable:hover {
+        box-shadow: 0 0 0 2px var(--pri);
+        transform: translateY(-1px);
+      }
+      .calendarGrid.zoomed .calendarCell {
+        min-height: 150px;
+        padding: 10px;
+      }
+      .calendarGrid.zoomed .calendarDay {
+        font-size: 15px;
+      }
+      .calendarGrid.zoomed .calendarEvent {
+        font-size: 14px;
+        -webkit-line-clamp: 6;
+        line-height: 1.6;
+      }
+      .dayModalBody {
+        display: grid;
+        gap: 10px;
+      }
+      .dayEventBig {
+        font-size: 16px;
+        line-height: 1.7;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #f5f9ff;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
       @media (max-width: 768px) {
         .splitCols {
           grid-template-columns: 1fr;
