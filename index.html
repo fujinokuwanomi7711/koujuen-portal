@@ -263,7 +263,10 @@
                   <h3>月間施設予定</h3>
                   <div class="tiny">管理者が更新する月ごとの予定を確認できます</div>
                 </div>
-                <input id="facilityMonthView" class="inp" type="month" style="max-width:180px" />
+                <div class="right">
+                  <input id="facilityMonthView" class="inp" type="month" style="max-width:180px" />
+                  <button id="calZoomBtn" class="btn out sm" onclick="toggleCalendarZoom()"><i class="fas fa-magnifying-glass-plus"></i> 拡大</button>
+                </div>
               </div>
               <div id="facilityCalendar" class="stack"></div>
             </div>
@@ -887,6 +890,15 @@
 
   <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
     <script src="./script.js"></script>
+    <div id="dayModal" class="modal">
+      <div class="box stack" style="width:min(560px,100%)">
+        <div class="cardHd">
+          <h3 id="dayModalTitle">予定</h3>
+          <button class="close" onclick="closeModal('dayModal')">×</button>
+        </div>
+        <div id="dayModalBody" class="dayModalBody"></div>
+      </div>
+    </div>
   <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920" integrity="sha512-L0ha0OXavK/8okipN9F8BtP84dg9DUhPERbBXzwI6dgTA55d2+yweo3pn5CSFYs45/r8md2+xvUPtTdvTNRfjA==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
