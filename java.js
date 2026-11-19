@@ -8,12 +8,10 @@
       };
 
       const VAPID_PUBLIC_KEY = "YOUR_PUBLIC_VAPID_KEY";
-      if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
+      firebase.initializeApp(firebaseConfig);
       const db = firebase.firestore();
       const storage = firebase.storage();
-      let messaging = null;
-      try { if (typeof firebase.messaging === 'function') messaging = firebase.messaging(); }
-      catch (e) { console.warn('通知は無効ですがポータルは利用できます', e); }
+      const messaging = firebase.messaging();
 
       const ROOMS = {
         care2: "2階介護",
@@ -581,7 +579,6 @@
           );
       }
       async function requestNotify() {
-        if (!messaging) return toast("この環境では通知を利用できません", "error");
         try {
           if (!("Notification" in window))
             return toast("このブラウザは通知に未対応です", "error");
@@ -622,7 +619,6 @@
         }
       }
       async function setupForegroundMessaging() {
-        if (!messaging) return;
         messaging.onMessage(async (payload) => {
           const data = payload?.data || {};
           const title =
@@ -2341,8 +2337,7 @@
         "keypress",
         (e) => e.key === "Enter" && sendRoomMsg(),
       );
-      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => boot().catch(console.error), {once:true});
-      else setTimeout(() => boot().catch(console.error), 0);
+      window.addEventListener("load", boot);
 
       async function exportSurveyResultPDF() {
         const box = document.querySelector("#surveyResultModal .box");
@@ -2469,12 +2464,12 @@ function safeUserId() { return me()?.id || ''; }
 async function login() {
  const name=$('loginName').value.trim();
  const email=$('loginEmail').value.trim().toLowerCase();
- if(!name||!email)return toast('IDとパスワードを入力してください','error');
+ if(!name||!email)return toast('職員名と登録メールアドレスを入力してください','error');
  $('authNotice').textContent='確認中…';
  try{
   const users=await list('users');
   const found=users.find(u=>(u.name||'')===name&&String(u.email||'').toLowerCase()===email);
-  if(!found){$('authNotice').textContent='IDまたはパスワードが一致しません。';return;}
+  if(!found){$('authNotice').textContent='職員名または登録メールアドレスが一致しません。';return;}
   if(found.active===false){$('authNotice').textContent='この職員情報は利用停止中です。';return;}
   staffCache=users;saveMe(found);$('authNotice').textContent='';await boot();
  }catch(e){console.error(e);$('authNotice').textContent='確認できませんでした。通信状態を確認してください。';}
@@ -2523,7 +2518,7 @@ async function loadTraining(force=false) {
         db.collection('trainingCompletions').where('userId','==',me().id).get()
       ]);
       responses.docs.forEach(d=>{if(d.data().surveyId)addAnsweredSurveyId(me().id,d.data().surveyId);});
-      trainingCache={trainings:trainings.filter(t=>!t.deleted && (matchesTrainingAudience(t,me()) || canManageTraining(t))),done:new Set(completions.docs.map(d=>d.data().trainingId)),hidden:new Set(completions.docs.filter(d=>d.data().hidden===true).map(d=>d.data().trainingId))};
+      trainingCache={trainings:trainings.filter(t=>canUserSeeSurvey(t,me())),done:new Set(completions.docs.map(d=>d.data().trainingId))};
       trainingCacheAt=Date.now();
     })().finally(()=>trainingCacheTask=null);
     await trainingCacheTask;
@@ -2536,14 +2531,14 @@ function renderTrainingViews() {
   if(!trainingCache)return;
   const {trainings,done}=trainingCache;
   const todo=trainings.filter(t=>t.active!==false && !done.has(t.docId));
-  const finished=trainings.filter(t=>done.has(t.docId) && !trainingCache.hidden?.has(t.docId));
+  const finished=trainings.filter(t=>done.has(t.docId));
   $('stTrain').textContent=todo.length;
   $('trainingTodoCount').textContent=todo.length;$('trainingDoneCount').textContent=finished.length;
   const rows=trainingGroup==='done'?finished:todo;
   $('trainingList').innerHTML=rows.map(t=>{
     const url=safePortalUrl(t.videoUrl);const complete=done.has(t.docId);
     const surveyed=!t.surveyId || getAnsweredSurveyIds(me().id).includes(t.surveyId);
-    return `<div class="item"><h3>${esc(t.title)}</h3><p style="white-space:pre-wrap">${esc(t.description || '')}</p><div class="meta"><span>対象：${esc(targetDeptLabel(t.targetDept))}</span><span>期限：${esc(t.dueDate || '指定なし')}</span><span>${complete?'受講完了':'未実施'}</span></div><div class="right">${url?`<a class="btn out" href="${esc(url)}" target="_blank" rel="noopener noreferrer">動画研修を開く</a>`:''}${t.surveyId?`<button class="btn out" onclick="openTrainingSurvey('${esc(t.surveyId)}')">${surveyed?'回答済み':'受講後アンケート'}</button>`:''}${!complete && matchesTrainingAudience(t,me())?`<button class="btn sec" onclick="completeTraining('${esc(t.docId)}')" ${surveyed?'':'disabled'}>受講完了を記録</button>`:''}${complete?`<button class="btn out sm" onclick="hideCompletedTraining('${esc(t.docId)}')">履歴から削除</button>`:''}${canManageTraining(t)?`<button class="btn out sm" onclick="archiveTraining('${esc(t.docId)}')">受付終了</button><button class="btn dan sm" onclick="deleteTraining('${esc(t.docId)}')">研修を削除</button>`:''}</div></div>`;
+    return `<div class="item"><h3>${esc(t.title)}</h3><p style="white-space:pre-wrap">${esc(t.description || '')}</p><div class="meta"><span>対象：${esc(targetDeptLabel(t.targetDept))}</span><span>期限：${esc(t.dueDate || '指定なし')}</span><span>${complete?'受講完了':'未実施'}</span></div><div class="right">${url?`<a class="btn out" href="${esc(url)}" target="_blank" rel="noopener noreferrer">動画研修を開く</a>`:''}${t.surveyId?`<button class="btn out" onclick="openTrainingSurvey('${esc(t.surveyId)}')">${surveyed?'回答済み':'受講後アンケート'}</button>`:''}${!complete?`<button class="btn sec" onclick="completeTraining('${esc(t.docId)}')" ${surveyed?'':'disabled'}>受講完了を記録</button>`:''}${canAccessAdminTab()?`<button class="btn out sm" onclick="archiveTraining('${esc(t.docId)}')">受付終了</button>`:''}</div></div>`;
   }).join('')||'<div class="empty">該当する研修はありません</div>';
   $('trainingHome').innerHTML=`<div class="cardHd"><h3>未実施の研修 ${todo.length}件</h3><button class="btn out sm" onclick="showTab('training',document.querySelector('[data-id=training]'))">研修へ</button></div>${todo.slice(0,3).map(t=>`<div class="summaryRow"><b>${esc(t.title)}</b><span>期限 ${esc(t.dueDate || 'なし')}</span></div>`).join('')||'<p class="tiny">未実施の研修はありません</p>'}`;
 }
@@ -2553,7 +2548,6 @@ async function openTrainingSurvey(id) {
 }
 async function completeTraining(id) {
   const t=trainingCache?.trainings.find(t=>t.docId===id && t.active!==false);if(!t)return;
-  if(!matchesTrainingAudience(t,me()))return toast('この研修は受講対象外です','error');
   // Verify linked survey on the server; local storage is not sufficient for completion checks.
   if(t.surveyId){
     const answers=await db.collection('surveyResponses').where('userId','==',me().id).get();
@@ -2588,20 +2582,21 @@ async function saveTraining(){
   if(surveyId){
     const survey=await db.collection('surveys').doc(surveyId).get();
     if(!survey.exists||!isSurveyOpen(survey.data()))return toast('関連アンケートがありません、または締切済みです','error');
-    const links=await getTrainingLinks(true);
-    if(links.some(t=>t.surveyId===surveyId))return toast('このアンケートは他の研修と連携済みです。別のアンケートを選んでください','error');
-    if(!admin() && survey.data().creatorId!==me().id)return toast('自分で作成したアンケートを選択してください','error');
-    batch.update(db.collection('surveys').doc(surveyId),{linkedTrainingId:trainingRef.id,trainingTargetDept:targetDept,trainingDeleted:false});
+    if((survey.data().targetDept||'all')!=='all' && survey.data().targetDept!==targetDept)return toast('研修とアンケートの対象を同じにするか、アンケートを全部署対象にしてください','error');
   }
   batch.set(trainingRef,{...training,announcementId:boardRef?.id||''});
   if(boardRef)batch.set(boardRef,{title:'【研修】'+title,content:training.description+'\n研修画面から動画を開き、受講後に完了を記録してください。',priority:'normal',creatorId:me().id,creatorName:me().name,attachments:[],externalUrl:videoUrl,publishFrom:todayStr(),publishUntil:boardUntil||dueDate||'',trainingId:trainingRef.id,targetDept,createdAt:stamp,createdAtMs:now});
   trainingSaving=true;$('trainingSaveBtn').disabled=true;
-  try{await batch.commit();trainingLinksCache=null;publishedBoardCache=null;closeModal('trainingEditor');await Promise.all([loadTraining(true),loadDashboard()]);toast('研修を登録しました','ok');}
+  try{await batch.commit();publishedBoardCache=null;closeModal('trainingEditor');await Promise.all([loadTraining(true),loadDashboard()]);toast('研修を登録しました','ok');}
   catch(e){$('trainingSaveStatus').textContent='登録できませんでした。通信・設定を確認してください。';}
   finally{trainingSaving=false;$('trainingSaveBtn').disabled=false;}
 }
 async function archiveTraining(id){
-  await updateTrainingAvailability(id,false);
+  if(!canAccessAdminTab()||!confirm('この研修の受付を終了しますか？記録は削除しません。'))return;
+  const ref=db.collection('trainings').doc(id);const snap=await ref.get();if(!snap.exists)return;
+  const batch=db.batch();batch.update(ref,{active:false});
+  if(snap.data().announcementId)batch.update(db.collection('announcements').doc(snap.data().announcementId),{publishUntil:'2000-01-01'});
+  await batch.commit();publishedBoardCache=null;await loadTraining(true);await loadDashboard();
 }
 // Dashboard wrapper runs after original dashboard renderer without resetting the real training count.
 const baseDashboard = loadDashboard;
@@ -2645,79 +2640,3 @@ createBoard=async function(){publishedBoardCache=null;try{await originalCreateBo
 const originalDeleteBoard=deleteBoard;
 deleteBoard=async function(id){publishedBoardCache=null;try{await originalDeleteBoard(id);}finally{publishedBoardCache=null;}};
 
-let trainingLinksCache=null,trainingLinksAt=0,trainingLinksTask=null;
-async function getTrainingLinks(force=false){
- if(!force&&trainingLinksCache&&Date.now()-trainingLinksAt<60000)return trainingLinksCache;
- if(!trainingLinksTask)trainingLinksTask=db.collection('trainings').get().then(q=>{
-  trainingLinksCache=q.docs.map(d=>({docId:d.id,...d.data()}));trainingLinksAt=Date.now();return trainingLinksCache;
- }).finally(()=>trainingLinksTask=null);
- return trainingLinksTask;
-}
-function canManageTraining(t,u=me()){return !!u && (u.role==='admin'||t.creatorId===u.id);}
-function matchesTrainingAudience(t,u){
- if(!t||!u||u.active===false)return false;
- const target=t.targetDept||'all';
- if(target==='all')return true;
- if(target==='__admin__')return u.role==='admin';
- if(target==='__sharedEditor__')return u.role==='sharedEditor'||u.role==='admin';
- return u.department===target;
-}
-function linkedTrainingFor(s){
- if(s.linkedTrainingId)return trainingLinksCache?.find(t=>t.docId===s.linkedTrainingId)||{targetDept:s.trainingTargetDept||s.targetDept,deleted:s.trainingDeleted};
- return trainingLinksCache?.find(t=>t.surveyId===s.docId)||null;
-}
-function effectiveSurveyTarget(s){const t=linkedTrainingFor(s);return t?t.targetDept:s.targetDept;}
-const originalSurveyVisibility=canUserSeeSurvey;
-canUserSeeSurvey=function(s,u){
- const t=linkedTrainingFor(s);
- if(t){if(surveyOwner(s,u))return true;return !t.deleted && matchesTrainingAudience(t,u);}
- return originalSurveyVisibility(s,u);
-};
-const originalTargetUsers=getTargetUsers;
-getTargetUsers=function(users,s){
- const t=linkedTrainingFor(s);return t?(users||[]).filter(u=>matchesTrainingAudience(t,u)):originalTargetUsers(users,s);
-};
-// Decorate query results so home, survey list, answer screen and result use one audience.
-function decorateTrainingSurveys(rows){return rows.map(s=>{
- const t=linkedTrainingFor(s);
- return t?{...s,targetDept:t.targetDept,linkedTrainingId:t.docId||s.linkedTrainingId,trainingTargetDept:t.targetDept,trainingDeleted:!!t.deleted}:s;
-});}
-const listBeforeAudience=list;
-list=async function(col){if(col==='surveys'){await getTrainingLinks();return decorateTrainingSurveys(await listBeforeAudience(col));}return listBeforeAudience(col);};
-const latestBeforeAudience=listLatest;
-listLatest=async function(col,n){if(col==='surveys'){await getTrainingLinks();return decorateTrainingSurveys(await latestBeforeAudience(col,n));}return latestBeforeAudience(col,n);};
-const originalSurveyOpen=isSurveyOpen;
-isSurveyOpen=function(s){return !s.trainingDeleted && originalSurveyOpen(s);};
-async function hideCompletedTraining(id){
- if(!me()||!trainingCache?.done.has(id))return;
- if(!confirm('自分の受講後一覧から削除しますか？受講完了記録と他の職員の表示は残ります。'))return;
- const key=encodeURIComponent(me().id+'__'+id);
- try{
-  await db.collection('trainingCompletions').doc(key).set({userId:me().id,trainingId:id,hidden:true,hiddenAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
-  trainingCache.hidden ||= new Set();trainingCache.hidden.add(id);renderTrainingViews();toast('自分の一覧から削除しました','ok');
- }catch(e){toast('削除できませんでした。再度お試しください','error');}
-}
-async function updateTrainingAvailability(id,remove){
- const ref=db.collection('trainings').doc(id);
- try{
-  const snap=await ref.get();if(!snap.exists)return toast('研修が見つかりません','error');
-  const t=snap.data();if(!canManageTraining(t))return toast('作成者または管理者のみ操作できます','error');
-  if(!confirm(remove?'研修を全員の一覧から削除しますか？関連する掲示板は非表示にし、受講記録とアンケート回答は保存します。':'この研修の受付を終了しますか？'))return;
-  const [board,survey]=await Promise.all([
-   t.announcementId?db.collection('announcements').doc(t.announcementId).get():null,
-   t.surveyId?db.collection('surveys').doc(t.surveyId).get():null
-  ]);
-  const batch=db.batch();batch.update(ref,{active:false,...(remove?{deleted:true,deletedAt:firebase.firestore.FieldValue.serverTimestamp()}:{} )});
-  if(board?.exists)batch.update(board.ref,{publishUntil:'2000-01-01'});
-  // Only shut down a survey uniquely linked to this training, never unrelated survey data.
-  if(remove&&survey?.exists){
-   const links=await getTrainingLinks(true);
-   const shared=links.some(x=>x.docId!==id&&!x.deleted&&x.surveyId===t.surveyId);
-   if(!shared)batch.update(survey.ref,{trainingDeleted:true});
-  }
-  await batch.commit();trainingLinksCache=null;trainingCache=null;publishedBoardCache=null;
-  await loadDashboard();if($('training').classList.contains('active'))await loadTraining();
-  if($('survey').classList.contains('active'))await loadSurveys();toast(remove?'研修を削除しました':'受付を終了しました','ok');
- }catch(e){console.error(e);toast('更新できませんでした。通信状態を確認してください','error');}
-}
-async function deleteTraining(id){await updateTrainingAvailability(id,true);}
