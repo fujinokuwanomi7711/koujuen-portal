@@ -2,12 +2,7 @@
 <!DOCTYPE html>
 
 <html lang="ja">
-<head><script>window.addEventListener('error', function(e){
- var t=e.target, n=document.getElementById('authNotice');
- if(!n)return;
- if(t && t.tagName==='SCRIPT' && t.src) n.textContent='プログラムを読み込めません。ファイルの配置と通信を確認してください。';
- else if(e.message) n.textContent='起動エラーが発生しました。ページを再読み込みしてください。';
-}, true);</script>
+<head>
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <title>康寿園ポータル 改善版</title>
@@ -25,23 +20,29 @@
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<link href="./common.css?v=startfix2" rel="stylesheet"/></head>
+<link href="./common.css?v=legacy-login1" rel="stylesheet"/></head>
 <body>
 <div class="center" id="loginScreen">
 <div class="panel login stack">
 <div style="text-align: center">
 <i class="fas fa-hospital-user" style="font-size: 56px; color: var(--pri); margin-bottom: 12px"></i>
-<h1>康寿園ポータル</h1></div>
+<h1>康寿園ポータル</h1>
+<p class="muted">IDは名前・パスワードはメールアドレスでログイン</p>
+</div>
 <div class="stack" id="loginFields">
-<input aria-label="ID" autocomplete="username" class="inp" id="loginName" placeholder="ID"/>
-<input aria-label="パスワード" autocomplete="current-password" class="inp" id="loginEmail" placeholder="パスワード" type="password"/>
+<input autocomplete="username" class="inp" id="loginName" placeholder="ログインID（登録されている職員名）"/>
+<input autocomplete="email" class="inp" id="loginEmail" placeholder="登録メールアドレス" type="email"/>
 <button class="btn pri w100" onclick="login()">
 <i class="fas fa-sign-in-alt"></i> ログイン
           </button>
-<div class="helper" id="authNotice" role="status"></div></div>
+<p class="helper">以前と同じ職員名と登録メールアドレスで入れます。パスワード認証ではありません。</p><div class="helper" id="authNotice" role="status"></div></div>
+<p class="tiny">
+          ※
+          ご要望どおりの認証方式です。運用上は将来的に本パスワード認証へ変更推奨です。
+        </p>
 </div>
 </div>
-<div class="hide" id="app">
+<div class="hide" id="app"><div class="reviewWarning">検証用：Firebaseルールは未変更です。外部からのデータ操作を防止できません。個人情報・機密情報は登録しないでください。</div>
 <div class="wrap">
 <header class="panel hdr">
 <div class="brand">
@@ -429,6 +430,7 @@
 <h3>掲示板投稿</h3>
 <button class="close" onclick="closeModal('boardModal')">×</button>
 </div>
+<div class="tiny" id="boardModalHint">タイトル・本文・優先度・URL・掲載期間は自動で下書き保存されます</div>
 <input class="inp" id="bTitle" placeholder="タイトル"/>
 <textarea id="bBody" placeholder="本文"></textarea>
 <select id="bPri">
@@ -672,5 +674,5 @@
 <div class="dayModalBody" id="dayModalBody"></div>
 </div>
 </div>
-<div class="modal" id="trainingEditor"><div class="box stack"><div class="cardHd"><h3>動画研修の登録</h3><button class="close" onclick="closeModal('trainingEditor')">×</button></div><label>研修名<input class="inp" id="trTitle" maxlength="120"/></label><label>説明<textarea id="trDescription" maxlength="3000"></textarea></label><label>動画研修URL（https）<input class="inp" id="trUrl" type="url"/></label><label>対象<select id="trTarget"><option value="all">全部署</option><option>2階介護</option><option>3階介護</option><option>看護</option><option>リハビリ</option><option>栄養</option><option>事務</option><option>相談課</option><option>施設長</option><option>所長</option><option value="__sharedEditor__">共有権限者</option><option value="__admin__">管理者</option></select></label><label>受講期限（任意）<input class="inp" id="trDue" type="date"/></label><label>関連アンケート<select id="trSurvey"><option value="">なし：本人の完了操作で記録</option></select></label><label><input checked="" id="trBoard" type="checkbox"/> 掲示板にも案内を掲載</label><label>掲示板の掲載終了日（任意）<input class="inp" id="trBoardUntil" type="date"/></label><button class="btn pri" id="trainingSaveBtn" onclick="saveTraining()">登録</button><div class="helper" id="trainingSaveStatus" role="status"></div></div></div><script src="./common.js?v=startfix2"></script></body>
+<div class="modal" id="trainingEditor"><div class="box stack"><div class="cardHd"><h3>動画研修の登録</h3><button class="close" onclick="closeModal('trainingEditor')">×</button></div><label>研修名<input class="inp" id="trTitle" maxlength="120"/></label><label>説明<textarea id="trDescription" maxlength="3000"></textarea></label><label>動画研修URL（https）<input class="inp" id="trUrl" type="url"/></label><label>対象<select id="trTarget"><option value="all">全部署</option><option>2階介護</option><option>3階介護</option><option>看護</option><option>リハビリ</option><option>栄養</option><option>事務</option><option>相談課</option><option>施設長</option><option>所長</option><option value="__sharedEditor__">共有権限者</option><option value="__admin__">管理者</option></select></label><label>受講期限（任意）<input class="inp" id="trDue" type="date"/></label><label>関連アンケート<select id="trSurvey"><option value="">なし：本人の完了操作で記録</option></select></label><label><input checked="" id="trBoard" type="checkbox"/> 掲示板にも案内を掲載</label><label>掲示板の掲載終了日（任意）<input class="inp" id="trBoardUntil" type="date"/></label><button class="btn pri" id="trainingSaveBtn" onclick="saveTraining()">登録</button><div class="helper" id="trainingSaveStatus" role="status"></div></div></div><script src="./common.js?v=legacy-login1"></script></body>
 </html>
