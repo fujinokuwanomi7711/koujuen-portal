@@ -8,10 +8,13 @@
       };
 
       const VAPID_PUBLIC_KEY = "YOUR_PUBLIC_VAPID_KEY";
-      firebase.initializeApp(firebaseConfig);
+      if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
       const db = firebase.firestore();
-      const storage = firebase.storage();
-      const messaging = firebase.messaging();
+      let storage = null;
+      try { if(typeof firebase.storage === "function") storage = firebase.storage(); } catch(e) { console.warn("添付機能を初期化できません",e); }
+      let messaging = null;
+      try { if (typeof firebase.messaging === 'function') messaging = firebase.messaging(); }
+      catch (e) { console.warn('通知は無効ですがポータルは利用できます', e); }
 
       const ROOMS = {
         care2: "2階介護",
@@ -80,24 +83,13 @@
               "'": "&#39;",
             })[m],
         );
+      let portalUser = null;
       const me = () => {
-  try {
-    const saved = localStorage.getItem("ku_user");
-    return saved ? JSON.parse(saved) : null;
-  } catch (e) {
-    console.error("ログイン情報の読み込みに失敗:", e);
-    return null;
-  }
-};
-
-const saveMe = (u) => {
-  try {
-    localStorage.setItem("ku_user", JSON.stringify(u));
-    localStorage.setItem("ku_auto_login", "1");
-  } catch (e) {
-    console.error("ログイン情報の保存に失敗:", e);
-  }
-};
+        if (portalUser) return portalUser;
+        try { return JSON.parse(localStorage.getItem('ku_user') || 'null'); }
+        catch (_) { return null; }
+      };
+      const saveMe = (u) => { portalUser = u; localStorage.setItem('ku_user', JSON.stringify(u)); };
       const admin = () => me()?.role === "admin";
       const sharedEditor = () => me()?.role === "sharedEditor";
       const canAccessAdminTab = () => admin() || sharedEditor();
@@ -106,6 +98,7 @@ const saveMe = (u) => {
       const roleLabel = (role) =>
         role === "admin" ? "管理者" : role === "sharedEditor" ? "共有権限者" : "スタッフ";
       function targetDeptLabel(t) {
+        if (Array.isArray(t)) return t.map(targetDeptLabel).join("・");
         if (!t || t === "all") return "全部署";
         if (t === "__admin__") return "管理者";
         if (t === "__sharedEditor__") return "共有権限者";
@@ -114,7 +107,7 @@ const saveMe = (u) => {
       function isBoardVisibleNow(a, now = Date.now()) {
         if (!a) return false;
         const s = a.publishFrom ? new Date(a.publishFrom + "T00:00:00").getTime() : 0;
-        const e = a.publishUntil ? new Date(a.publishUntil + "T23:59:59").getTime() : 0;
+        const e = a.publishUntil ? localDateEnd(a.publishUntil) : 0;
         if (s && now < s) return false;
         if (e && now > e) return false;
         return true;
@@ -322,18 +315,6 @@ const saveMe = (u) => {
         }
         showTab(target, btn);
       }
-      function renderQuickLinks() {
-        const el = $("quickLinks");
-        if (!el) return;
-        const internal = [
-          { label: "掲示板", icon: "bullhorn", target: "dashboard" },
-          { label: "未回答アンケート", icon: "poll", target: "survey" },
-          { label: "チャットルーム", icon: "comments", target: "rooms" },
-          { label: "職員名簿", icon: "address-book", target: "directory" },
-        ];
-        const mine = getMyLinks();
-        el.innerHTML = `${internal.map((x) => `<div class="linkCard"><div><div class="title">${esc(x.label)}</div><div class="tiny">内部ショートカット</div></div><div class="right"><button class="btn out sm" onclick="openInternalTarget('${x.target}')"><i class="fas fa-${x.icon}"></i> 開く</button></div></div>`).join("")}${mine.map((x, i) => `<div class="linkCard"><div><div class="title">${esc(x.label || "")}</div><div class="tiny">${esc(x.url || "")}</div></div><div class="right"><a class="btn out sm" href="${esc(x.url || "#")}" target="_blank"><i class="fas fa-arrow-up-right-from-square"></i> 開く</a><button class="btn out sm" onclick="editMyLink(${i})"><i class="fas fa-pen"></i></button><button class="btn dan sm" onclick="removeMyLink(${i})"><i class="fas fa-trash"></i></button></div></div>`).join("")}`;
-      }
       function renderMiniDirectory(users = staffCache) {
         const listData = Array.isArray(users) && users.length ? users : staffCache;
         const q = String($("directoryKeyword")?.value || "").trim().toLowerCase();
@@ -456,7 +437,7 @@ const saveMe = (u) => {
         $("searchResult").innerHTML = '<div class="tiny">検索中...</div>';
         const u = me();
         const [anns, surveys, users] = await Promise.all([
-          list("announcements"),
+          loadPublishedBoards(),
           list("surveys"),
           list("users"),
         ]);
@@ -467,9 +448,9 @@ const saveMe = (u) => {
           .filter((s) => canUserSeeSurvey(s, u) && [s.title, s.desc, s.creatorName].join(" ").toLowerCase().includes(word))
           .slice(0, 5);
         const peopleHits = users
-          .filter((x) => [x.name, x.department, x.email, x.extension, x.note].join(" ").toLowerCase().includes(word))
+          .filter((x) => [x.name, x.department, x.extension, x.note].join(" ").toLowerCase().includes(word))
           .slice(0, 5);
-        const roomHits = Object.entries(ROOMS)
+        const roomHits = Object.entries(ROOMS).filter(([key])=>canUseRoom(key))
           .filter(([, label]) => label.toLowerCase().includes(word))
           .slice(0, 5);
         const blocks = [];
@@ -535,6 +516,7 @@ const saveMe = (u) => {
         await db.collection(col).doc(id).delete();
       }
       async function uploadMany(fileList, folder) {
+        if (fileList?.length && !storage) throw new Error("添付機能を読み込めませんでした");
         const files = [...(fileList || [])],
           out = [];
         for (const f of files) {
@@ -602,6 +584,7 @@ const saveMe = (u) => {
           );
       }
       async function requestNotify() {
+        if (!messaging) return toast("この環境では通知を利用できません", "error");
         try {
           if (!("Notification" in window))
             return toast("このブラウザは通知に未対応です", "error");
@@ -642,6 +625,7 @@ const saveMe = (u) => {
         }
       }
       async function setupForegroundMessaging() {
+        if (!messaging) return;
         messaging.onMessage(async (payload) => {
           const data = payload?.data || {};
           const title =
@@ -780,7 +764,7 @@ const saveMe = (u) => {
       }
       function getAnnFiles(a) {
         let files = [];
-        if (Array.isArray(a.attachments)) files = a.attachments;
+        if (Array.isArray(a.attachments)) files = [...a.attachments];
         else if (typeof a.attachments === "string") {
           try {
             files = JSON.parse(a.attachments) || [];
@@ -803,33 +787,10 @@ const saveMe = (u) => {
           } catch (e) {}
         }
       }
-      async function loadStaffHints() {
-        staffCache = await list("users");
-        $("staffNames").innerHTML = staffCache
-          .map((s) => `<option value="${esc(s.name || "")}"></option>`)
-          .join("");
-        const empty = staffCache.length === 0;
-        $("firstSetupBox").classList.toggle("hide", !empty);
-        $("loginFields").classList.toggle("hide", empty);
-      }
-      async function login() {
-        const name = $("loginName").value.trim();
-        const email = $("loginEmail").value.trim().toLowerCase();
-        if (!name || !email)
-          return toast("名前とメールアドレスを入力してください", "error");
-        const users = staffCache.length ? staffCache : await list("users");
-        const user = users.find(
-          (u) =>
-            (u.name || "") === name &&
-            String(u.email || "").toLowerCase() === email,
-        );
-        if (!user) return toast("ログイン情報が一致しません", "error");
-        saveMe(user);
-        boot();
-      }
       async function createInitialAdmin() {
-        const name = $("setupName").value.trim();
-        const email = $("setupEmail").value.trim().toLowerCase();
+        return toast("初期管理者は管理用ツールで作成してください", "error");
+        const name = $("setupName")?.value.trim();
+        const email = $("setupEmail")?.value.trim().toLowerCase();
         const department = $("setupDept").value;
         const extension = $("setupExt").value.trim();
         if (!name || !email)
@@ -850,103 +811,6 @@ const saveMe = (u) => {
         $("loginName").value = name;
         $("loginEmail").value = email;
         toast("初期管理者を作成しました。そのままログインできます", "ok");
-      }
-      async function logout() {
-        if (!confirm("ログアウトしますか？")) return;
-        try {
-          if (
-            swReg &&
-            VAPID_PUBLIC_KEY &&
-            VAPID_PUBLIC_KEY !== "YOUR_PUBLIC_VAPID_KEY"
-          ) {
-            const token = await messaging.getToken({
-              vapidKey: VAPID_PUBLIC_KEY,
-              serviceWorkerRegistration: swReg,
-            });
-            if (token)
-              await db
-                .collection("fcmTokens")
-                .doc(encodeURIComponent(token))
-                .delete()
-                .catch(() => {});
-          }
-        } catch (e) {}
-        localStorage.removeItem("ku_user");
-        watchers.forEach((u) => u && u());
-        location.reload();
-      }
-
-      async function boot() {
-  let u = me();
-
-  // 保存されたログイン情報があれば自動ログイン
-  if (!u && localStorage.getItem("ku_auto_login") === "1") {
-    try {
-      const saved = localStorage.getItem("ku_user");
-      if (saved) {
-        u = JSON.parse(saved);
-      }
-    } catch (e) {
-      console.error("自動ログイン情報の読み込みに失敗:", e);
-    }
-  }
-
-  if (!u) {
-    $("loginScreen").classList.remove("hide");
-    $("app").classList.add("hide");
-    await loadStaffHints();
-    return;
-  }
-
-  $("loginScreen").classList.add("hide");
-  $("app").classList.remove("hide");
-
-  $("av").textContent = (u.name || "?").slice(0, 1);
-  $("meName").textContent = u.name || "";
-  syncPermissionUI();
-
-  // 以下は現在のboot()の処理をそのまま続ける
-        $("loginScreen").classList.add("hide");
-        $("app").classList.remove("hide");
-        $("av").textContent = (u.name || "?").slice(0, 1);
-        $("meName").textContent = u.name || "";
-        syncPermissionUI();
-        if ($("facilityMonthView") && !$("facilityMonthView").value) $("facilityMonthView").value = monthStr();
-        if ($("facilityMonthAdmin") && !$("facilityMonthAdmin").value) $("facilityMonthAdmin").value = monthStr();
-        setNotifyBtn(
-          localStorage.getItem("ku_notify_enabled") === "1" ? "on" : "default",
-        );
-        setupInstallPrompt();
-        await registerServiceWorker().catch(() => null);
-        await setupForegroundMessaging();
-        await Promise.all([
-          loadDashboard(),
-          loadProfile(),
-        ]);
-        // タスク/アンケート/ルーム/管理は showTab で初回だけ読む
-        if (admin()) await loadStaffHints();
-        renderQuickLinks();
-        if ($("directoryKeyword")) {
-          $("directoryKeyword").addEventListener("input", () => renderMiniDirectory());
-        }
-        if ($("directoryDeptFilter")) {
-          $("directoryDeptFilter").addEventListener("change", () => renderMiniDirectory());
-        }
-        if ($("globalSearch")) {
-          $("globalSearch").addEventListener("keypress", (e) => e.key === "Enter" && runGlobalSearch());
-        }
-        if ($("facilityMonthView")) {
-          $("facilityMonthView").addEventListener("change", () => loadDashboard());
-        }
-        if ($("facilityMonthAdmin")) {
-          $("facilityMonthAdmin").addEventListener("change", () => loadAdmin());
-        }
-        wireBoardDraftAutosave();
-        setupRealtimeWatch();
-        cleanupExpiredData(true);
-        setInterval(() => cleanupExpiredData(true), 12 * 60 * 60 * 1000);
-        await autoRestorePushToken();
-        handleDeepLink();
       }
       function showAdminPane(pane, btn = null) {
         if (!canAccessAdminTab()) return;
@@ -1002,7 +866,7 @@ const saveMe = (u) => {
         // 最小サマリだけ取得: 掲示板は最新20件、アンケートは自分の未回答判定のためタイトル+targetDept+status+dueDateだけ、ルームは meta のみ
         const [myTasks, anns, surveys, roomMeta, settings] = await Promise.all([
           listMyOpenTasks(u.id).catch(() => []),
-          listLatest("announcements", 20).catch(() => []),
+          loadPublishedBoards().catch(() => []),
           listLatest("surveys", 40).catch(() => []),
           loadRoomMetaSummary(u).catch(() => []),
           loadSettingsCached().catch(() => []),
@@ -1013,7 +877,7 @@ const saveMe = (u) => {
         const visibleSurveys = surveys.filter((s) => canUserSeeSurvey(s, u));
         // 自分の回答をサーバーと同期してから未回答判定（localStorage + 埋め込み回答の両方で判定）
         await syncMyAnsweredSurveys(u).catch(() => {});
-        const openTodo = visibleSurveys.filter((s) => isSurveyOpen(s) && !hasUserAnsweredSurvey(s, u, []));
+        const openTodo = visibleSurveys.filter((s) => canAnswerSurvey(s,u) && isSurveyOpen(s) && !hasUserAnsweredSurvey(s, u, []));
         $("stSurvey").textContent = openTodo.length;
         $("stRoom").textContent = roomMeta.filter((r) => r.unread > 0).length;
         setTabAlert("dashboard", visibleAnns.some((a) => !isBoardRead(a, u)));
@@ -1068,7 +932,7 @@ const saveMe = (u) => {
         // 各ルームの meta doc を settings コレクションで管理する (roomMeta_<key>)
         // meta が無いルームは skip して、開いたときにだけ実データを読む
         const settings = await loadSettingsCached();
-        return Object.entries(ROOMS).map(([k, v]) => {
+        return Object.entries(ROOMS).filter(([k]) => canUseRoom(k)).map(([k, v]) => {
           const row = settings.find((x) => x.type === "roomMeta" && x.roomKey === k) || null;
           const lastMs = ms(row?.lastMs || row?.updatedAtMs || row?.createdAtMs || 0);
           const lastUser = row?.lastUser || "";
@@ -1099,7 +963,6 @@ const saveMe = (u) => {
         }
         el.innerHTML = visible
           .sort((a, b) => ms(b.createdAtMs || b.createdAt) - ms(a.createdAtMs || a.createdAt))
-          .slice(0, 20)
           .map((a) => {
             const files = getAnnFiles(a);
             const badge = a.priority === "urgent" ? "b4" : a.priority === "important" ? "b3" : "b1";
@@ -1201,7 +1064,7 @@ const saveMe = (u) => {
           return toast("タイトルと本文は必須です", "error");
         const publishFrom = $("bStart")?.value || "";
         const publishUntil = $("bEnd")?.value || "";
-        if (publishFrom && publishUntil && publishFrom > publishUntil) {
+        if ((publishUntil && publishUntil < todayStr()) || (publishFrom && publishUntil && publishFrom > publishUntil)) {
           return toast("掲載開始日は掲載終了日より前にしてください", "error");
         }
         try {
@@ -1231,26 +1094,17 @@ const saveMe = (u) => {
       async function deleteBoard(id) {
         const u = me();
         if (!confirm("掲示板を削除しますか？")) return;
-        const anns = await listLatest("announcements", 100).catch(() => []);
-        const ann = anns.find((x) => x.docId === id);
+        const snap = await db.collection("announcements").doc(id).get();
+        const ann = snap.exists ? snap.data() : null;
         if (!ann) return toast("対象掲示板が見つかりませんでした", "error");
         if (!admin() && ann.creatorId !== u.id) return toast("削除権限がありません", "error");
         await deleteAnnFiles(ann);
         await del ("announcements", id);
+        publishedBoardCache=null;
         await loadDashboard();
         toast("削除しました", "ok");
       }
 
-      async function loadProfile() {
-        const u = me();
-        $("pName").value = u.name || "";
-        $("pEmail").value = u.email || "";
-        $("pDept").value = u.department || "2階介護";
-        $("pExt").value = u.extension || "";
-        $("pBio").value = u.bio || "";
-        staffCache = staffCache.length ? staffCache : await list("users");
-        renderMiniDirectory(staffCache);
-      }
       async function saveProfile() {
         const u = me();
         const patch = {
@@ -1325,6 +1179,7 @@ const saveMe = (u) => {
       }
       let openRoomUnsub = null;
       async function openRoom(key) {
+        if (!canUseRoom(key)) return toast("このルームの利用権限がありません", "error");
         if (typeof setRoomReadMs === "function") setRoomReadMs(key, Date.now());
         activeRoom = key;
         $("roomTitle").textContent = ROOMS[key];
@@ -1344,6 +1199,7 @@ const saveMe = (u) => {
         openRoomUnsub = null;
       }
       function startRoomRealtime(key) {
+        if (!canUseRoom(key)) return toast("このルームの利用権限がありません", "error");
         closeRoomRealtime();
         try {
           openRoomUnsub = db.collection("rooms_" + key).orderBy("createdAt", "desc").limit(1)
@@ -1360,6 +1216,7 @@ const saveMe = (u) => {
         } catch (e) { console.warn("room realtime failed", e); }
       }
       async function loadRoomMsgs() {
+        if (!canUseRoom(activeRoom)) return toast("このルームの利用権限がありません", "error");
         if (!activeRoom) return;
         const u = me();
         const msgs = (await listLatest("rooms_" + activeRoom, ROOM_VISIBLE_LIMIT)).sort(
@@ -1381,6 +1238,7 @@ const saveMe = (u) => {
         el.scrollTop = el.scrollHeight;
       }
       async function sendRoomMsg() {
+        if (!canUseRoom(activeRoom)) return toast("このルームの利用権限がありません", "error");
         const text = $("roomInput").value.trim();
         const u = me();
         if (!text || !activeRoom) return;
@@ -1408,6 +1266,7 @@ const saveMe = (u) => {
         setRoomReadMs(activeRoom, now);
       }
       async function deleteRoomMsg(id) {
+        if (!canUseRoom(activeRoom)) return toast("このルームの利用権限がありません", "error");
         if (!activeRoom || !id) return;
         const el = document.querySelector(`#roomMsgs [data-msg-id="${id}"]`);
         const cached = el?.dataset?.userId ? { docId: id, userId: el.dataset.userId, userName: el.dataset.userName } : null;
@@ -1475,52 +1334,6 @@ const saveMe = (u) => {
           });
         watchers.push(unsub);
       }
-      function setupRealtimeWatch() {
-        clearWatchers();
-        const u = me();
-        if (!u) return;
-        // 掲示板とアンケートは全体で最新1件だけ監視 (ルームは開いた時のみ)
-        watchLatest("announcements", "ann", async (d) => {
-          if (d.creatorId !== u.id) {
-            setTabAlert("dashboard", true);
-            browserNotify("新しい掲示板", d.title || "投稿がありました");
-            if ($("dashboard").classList.contains("active")) {
-              await loadDashboard();
-              setTimeout(() => highlightBoard(d.docId), 250);
-            }
-          }
-        });
-        watchLatest("surveys", "survey", async (d) => {
-          if (d.creatorId !== u.id && canUserSeeSurvey(d, u)) {
-            setTabAlert("survey", true);
-            browserNotify("新しいアンケート", d.title || "アンケートが追加されました");
-            if ($("survey").classList.contains("active")) {
-              await loadSurveys();
-              setTimeout(() => highlightSurvey(d.docId), 250);
-            }
-          }
-        });
-        // ルーム全体監視は roomMeta の更新で代替 (settings に 1 doc / room)
-        try {
-          const unsub = db.collection("settings").where("type", "==", "roomMeta")
-            .onSnapshot(async (snap) => {
-              let hasUnread = false;
-              snap.docs.forEach((doc) => {
-                const d = doc.data();
-                if (d.lastUserId && d.lastUserId !== u.id) {
-                  const readMs = getRoomReadMs(d.roomKey, u.id);
-                  if (ms(d.lastMs || 0) > readMs) hasUnread = true;
-                }
-              });
-              setTabAlert("rooms", hasUnread);
-              if ($("rooms").classList.contains("active")) {
-                await renderRoomCards();
-              }
-            });
-          watchers.push(unsub);
-        } catch (e) { console.warn("roomMeta watch failed", e); }
-      }
-
       async function loadAdmin() {
         if (!canAccessAdminTab()) return;
         syncPermissionUI();
@@ -1570,18 +1383,6 @@ const saveMe = (u) => {
         } catch (e) {
           $("adminStats").innerHTML = "統計の読込に失敗しました";
         }
-      }
-      function openStaffModal() {
-        if (!admin()) return toast("スタッフ管理は管理者のみ利用できます", "error");
-        $("staffModalTitle").textContent = "スタッフ追加";
-        $("sfId").value = "";
-        $("sfName").value = "";
-        $("sfEmail").value = "";
-        $("sfDept").value = "2階介護";
-        $("sfRole").value = "staff";
-        $("sfExt").value = "";
-        $("sfNote").value = "";
-        openModal("staffModal");
       }
       async function editStaff(id) {
         if (!admin()) return toast("スタッフ管理は管理者のみ利用できます", "error");
@@ -1675,14 +1476,14 @@ const saveMe = (u) => {
         toast("バナーを更新しました", "ok");
       }
       async function cleanupExpiredData(silent = true) {
+        if (!admin()) return;
         try {
           const cutoff = Date.now() - DATA_RETENTION_DAYS * 24 * 60 * 60 * 1000;
           let removed = 0;
           const anns = await list("announcements");
           for (const a of anns.filter(
             (x) =>
-              ms(x.createdAtMs || x.createdAt) &&
-              ms(x.createdAtMs || x.createdAt) < cutoff,
+              shouldRemoveBoard(x, Date.now()),
           )) {
             await deleteAnnFiles(a);
             await del("announcements", a.docId);
@@ -1699,9 +1500,10 @@ const saveMe = (u) => {
               removed++;
             }
           }
+          publishedBoardCache=null;
           if (!silent && removed)
             toast(
-              `${DATA_RETENTION_DAYS}日超の掲示板・チャット ${removed} 件を整理しました`,
+              `掲載終了の掲示板・${DATA_RETENTION_DAYS}日超のチャットを ${removed} 件整理しました`,
               "ok",
             );
           if (admin()) loadAdmin();
@@ -1739,7 +1541,7 @@ const saveMe = (u) => {
         );
       }
       function surveyOwner(s, u) {
-        return admin() || s.creatorId === u.id;
+        return !!u && (u.role === "admin" || s.creatorId === u.id);
       }
       function canUserSeeSurvey(s, u) {
         if (!s || !u) return false;
@@ -1871,7 +1673,7 @@ const saveMe = (u) => {
         $("svTitle").value = "";
         $("svDesc").value = "";
         $("svPass").value = "";
-        $("svTargetDept").value = "all";
+        setAudience("svTargetDept");
         $("svAudience").value = "staff";
         $("svAnonymous").value = "0";
         $("svStatus").value = "open";
@@ -1894,7 +1696,7 @@ const saveMe = (u) => {
         $("svTitle").value = survey.title || "";
         $("svDesc").value = survey.desc || "";
         $("svPass").value = survey.password || "";
-        $("svTargetDept").value = survey.targetDept || "all";
+        setAudience("svTargetDept",survey.targetDept,!!linkedTrainingFor(survey));
         $("svAudience").value = survey.audience || "staff";
         $("svAnonymous").value = survey.anonymous ? "1" : "0";
         $("svStatus").value = survey.status || "open";
@@ -1911,7 +1713,7 @@ const saveMe = (u) => {
         resetSurveyForm();
         $("svTitle").value = `${survey.title || "アンケート"}（コピー）`;
         $("svDesc").value = survey.desc || "";
-        $("svTargetDept").value = survey.targetDept || "all";
+        setAudience("svTargetDept",survey.targetDept);
         $("svAudience").value = survey.audience || "staff";
         $("svAnonymous").value = survey.anonymous ? "1" : "0";
         $("svStatus").value = "open";
@@ -2111,6 +1913,11 @@ const saveMe = (u) => {
         const u = me();
         const title = $("svTitle").value.trim();
         const isEdit = !!editingSurveyId;
+        if (!u) return;
+        const target = readAudience('svTargetDept');
+        if (!target.length) return toast('対象部署・役割を選んでください','error');
+        const editing = isEdit ? await db.collection('surveys').doc(editingSurveyId).get() : null;
+        if (isEdit && (!editing.exists || !surveyOwner(editing.data(),u))) return toast('編集権限がありません','error');
         if (!title) return toast("タイトルを入力してください", "error");
         if (!svQuestions.length)
           return toast("質問を1つ以上追加してください", "error");
@@ -2120,13 +1927,13 @@ const saveMe = (u) => {
           title,
           desc: $("svDesc").value.trim(),
           password: $("svPass").value.trim(),
-          targetDept: $("svTargetDept").value,
+          targetDept: isEdit && $("svTargetDeptChoices").dataset.locked === "1" ? (editing.data().targetDept || "all") : target,
           audience: $("svAudience").value,
           anonymous: $("svAnonymous").value === "1",
           status: $("svStatus").value,
           dueDate: $("svDue").value || "",
-          creatorId: u.id,
-          creatorName: u.name,
+          creatorId: isEdit ? (editing.data().creatorId || u.id) : u.id,
+          creatorName: isEdit ? (editing.data().creatorName || u.name) : u.name,
           questions: JSON.stringify(
             svQuestions.map((q, i) => normalizeQuestion(q, i)),
           ),
@@ -2170,7 +1977,7 @@ const saveMe = (u) => {
           .sort((a, b) => ms(b.createdAtMs || b.createdAt) - ms(a.createdAtMs || a.createdAt));
         const openCount = visible.filter(isSurveyOpen).length;
         const doneCount = visible.filter((s) => hasUserAnsweredSurvey(s, u, responses)).length;
-        const todoCount = visible.filter((s) => isSurveyOpen(s) && !hasUserAnsweredSurvey(s, u, responses)).length;
+        const todoCount = visible.filter((s) => canAnswerSurvey(s,u) && isSurveyOpen(s) && !hasUserAnsweredSurvey(s, u, responses)).length;
         const mineCount = visible.filter((s) => s.creatorId === u.id).length;
         $("svStatOpen").textContent = openCount;
         $("svStatDone").textContent = doneCount;
@@ -2192,7 +1999,7 @@ const saveMe = (u) => {
             const rate = targetUsers ? Math.round((rs.length / targetUsers) * 100) : 0;
             const open = isSurveyOpen(s);
             const owner = surveyOwner(s, u);
-            return `<div class="item" id="survey-${s.docId}"><div class="itemTop"><div><div class="title">${esc(s.title || "")}</div><div class="meta"><span>${esc(s.creatorName || "")}</span><span>${esc(targetDeptLabel(s.targetDept))}</span><span>${qs.length}問</span><span>${rs.length}件回答</span><span>回答率 ${rate}%</span>${s.anonymous ? '<span class="badge b2">匿名表示</span>' : '<span class="badge b1">記名</span>'}${open ? '<span class="badge b2">受付中</span>' : '<span class="badge b4">締切</span>'}${answered ? '<span class="badge b2">回答済</span>' : open ? '<span class="badge b3">未回答</span>' : ''}${!seen && open ? '<span class="badge b4">NEW</span>' : ''}</div></div><div class="right">${!answered && open ? `<button class="btn pri sm" onclick="markSurveySeen('${s.docId}',true);openSurveyAnswer('${s.docId}')">回答</button>` : ""}<button class="btn out sm" onclick="markSurveySeen('${s.docId}',true);openSurveyResult('${s.docId}')">集計</button>${!seen && !answered ? `<button class="btn out sm" onclick="markSurveySeen('${s.docId}',false)">確認</button>` : ''}${owner ? `<button class="btn out sm" onclick="editSurvey('${s.docId}')">編集</button><button class="btn out sm" onclick="duplicateSurvey('${s.docId}')">複製</button><button class="btn ${open ? "warn" : "sec"} sm" onclick="toggleSurveyStatus('${s.docId}','${open ? "closed" : "open"}')">${open ? "締切" : "再開"}</button><button class="btn dan sm" onclick="deleteSurvey('${s.docId}')">削除</button>` : ""}</div></div>${s.desc ? `<div style="margin-top:10px;white-space:pre-wrap;line-height:1.6">${esc(s.desc)}</div>` : ""}${s.dueDate ? `<div class="meta"><span>締切: ${esc(s.dueDate)}</span></div>` : ""}</div>`;
+            return `<div class="item" id="survey-${s.docId}"><div class="itemTop"><div><div class="title">${esc(s.title || "")}</div><div class="meta"><span>${esc(s.creatorName || "")}</span><span>${esc(targetDeptLabel(s.targetDept))}</span><span>${qs.length}問</span><span>回答状況は集計で確認</span>${s.anonymous ? '<span class="badge b2">匿名表示</span>' : '<span class="badge b1">記名</span>'}${open ? '<span class="badge b2">受付中</span>' : '<span class="badge b4">締切</span>'}${answered ? '<span class="badge b2">回答済</span>' : open && canAnswerSurvey(s,u) ? '<span class="badge b3">未回答</span>' : ''}${!seen && open ? '<span class="badge b4">NEW</span>' : ''}</div></div><div class="right">${!answered && open && canAnswerSurvey(s,u) ? `<button class="btn pri sm" onclick="markSurveySeen('${s.docId}',true);openSurveyAnswer('${s.docId}')">回答</button>` : ""}<button class="btn out sm" onclick="markSurveySeen('${s.docId}',true);openSurveyResult('${s.docId}')">集計</button>${!seen && !answered ? `<button class="btn out sm" onclick="markSurveySeen('${s.docId}',false)">確認</button>` : ''}${owner ? `<button class="btn out sm" onclick="editSurvey('${s.docId}')">編集</button><button class="btn out sm" onclick="duplicateSurvey('${s.docId}')">複製</button><button class="btn ${open ? "warn" : "sec"} sm" onclick="toggleSurveyStatus('${s.docId}','${open ? "closed" : "open"}')">${open ? "締切" : "再開"}</button><button class="btn dan sm" onclick="deleteSurvey('${s.docId}')">削除</button>` : ""}</div></div>${s.desc ? `<div style="margin-top:10px;white-space:pre-wrap;line-height:1.6">${esc(s.desc)}</div>` : ""}${s.dueDate ? `<div class="meta"><span>締切: ${esc(s.dueDate)}</span></div>` : ""}</div>`;
           })
           .join("");
       }
@@ -2282,13 +2089,13 @@ const saveMe = (u) => {
       }
       async function openSurveyAnswer(id) {
         const u = me();
-        const [surveys, responses] = await Promise.all([
-          list("surveys"),
-          list("surveyResponses").catch(() => []),
-        ]);
-        const survey = surveys.find((s) => s.docId === id);
+        if(!u)return;
+        const [doc] = await Promise.all([db.collection('surveys').doc(id).get(),getTrainingLinks()]);
+        await syncMyAnsweredSurveys(u).catch(console.error);
+        const responses=[];
+        const survey=doc.exists?decorateTrainingSurveys([{...doc.data(),docId:doc.id}])[0]:null;
         if (!survey) return;
-        if (!canUserSeeSurvey(survey, u)) return toast("このアンケートは対象外です", "error");
+        if (!canAnswerSurvey(survey, u)) return toast("このアンケートは対象外です", "error");
         if (!isSurveyOpen(survey)) return toast("このアンケートは締め切られています", "error");
         if (hasUserAnsweredSurvey(survey, u, responses)) return toast("すでに回答済みです", "error");
         markSurveySeen(id, true);
@@ -2304,12 +2111,13 @@ const saveMe = (u) => {
         wireDraftAutosave();
       }
       async function submitSurvey() {
-        if (!activeSurveyId || !activeSurveyData) return;
+        if (!activeSurveyId || !activeSurveyData || !me()) return;
         const u = me();
+        if (submissionSurvey && hasUserAnsweredSurvey(submissionSurvey,u,[])) return toast('すでに回答済みです','error');
+        if (!submissionSurvey || !canAnswerSurvey(submissionSurvey,u) || !isSurveyOpen(submissionSurvey)) return toast('現在このアンケートには回答できません','error');
         const { answers, errors } = collectAnswerValues(true);
         if (errors.length)
           return toast(`${errors.join(" / ")} を入力してください`, "error");
-        addAnsweredSurveyId(u.id, activeSurveyId);
         await add("surveyResponses", {
           surveyId: activeSurveyId,
           surveyTitle: activeSurveyData.title || "",
@@ -2320,6 +2128,7 @@ const saveMe = (u) => {
           answers: JSON.stringify(answers),
           submittedAt: new Date().toISOString(),
         });
+        addAnsweredSurveyId(u.id,activeSurveyId);
         localStorage.removeItem(draftKey(activeSurveyId, u.id));
         closeAnswerModal();
         await Promise.all([loadSurveys(), loadDashboard()]);
@@ -2423,8 +2232,10 @@ const saveMe = (u) => {
         Object.values(charts).forEach((c) => c.destroy());
         charts = {};
         const qs = normalizeQuestions(parseJSON(survey.questions, []));
-        const rs = getSurveyResponses(survey, responses);
         const targetUsers = getTargetUsers(users, survey);
+        const targetIds = new Set(targetUsers.map(u=>u.id));
+        const allRows = getSurveyResponses(survey, responses);
+        const rs = linkedTrainingFor(survey) ? [...new Map(allRows.filter(r=>targetIds.has(r.userId)).map(r=>[r.userId,r])).values()] : allRows;
         const rate = targetUsers.length ? Math.round((rs.length / targetUsers.length) * 100) : 0;
         surveyResultCurrent = { survey, qs, rs, users };
         $("svResultTitle").textContent = `${survey.title || ""} 集計結果`;
@@ -2521,7 +2332,7 @@ const saveMe = (u) => {
 
       document.querySelectorAll(".modal").forEach((m) =>
         m.addEventListener("click", (e) => {
-          if (e.target === m) m.classList.remove("show");
+          if (e.target === m) closeModal(m.id);
         }),
       );
       $("loginName").addEventListener(
@@ -2532,11 +2343,11 @@ const saveMe = (u) => {
         "keypress",
         (e) => e.key === "Enter" && login(),
       );
-      $("setupName").addEventListener(
+      $("setupName")?.addEventListener(
         "keypress",
         (e) => e.key === "Enter" && createInitialAdmin(),
       );
-      $("setupEmail").addEventListener(
+      $("setupEmail")?.addEventListener(
         "keypress",
         (e) => e.key === "Enter" && createInitialAdmin(),
       );
@@ -2544,7 +2355,8 @@ const saveMe = (u) => {
         "keypress",
         (e) => e.key === "Enter" && sendRoomMsg(),
       );
-      window.addEventListener("load", boot);
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => boot().catch(console.error), {once:true});
+      else setTimeout(() => boot().catch(console.error), 0);
 
       async function exportSurveyResultPDF() {
         const box = document.querySelector("#surveyResultModal .box");
@@ -2638,3 +2450,319 @@ const saveMe = (u) => {
           : '<i class="fas fa-magnifying-glass-plus"></i> 拡大';
       }
 
+
+
+// Compatibility: keep the existing staff-name and registered-email login.
+let trainingCache = null, trainingCacheAt = 0, trainingCacheTask = null;
+let trainingGroup = 'todo';
+
+let trainingSaving = false;
+function localDateEnd(s) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s || '')) return NaN;
+  const day=new Date(s+'T00:00:00');
+  if(!Number.isFinite(day.getTime())||day.getDate()!==Number(s.slice(-2)))return NaN;
+  day.setHours(23,59,59,999);return day.getTime();
+}
+function shouldRemoveBoard(a, now = Date.now()) {
+  if (a.publishUntil) { const start = a.publishFrom ? new Date(a.publishFrom+'T00:00:00').getTime() : 0; if(start>now)return false; const end = localDateEnd(a.publishUntil); return Number.isFinite(end) && now > end; }
+  // Scheduled posts get their full default 10 days starting from publication, not creation.
+  const from = a.publishFrom ? new Date(a.publishFrom + 'T00:00:00').getTime() : 0;
+  const created = ms(a.createdAtMs || a.createdAt);
+  const base = Math.max(Number.isFinite(from) ? from : 0, created || 0);
+  return !!base && now > base + DATA_RETENTION_DAYS * 86400000;
+}
+function canUseRoom(key) { return !!me() && !!ROOMS[key] && (key !== 'leaders' || canAccessAdminTab()); }
+function safePortalUrl(value) {
+  try { const u = new URL(String(value || '').trim()); return u.protocol === 'https:' ? u.href : ''; }
+  catch (_) { return ''; }
+}
+function safeUserId() { return me()?.id || ''; }
+
+async function login() {
+ const name=$('loginName').value.trim();
+ const email=$('loginEmail').value.trim().toLowerCase();
+ if(!name||!email)return toast('IDとパスワードを入力してください','error');
+ $('authNotice').textContent='確認中…';
+ try{
+  const users=await list('users');
+  const found=users.find(u=>(u.name||'')===name&&String(u.email||'').toLowerCase()===email);
+  if(!found){$('authNotice').textContent='IDまたはパスワードが一致しません。';return;}
+  if(found.active===false){$('authNotice').textContent='この職員情報は利用停止中です。';return;}
+  staffCache=users;saveMe(found);$('authNotice').textContent='';await boot();
+ }catch(e){console.error(e);$('authNotice').textContent='確認できませんでした。通信状態を確認してください。';}
+}
+async function logout() {
+ if(!confirm('ログアウトしますか？'))return;
+ clearWatchers();closeRoomRealtime();portalUser=null;
+ localStorage.removeItem('ku_user');localStorage.removeItem('ku_auto_login');location.reload();
+}
+async function boot() {
+ const u=me();
+ if(!u){$('loginScreen').classList.remove('hide');$('app').classList.add('hide');return;}
+ $('loginScreen').classList.add('hide');$('app').classList.remove('hide');
+ $('av').textContent=(u.name||'?').slice(0,1);$('meName').textContent=u.name||'';syncPermissionUI();
+ $('facilityMonthView').value ||= monthStr();$('facilityMonthAdmin').value ||= monthStr();
+ $('facilityMonthView').onchange=()=>loadDashboard();$('facilityMonthAdmin').onchange=()=>loadFacilityCalendarAdmin();
+ $('globalSearch').onkeypress=e=>{if(e.key==='Enter')runGlobalSearch();};
+ $('directoryKeyword').oninput=()=>renderMiniDirectory();$('directoryDeptFilter').onchange=()=>renderMiniDirectory();
+ wireBoardDraftAutosave();setNotifyBtn('default');
+ try{await loadDashboard();setupRealtimeWatch();}catch(e){console.error(e);toast('画面の一部を取得できませんでした','error');}
+}
+async function loadStaffHints() {
+  if (!me()) return;
+  staffCache = staffCache.length ? staffCache : await list('users');
+}
+function renderQuickLinks() {
+  const el=$('quickLinks');if(!el)return;
+  el.innerHTML=getMyLinks().map((x,i)=>{
+    if (x.type==='internal'||/^(internal:|#)/i.test(String(x.url||'').trim()))return '';
+    const url=safePortalUrl(x.url);
+    return `<div class="linkCard"><div><b>${esc(x.label || '')}</b><div class="tiny">${esc(x.url || '')}</div></div><div class="right">${url ? `<a class="btn out sm" href="${esc(url)}" target="_blank" rel="noopener noreferrer">開く</a>`:'<span class="tiny">httpsのURLに変更してください</span>'}<button class="btn out sm" onclick="editMyLink(${i})">編集</button><button class="btn dan sm" onclick="removeMyLink(${i})">削除</button></div></div>`;
+  }).join('') || '<div class="empty">個人用のリンクを追加できます</div>';
+}
+async function loadProfile() {
+  const u=me();if(!u)return;
+  $('pName').value=u.name || '';$('pEmail').value='';$('pDept').value=u.department || '2階介護';$('pExt').value=u.extension || '';$('pBio').value=u.bio || '';
+  await loadStaffHints();renderMiniDirectory(staffCache);
+}
+async function loadTraining(force=false) {
+  if (!me())return;
+  if(force){trainingCache=null;trainingCacheAt=0;}
+  if(!trainingCache || Date.now()-trainingCacheAt>60000){
+    if(!trainingCacheTask)trainingCacheTask=(async()=>{
+      const [trainings,responses,completions]=await Promise.all([
+        getTrainingLinks(force),
+        db.collection('surveyResponses').where('userId','==',me().id).get(),
+        db.collection('trainingCompletions').where('userId','==',me().id).get()
+      ]);
+      responses.docs.forEach(d=>{if(d.data().surveyId)addAnsweredSurveyId(me().id,d.data().surveyId);});
+      trainingCache={trainings:trainings.filter(t=>!t.deleted && (matchesTrainingAudience(t,me()) || canManageTraining(t))),done:new Set(completions.docs.map(d=>d.data().trainingId)),hidden:new Set(completions.docs.filter(d=>d.data().hidden===true).map(d=>d.data().trainingId))};
+      trainingCacheAt=Date.now();
+    })().finally(()=>trainingCacheTask=null);
+    await trainingCacheTask;
+  }
+  $('addTrainingBtn').classList.toggle('hide',!canAccessAdminTab());
+  renderTrainingViews();
+}
+function showTrainingGroup(group) {trainingGroup=group;renderTrainingViews();}
+function renderTrainingViews() {
+  if(!trainingCache)return;
+  const {trainings,done}=trainingCache;
+  const todo=trainings.filter(t=>t.active!==false && !done.has(t.docId) && matchesTrainingAudience(t,me()));
+  const managed=trainings.filter(t=>canManageTraining(t)&&!todo.includes(t)&&!done.has(t.docId));
+  const finished=trainings.filter(t=>done.has(t.docId) && !trainingCache.hidden?.has(t.docId));
+  $('stTrain').textContent=todo.length;
+  $('trainingTodoCount').textContent=todo.length;$('trainingDoneCount').textContent=finished.length;
+  document.querySelectorAll('.trainingTabs button').forEach((b,i)=>b.setAttribute('aria-pressed',String(i===(trainingGroup==='done'?1:0))));
+  const rows=trainingGroup==='done'?finished:[...todo,...managed];
+  $('trainingList').innerHTML=rows.map(t=>{
+    const url=safePortalUrl(t.videoUrl);const complete=done.has(t.docId);
+    const surveyed=!t.surveyId || getAnsweredSurveyIds(me().id).includes(t.surveyId);
+    return `<div class="item" id="training-${esc(t.docId)}" tabindex="-1"><h3>${esc(t.title)}</h3><p style="white-space:pre-wrap">${esc(t.description || '')}</p><div class="meta"><span>対象：${esc(targetDeptLabel(t.targetDept))}</span><span>期限：${esc(t.dueDate || '指定なし')}</span><span>${complete?'受講完了':t.active===false?'受付終了':matchesTrainingAudience(t,me())?'未実施':'管理対象'}</span></div><div class="right">${url?`<a class="btn out" href="${esc(url)}" target="_blank" rel="noopener noreferrer">動画研修を開く</a>`:''}${t.surveyId?`<button class="btn out" onclick="openTrainingSurvey('${esc(t.surveyId)}')">${surveyed?'回答済み':'受講後アンケート'}</button>`:''}${!complete && t.active!==false && matchesTrainingAudience(t,me())?`<button class="btn sec" onclick="completeTraining('${esc(t.docId)}')">受講完了を記録</button>`:''}${complete?`<button class="btn out sm" onclick="hideCompletedTraining('${esc(t.docId)}')">履歴から削除</button>`:''}${canManageTraining(t)?`<button class="btn out sm" onclick="archiveTraining('${esc(t.docId)}')">受付終了</button><button class="btn dan sm" onclick="deleteTraining('${esc(t.docId)}')">研修を削除</button>`:''}</div></div>`;
+  }).join('')||'<div class="empty">該当する研修はありません</div>';
+  $('trainingHome').innerHTML=`<div class="cardHd"><h3>未実施の研修 ${todo.length}件</h3><button class="btn out sm" onclick="showTab('training',document.querySelector('[data-id=training]'))">研修へ</button></div>${todo.slice(0,3).map(t=>`<div class="summaryRow"><b>${esc(t.title)}</b><span>期限 ${esc(t.dueDate || 'なし')}</span><button class="btn out sm" data-training-id="${esc(t.docId)}" onclick="goToTraining(this.dataset.trainingId)">開く</button></div>`).join('')||'<p class="tiny">未実施の研修はありません</p>'}`;
+}
+async function openTrainingSurvey(id) {
+  if(getAnsweredSurveyIds(me().id).includes(id))return toast('回答済みです。受講完了を記録できます');
+  await openSurveyAnswer(id);
+}
+async function completeTraining(id) {
+  const t=trainingCache?.trainings.find(t=>t.docId===id && t.active!==false);if(!t)return;
+  if(!matchesTrainingAudience(t,me()))return toast('この研修は受講対象外です','error');
+  // Verify linked survey on the server; local storage is not sufficient for completion checks.
+  try {
+  if(t.surveyId){
+    const answers=await db.collection('surveyResponses').where('userId','==',me().id).get();
+    const survey=await db.collection('surveys').doc(t.surveyId).get();
+    if(!answers.docs.some(d=>d.data().surveyId===t.surveyId) && !(survey.exists&&getSurveyResponses({...survey.data(),docId:survey.id}).some(r=>r.userId===me().id)))return toast('関連アンケートへ回答してください','error');
+  }
+  if(!confirm('研修を受講しましたか？受講完了を記録します。'))return;
+  const key=encodeURIComponent(me().id+'__'+id);
+    const ref=db.collection('trainingCompletions').doc(key);
+    await db.runTransaction(async tx=>{const d=await tx.get(ref);if(!d.exists)tx.set(ref,{userId:me().id,trainingId:id,completedAt:firebase.firestore.FieldValue.serverTimestamp(),createdAt:firebase.firestore.FieldValue.serverTimestamp()});});
+    trainingCache.done.add(id);renderTrainingViews();toast('受講完了を記録しました','ok');
+  }catch(e){toast('保存できませんでした。再度お試しください','error');}
+}
+async function openTrainingEditor(){
+  if(!canAccessAdminTab())return;
+  const surveys=await list('surveys');
+  $('trSurvey').innerHTML='<option value="">なし：本人の完了操作で記録</option>'+surveys.filter(s=>isSurveyOpen(s)&&!linkedTrainingFor(s)&&surveyOwner(s,me())).map(s=>`<option value="${esc(s.docId)}">${esc(s.title)}（${esc(targetDeptLabel(s.targetDept))}）</option>`).join('');
+  ['trTitle','trDescription','trUrl','trDue','trBoardUntil'].forEach(id=>$(id).value='');
+  setAudience('trTarget');$('trBoard').checked=true;$('trainingSaveStatus').textContent='';openModal('trainingEditor');
+}
+async function saveTraining(){
+  if(!canAccessAdminTab()||trainingSaving)return;
+  const title=$('trTitle').value.trim(),videoUrl=safePortalUrl($('trUrl').value),dueDate=$('trDue').value;
+  const boardUntil=$('trBoardUntil').value;
+  if(!title||!videoUrl)return toast('研修名とhttpsの動画URLを入力してください','error');
+  if(boardUntil&&boardUntil<todayStr())return toast('掲示板終了日は本日以降にしてください','error');
+  const targetDept=readAudience('trTarget'),surveyId=$('trSurvey').value;
+  if(!targetDept.length)return toast('視聴対象の部署・役割を選んでください','error');
+  if(dueDate&&dueDate<todayStr())return toast('受講期限は本日以降にしてください','error');
+  trainingSaving=true;$('trainingSaveBtn').disabled=true;
+  try {
+  const trainingRef=db.collection('trainings').doc();const batch=db.batch();
+  const stamp=firebase.firestore.FieldValue.serverTimestamp();const now=Date.now();
+  const training={title,description:$('trDescription').value.trim(),videoUrl,targetDept,dueDate,surveyId,active:true,creatorId:me().id,creatorName:me().name,createdAt:stamp,createdAtMs:now};
+  const boardRef=$('trBoard').checked?db.collection('announcements').doc():null;
+  if(surveyId){
+    const survey=await db.collection('surveys').doc(surveyId).get();
+    if(!survey.exists||!isSurveyOpen(survey.data()))return toast('関連アンケートがありません、または締切済みです','error');
+    const links=await getTrainingLinks(true);
+    if(survey.data().linkedTrainingId||links.some(t=>t.surveyId===surveyId&&!t.deleted))return toast('このアンケートは他の研修と連携済みです。別のアンケートを選んでください','error');
+    if(!admin() && survey.data().creatorId!==me().id)return toast('自分で作成したアンケートを選択してください','error');
+    batch.update(db.collection('surveys').doc(surveyId),{linkedTrainingId:trainingRef.id,trainingTargetDept:targetDept,trainingDeleted:false});
+  }
+  batch.set(trainingRef,{...training,announcementId:boardRef?.id||''});
+  if(boardRef)batch.set(boardRef,{title:'【研修】'+title,content:training.description+'\n研修画面から動画を開き、受講後に完了を記録してください。',priority:'normal',creatorId:me().id,creatorName:me().name,attachments:[],externalUrl:videoUrl,publishFrom:todayStr(),publishUntil:boardUntil||dueDate||'',trainingId:trainingRef.id,targetDept,createdAt:stamp,createdAtMs:now});
+  await batch.commit();trainingLinksCache=null;trainingCache=null;publishedBoardCache=null;closeModal('trainingEditor');toast('研修を登録しました','ok');await loadDashboard().catch(console.error);}
+  catch(e){$('trainingSaveStatus').textContent='登録できませんでした。通信・設定を確認してください。';}
+  finally{trainingSaving=false;$('trainingSaveBtn').disabled=false;}
+}
+async function archiveTraining(id){
+  await updateTrainingAvailability(id,false);
+}
+// Dashboard wrapper runs after original dashboard renderer without resetting the real training count.
+const baseDashboard = loadDashboard;
+loadDashboard = async function(){await baseDashboard();try{await loadTraining();}catch(e){$('stTrain').textContent='—';$('trainingHome').textContent='研修情報を取得できません。更新して確認してください。';console.error(e);}};
+const baseSubmitSurvey=submitSurvey;
+let surveySubmitting=false, submissionSurvey=null;
+submitSurvey=async function(){
+ if(surveySubmitting||!activeSurveyId||!me())return;
+ const id=activeSurveyId;surveySubmitting=true;
+ try{
+  const [doc]=await Promise.all([db.collection('surveys').doc(id).get(),getTrainingLinks(true)]);
+  submissionSurvey=doc.exists?decorateTrainingSurveys([{...doc.data(),docId:doc.id}])[0]:null;
+  if(activeSurveyId!==id)return;
+  await baseSubmitSurvey();if(!$('surveyAnswerModal').classList.contains('show'))await loadTraining(true);
+ }catch(e){toast('回答を保存できませんでした。通信状態を確認してください','error');console.error(e);}
+ finally{surveySubmitting=false;submissionSurvey=null;}
+};
+const baseShowTab=showTab;
+showTab=function(id,btn){if((id==='admin'||id==='editor')&&!canAccessAdminTab())return;if(id==='training'){baseShowTab(id,btn);loadTraining().catch(e=>toast('研修を取得できません','error'));}else baseShowTab(id,btn);};
+// Default view filters include board publication dates and linked training audience.
+const baseIsBoardVisible=isBoardVisibleNow;
+isBoardVisibleNow=function(a,now=Date.now()){return baseIsBoardVisible(a,now)&&!shouldRemoveBoard(a,now)&&matchesTrainingAudience(a,me());};
+// Replace unlimited background watchers: only active board/survey view gets a listener; room has its own.
+function setupRealtimeWatch(){
+ clearWatchers();if(!me())return;
+ const current=document.querySelector('.screen.active')?.id;
+ if(current==='dashboard')watchLatest('announcements','ann',()=>{publishedBoardCache=null;loadDashboard().catch(console.error);});
+ if(current==='survey')watchLatest('surveys','survey',()=>loadSurveys().catch(console.error));
+}
+const previousShowTab=showTab;
+showTab=function(id,btn){previousShowTab(id,btn);setupRealtimeWatch();};
+async function goToTraining(id){
+ showTab('training',document.querySelector('[data-id=training]'));
+ try{await loadTraining();showTrainingGroup(trainingCache?.done.has(id)?'done':'todo');
+ const item=$('training-'+id);if(item){item.scrollIntoView({block:'center'});item.focus({preventScroll:true});}
+ else toast('この研修は現在の一覧には表示されていません');}catch(e){toast('研修を取得できませんでした','error');}
+}
+function renderTrainingBoardButton(a){return a.trainingId?`<button class="btn sec sm" data-training-id="${esc(a.trainingId)}" onclick="goToTraining(this.dataset.trainingId)">研修へ進む</button>`:'';}
+const baseRenderBoard=renderBoard;
+renderBoard=function(anns){baseRenderBoard(anns);for(const a of anns){const card=$('board-'+a.docId);if(card&&a.trainingId)card.insertAdjacentHTML('beforeend',renderTrainingBoardButton(a));}};
+// Restrict client access paths only. Public Firestore rules still permit direct external access.
+const baseList=list;
+list=async function(col){if(col==='rooms_leaders'&&!canUseRoom('leaders'))throw new Error('利用権限なし');return baseList(col);};
+const baseLatest=listLatest;
+listLatest=async function(col,limit){if(col==='rooms_leaders'&&!canUseRoom('leaders'))throw new Error('利用権限なし');return baseLatest(col,limit);};
+// Retention never runs automatically per visitor. Only explicit admin cleanup remains.
+function openStaffModal(){
+ if(!admin())return;
+ $('staffModalTitle').textContent='スタッフ追加';
+ for(const id of ['sfId','sfName','sfEmail','sfExt','sfNote'])$(id).value='';
+ $('sfDept').value='2階介護';$('sfRole').value='staff';openModal('staffModal');
+}
+
+let publishedBoardCache=null,publishedBoardAt=0,publishedBoardTask=null;
+async function loadPublishedBoards(){
+ if(publishedBoardCache&&Date.now()-publishedBoardAt<60000)return publishedBoardCache.filter(a=>isBoardVisibleNow(a));
+ if(!publishedBoardTask)publishedBoardTask=db.collection('announcements').get().then(s=>{publishedBoardCache=s.docs.map(d=>({docId:d.id,...d.data()}));publishedBoardAt=Date.now();return publishedBoardCache;}).finally(()=>publishedBoardTask=null);
+ return (await publishedBoardTask).filter(a=>isBoardVisibleNow(a));
+}
+const originalCreateBoard=createBoard;
+createBoard=async function(){publishedBoardCache=null;try{await originalCreateBoard();}finally{publishedBoardCache=null;}};
+const originalDeleteBoard=deleteBoard;
+deleteBoard=async function(id){publishedBoardCache=null;try{await originalDeleteBoard(id);}finally{publishedBoardCache=null;}};
+
+let trainingLinksCache=null,trainingLinksAt=0,trainingLinksTask=null;
+async function getTrainingLinks(force=false){
+ if(!force&&trainingLinksCache&&Date.now()-trainingLinksAt<60000)return trainingLinksCache;
+ if(!trainingLinksTask)trainingLinksTask=db.collection('trainings').get().then(q=>{
+  trainingLinksCache=q.docs.map(d=>({docId:d.id,...d.data()}));trainingLinksAt=Date.now();return trainingLinksCache;
+ }).finally(()=>trainingLinksTask=null);
+ return trainingLinksTask;
+}
+function canManageTraining(t,u=me()){return !!u && (u.role==='admin'||t.creatorId===u.id);}
+function audienceValues(value){
+ const values=(Array.isArray(value)?value:[value||'all']).filter(v=>typeof v==='string'&&v.trim());
+ return values.includes('all')?['all']:[...new Set(values)];
+}
+function matchesTrainingAudience(t,u){
+ if(!t||!u||u.active===false)return false;
+ return audienceValues(t.targetDept).some(target=>target==='all'||
+  (target==='__admin__'?u.role==='admin':target==='__sharedEditor__'?['sharedEditor','admin'].includes(u.role):target===u.department));
+}
+function linkedTrainingFor(s){
+ if(s.linkedTrainingId)return trainingLinksCache?.find(t=>t.docId===s.linkedTrainingId)||{targetDept:s.trainingTargetDept||s.targetDept,deleted:s.trainingDeleted};
+ return trainingLinksCache?.find(t=>t.surveyId===s.docId&&!t.deleted)||trainingLinksCache?.find(t=>t.surveyId===s.docId)||null;
+}
+function canAnswerSurvey(s,u){const t=linkedTrainingFor(s);return !s.trainingDeleted&&!t?.deleted&&matchesTrainingAudience(t||s,u);}
+canUserSeeSurvey=function(s,u){return !!s&&!!u&&(surveyOwner(s,u)||canAnswerSurvey(s,u));};
+getTargetUsers=function(users,s){return (users||[]).filter(u=>matchesTrainingAudience(linkedTrainingFor(s)||s,u));};
+function setAudience(id,value='all',locked=false){
+ const root=$(id+'Choices'), select=$(id), values=audienceValues(value);
+ for(const option of select.options) option.selected=values.includes(option.value);
+ for(const box of root.querySelectorAll('input')){box.checked=values.includes(box.value);box.disabled=locked;}
+ root.dataset.locked=locked?'1':'0';$(id+'Locked').classList.toggle('hide',!locked);
+ if(!root.dataset.bound){root.dataset.bound='1';root.addEventListener('change',e=>{
+  const boxes=[...root.querySelectorAll('input')];
+  if(e.target.checked){if(e.target.value==='all')boxes.filter(b=>b!==e.target).forEach(b=>b.checked=false);else boxes.find(b=>b.value==='all').checked=false;}
+  for(const opt of select.options)opt.selected=boxes.some(b=>b.checked&&b.value===opt.value);
+ });}
+}
+function readAudience(id){const values=[...$(id).selectedOptions].map(o=>o.value);return values.includes('all')?'all':values;}
+// Decorate query results so home, survey list, answer screen and result use one audience.
+function decorateTrainingSurveys(rows){return rows.map(s=>{
+ const t=linkedTrainingFor(s);
+ return t?{...s,targetDept:t.targetDept,linkedTrainingId:t.docId||s.linkedTrainingId,trainingTargetDept:t.targetDept,trainingDeleted:!!t.deleted}:s;
+});}
+const listBeforeAudience=list;
+list=async function(col){if(col==='surveys'){await getTrainingLinks().catch(console.error);return decorateTrainingSurveys(await listBeforeAudience(col));}return listBeforeAudience(col);};
+const latestBeforeAudience=listLatest;
+listLatest=async function(col,n){if(col==='surveys'){await getTrainingLinks().catch(console.error);return decorateTrainingSurveys(await latestBeforeAudience(col,n));}return latestBeforeAudience(col,n);};
+const originalSurveyOpen=isSurveyOpen;
+isSurveyOpen=function(s){return !s.trainingDeleted && originalSurveyOpen(s);};
+async function hideCompletedTraining(id){
+ if(!me()||!trainingCache?.done.has(id)||trainingCache.hidden?.has(id))return;
+ if(!confirm('自分の受講後一覧から削除しますか？受講完了記録と他の職員の表示は残ります。'))return;
+ const key=encodeURIComponent(me().id+'__'+id);
+ try{
+  await db.collection('trainingCompletions').doc(key).set({userId:me().id,trainingId:id,hidden:true,hiddenAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+  trainingCache.hidden ||= new Set();trainingCache.hidden.add(id);renderTrainingViews();toast('自分の一覧から削除しました','ok');
+ }catch(e){toast('削除できませんでした。再度お試しください','error');}
+}
+async function updateTrainingAvailability(id,remove){
+ const ref=db.collection('trainings').doc(id);
+ try{
+  const snap=await ref.get();if(!snap.exists)return toast('研修が見つかりません','error');
+  const t=snap.data();if(!canManageTraining(t))return toast('作成者または管理者のみ操作できます','error');
+  if(!confirm(remove?'研修を全員の一覧から削除しますか？関連する掲示板は非表示にし、受講記録とアンケート回答は保存します。':'この研修の受付を終了しますか？'))return;
+  const [board,survey]=await Promise.all([
+   t.announcementId?db.collection('announcements').doc(t.announcementId).get():null,
+   t.surveyId?db.collection('surveys').doc(t.surveyId).get():null
+  ]);
+  const batch=db.batch();batch.update(ref,{active:false,...(remove?{deleted:true,deletedAt:firebase.firestore.FieldValue.serverTimestamp()}:{} )});
+  if(board?.exists)batch.update(board.ref,{publishUntil:'2000-01-01'});
+  // Only shut down a survey uniquely linked to this training, never unrelated survey data.
+  if(remove&&survey?.exists){
+   const links=await getTrainingLinks(true);
+   const shared=links.some(x=>x.docId!==id&&!x.deleted&&x.surveyId===t.surveyId);
+   if(!shared)batch.update(survey.ref,{trainingDeleted:true});
+  }
+  await batch.commit();trainingLinksCache=null;trainingCache=null;publishedBoardCache=null;
+  await loadDashboard();if($('training').classList.contains('active'))await loadTraining();
+  if($('survey').classList.contains('active'))await loadSurveys();toast(remove?'研修を削除しました':'受付を終了しました','ok');
+ }catch(e){console.error(e);toast('更新できませんでした。通信状態を確認してください','error');}
+}
+async function deleteTraining(id){await updateTrainingAvailability(id,true);}
