@@ -1411,7 +1411,7 @@
         staffCache = users;
         $("staffList").innerHTML = !users.length
           ? '<div class="empty">スタッフがいません</div>'
-          : `<table class="table"><thead><tr><th>氏名</th><th>メール</th><th>部署</th><th>権限</th><th></th></tr></thead><tbody>${users.map((u) => `<tr><td>${esc(u.name || "")}</td><td>${esc(u.email || "")}</td><td>${esc(u.department || "")}</td><td>${roleLabel(u.role)}</td><td><div class="right"><button class="btn out sm" onclick="editStaff('${u.docId}')">編集</button><button class="btn dan sm" onclick="deleteStaff('${u.docId}','${esc(u.name || "")}')">削除</button></div></td></tr>`).join("")}</tbody></table>`;
+          : `<table class="table"><thead><tr><th>ニックネーム</th><th>ログイン用文字列</th><th>部署</th><th>権限</th><th></th></tr></thead><tbody>${users.map((u) => `<tr><td>${esc(u.name || "")}</td><td>${esc(u.email || "")}</td><td>${esc(u.department || "")}</td><td>${roleLabel(u.role)}</td><td><div class="right"><button class="btn out sm" onclick="editStaff('${u.docId}')">編集</button><button class="btn dan sm" onclick="deleteStaff('${u.docId}','${esc(u.name || "")}')">削除</button></div></td></tr>`).join("")}</tbody></table>`;
       }
       async function loadAdminOtherPane() {
         const settings = await loadSettingsCached(true).catch(() => []);
@@ -1456,8 +1456,7 @@
         if (!admin()) return toast('スタッフ管理は管理者のみ利用できます','error');
         if(staffSaving)return;
         const docId=$('sfId').value.trim(),name=$('sfName').value.trim(),email=$('sfEmail').value.trim().toLowerCase();
-        if(!name||!email)return toast('氏名と登録メールは必須です','error');
-        if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return toast('登録メールの形式を確認してください','error');
+        if(!name||!email)return toast('ニックネームとログイン用文字列は必須です','error');
         const role=$('sfRole').value;
         if(!['admin','sharedEditor','staff'].includes(role))return toast('権限を確認してください','error');
         staffSaving=true;const button=document.querySelector('#staffModal button[onclick="saveStaff()"]');if(button)button.disabled=true;
@@ -1466,7 +1465,7 @@
           const users=await list('users');
           const existing=docId?users.find(u=>u.docId===docId):null;
           if(docId&&!existing)throw new Error('スタッフ情報が見つかりません。一覧を更新してください');
-          if(users.some(u=>u.docId!==docId&&(u.name||'').trim()===name&&String(u.email||'').trim().toLowerCase()===email))throw new Error('同じ氏名と登録メールのスタッフが登録されています');
+          if(users.some(u=>u.docId!==docId&&(u.name||'').trim()===name&&String(u.email||'').trim().toLowerCase()===email))throw new Error('同じニックネームとログイン用文字列のスタッフが登録されています');
           if(existing?.role==='admin'&&role!=='admin'&&!users.some(u=>u.docId!==docId&&u.role==='admin'&&u.active!==false))throw new Error('最後の管理者の権限は変更できません');
           const data={name,email,department:$('sfDept').value,role,extension:$('sfExt').value.trim(),note:$('sfNote').value.trim()};
           if(docId)await upd('users',docId,data);
@@ -1715,7 +1714,15 @@
           })
           .join("");
       }
+      function isLinkSurvey(s){return s?.kind==='link';}
+      function setSurveyKind(kind,url){
+        const link=kind==='link';
+        $('svKind').value=link?'link':'normal';$('svDraftKind').value=$('svKind').value;
+        $('svLinkFields').classList.toggle('hide',!link);$('svQuestionFields').classList.toggle('hide',link);
+        if(url!==undefined)$('svLinkUrl').value=url;
+      }
       function resetSurveyForm() {
+        setSurveyKind('normal','');
         editingSurveyId = "";
         $("svId").value = "";
         $("surveyModalTitle").textContent = "アンケート作成";
@@ -1744,6 +1751,7 @@
         $("surveyModalTitle").textContent = "アンケート編集";
         $("svTitle").value = survey.title || "";
         $("svDesc").value = survey.desc || "";
+        setSurveyKind(survey.kind,survey.linkUrl||'');
         $("svPass").value = survey.password || "";
         setAudience("svTargetDept",survey.targetDept,!!linkedTrainingFor(survey));
         $("svAudience").value = survey.audience || "staff";
@@ -1762,6 +1770,7 @@
         resetSurveyForm();
         $("svTitle").value = `${survey.title || "アンケート"}（コピー）`;
         $("svDesc").value = survey.desc || "";
+        setSurveyKind(survey.kind,survey.linkUrl||'');
         setAudience("svTargetDept",survey.targetDept);
         $("svAudience").value = survey.audience || "staff";
         $("svAnonymous").value = survey.anonymous ? "1" : "0";
@@ -1938,6 +1947,17 @@
       }
       async function generateSurveyByAI() {
         const prompt = $("svAiPrompt").value.trim();
+        if($('svDraftKind').value==='link'){
+          setSurveyKind('link');
+          const text=prompt.replace(/https?:\/\/[^\s]+/gi,'').trim();
+          if(!$('svTitle').value)$('svTitle').value=text||'リンクアンケート';
+          const url=safePortalUrl(prompt.match(/https:\/\/[^\s]+/i)?.[0]);
+          if(url)$('svLinkUrl').value=url;
+          $('svAiStatus').textContent='リンクアンケートの下書きを作成しました。外部フォームのURLを確認してください。';
+          if(!$('svLinkUrl').value)$('svLinkUrl').focus();
+          return;
+        }
+        setSurveyKind('normal');
         if (!prompt) return toast("作成したい内容を入力してください", "error");
         $("svAiStatus").textContent = "下書きを生成しています…";
         let draft = null;
@@ -1968,9 +1988,12 @@
         const editing = isEdit ? await db.collection('surveys').doc(editingSurveyId).get() : null;
         if (isEdit && (!editing.exists || !surveyOwner(editing.data(),u))) return toast('編集権限がありません','error');
         if (!title) return toast("タイトルを入力してください", "error");
-        if (!svQuestions.length)
+        const kind=$('svKind').value==='link'?'link':'normal';
+        const linkUrl=kind==='link'?safePortalUrl($('svLinkUrl').value):'';
+        if(kind==='link'&&!linkUrl)return toast('有効なHTTPSのフォームURLを入力してください','error');
+        if (kind==='normal'&&!svQuestions.length)
           return toast("質問を1つ以上追加してください", "error");
-        if (svQuestions.some((q) => !String(q.text || "").trim()))
+        if (kind==='normal'&&svQuestions.some((q) => !String(q.text || "").trim()))
           return toast("未入力の質問があります", "error");
         const payload = {
           title,
@@ -1983,8 +2006,9 @@
           dueDate: $("svDue").value || "",
           creatorId: isEdit ? (editing.data().creatorId || u.id) : u.id,
           creatorName: isEdit ? (editing.data().creatorName || u.name) : u.name,
+          kind,linkUrl,
           questions: JSON.stringify(
-            svQuestions.map((q, i) => normalizeQuestion(q, i)),
+            kind==='link'?[]:svQuestions.map((q, i) => normalizeQuestion(q, i)),
           ),
         };
         if (isEdit) await upd("surveys", editingSurveyId, payload);
@@ -2048,7 +2072,7 @@
             const rate = targetUsers ? Math.round((rs.length / targetUsers) * 100) : 0;
             const open = isSurveyOpen(s);
             const owner = surveyOwner(s, u);
-            return `<div class="item" id="survey-${s.docId}"><div class="itemTop"><div><div class="title">${esc(s.title || "")}</div><div class="meta"><span>${esc(s.creatorName || "")}</span><span>${esc(targetDeptLabel(s.targetDept))}</span><span>${qs.length}問</span><span>回答状況は集計で確認</span>${s.anonymous ? '<span class="badge b2">匿名表示</span>' : '<span class="badge b1">記名</span>'}${open ? '<span class="badge b2">受付中</span>' : '<span class="badge b4">締切</span>'}${answered ? '<span class="badge b2">回答済</span>' : open && canAnswerSurvey(s,u) ? '<span class="badge b3">未回答</span>' : ''}${!seen && open ? '<span class="badge b4" data-survey-new>NEW</span>' : ''}</div></div><div class="right">${!answered && open && canAnswerSurvey(s,u) ? `<button class="btn pri sm" onclick="markSurveySeen('${s.docId}',true);openSurveyAnswer('${s.docId}')">回答</button>` : ""}<button class="btn out sm" onclick="markSurveySeen('${s.docId}',true);openSurveyResult('${s.docId}')">集計</button>${!seen && !answered ? `<button class="btn out sm" data-survey-confirm onclick="markSurveySeen('${s.docId}',false)">確認</button>` : ''}${owner ? `<button class="btn out sm" onclick="editSurvey('${s.docId}')">編集</button><button class="btn out sm" onclick="duplicateSurvey('${s.docId}')">複製</button><button class="btn ${open ? "warn" : "sec"} sm" onclick="toggleSurveyStatus('${s.docId}','${open ? "closed" : "open"}')">${open ? "締切" : "再開"}</button><button class="btn dan sm" onclick="deleteSurvey('${s.docId}')">削除</button>` : ""}</div></div>${s.desc ? `<div style="margin-top:10px;white-space:pre-wrap;line-height:1.6">${esc(s.desc)}</div>` : ""}${s.dueDate ? `<div class="meta"><span>締切: ${esc(s.dueDate)}</span></div>` : ""}</div>`;
+            return `<div class="item" id="survey-${s.docId}"><div class="itemTop"><div><div class="title">${esc(s.title || "")}</div><div class="meta"><span>${esc(s.creatorName || "")}</span><span>${esc(targetDeptLabel(s.targetDept))}</span><span>${isLinkSurvey(s)?'リンクアンケート':qs.length+'問'}</span><span>回答状況は集計で確認</span>${s.anonymous ? '<span class="badge b2">匿名表示</span>' : '<span class="badge b1">記名</span>'}${open ? '<span class="badge b2">受付中</span>' : '<span class="badge b4">締切</span>'}${answered ? '<span class="badge b2">回答済</span>' : open && canAnswerSurvey(s,u) ? '<span class="badge b3">未回答</span>' : ''}${!seen && open ? '<span class="badge b4" data-survey-new>NEW</span>' : ''}</div></div><div class="right">${!answered && open && canAnswerSurvey(s,u) ? `<button class="btn pri sm" onclick="markSurveySeen('${s.docId}',true);openSurveyAnswer('${s.docId}')">回答</button>` : ""}<button class="btn out sm" onclick="markSurveySeen('${s.docId}',true);openSurveyResult('${s.docId}')">集計</button>${!seen && !answered ? `<button class="btn out sm" data-survey-confirm onclick="markSurveySeen('${s.docId}',false)">確認</button>` : ''}${owner ? `<button class="btn out sm" onclick="editSurvey('${s.docId}')">編集</button><button class="btn out sm" onclick="duplicateSurvey('${s.docId}')">複製</button><button class="btn ${open ? "warn" : "sec"} sm" onclick="toggleSurveyStatus('${s.docId}','${open ? "closed" : "open"}')">${open ? "締切" : "再開"}</button><button class="btn dan sm" onclick="deleteSurvey('${s.docId}')">削除</button>` : ""}</div></div>${s.desc ? `<div style="margin-top:10px;white-space:pre-wrap;line-height:1.6">${esc(s.desc)}</div>` : ""}${s.dueDate ? `<div class="meta"><span>締切: ${esc(s.dueDate)}</span></div>` : ""}</div>`;
           })
           .join("");
       }
@@ -2136,6 +2160,7 @@
         });
         return withValidation ? { answers, errors } : answers;
       }
+      let openedExternalSurvey=null;
       async function openSurveyAnswer(id) {
         const u = me();
         if(!u)return;
@@ -2147,13 +2172,24 @@
         if (!canAnswerSurvey(survey, u)) return toast("このアンケートは対象外です", "error");
         if (!isSurveyOpen(survey)) return toast("このアンケートは締め切られています", "error");
         if (hasUserAnsweredSurvey(survey, u, responses)) return toast("すでに回答済みです", "error");
+        const external=isLinkSurvey(survey), url=external?safePortalUrl(survey.linkUrl):'';
+        if(external&&!url)return toast('このアンケートのリンクを開けません','error');
         markSurveySeen(id, true);
+        openedExternalSurvey=null;
+        $('ansClearBtn').classList.toggle('hide',external);
+        const button=$('ansSubmitBtn');button.textContent=external?'回答完了':'送信';button.disabled=external;
         activeSurveyId = id;
         activeSurveyData = survey;
         const qs = normalizeQuestions(parseJSON(survey.questions, []));
         const draft = parseJSON(localStorage.getItem(draftKey(id, u.id)), {});
         $("ansTitle").textContent = survey.title || "アンケート回答";
         $("ansSub").textContent = `${targetDeptLabel(survey.targetDept)} / ${survey.anonymous ? "匿名表示" : "記名"}`;
+        if(external){
+          $('ansSub').textContent+=' / リンクアンケート';
+          $('ansBody').innerHTML=`${survey.desc?`<div class="noteBox">${esc(survey.desc)}</div>`:''}<p><a class="btn out" href="${esc(url)}" target="_blank" rel="noopener noreferrer" id="ansOpenExternal">外部フォームを開く ↗</a></p><p class="tiny">外部フォームで回答を送信したらここに戻り、「回答完了」を押してください。実際の送信はポータルでは確認しません。</p>`;
+          $('ansOpenExternal').addEventListener('click',()=>{openedExternalSurvey={id,url};button.disabled=false;});
+          $('ansDraftInfo').textContent='';openModal('surveyAnswerModal');return;
+        }
         $("ansBody").innerHTML = `${survey.desc ? `<div class="noteBox">${esc(survey.desc)}</div>` : ""}${qs.map((q, i) => `<div class="q"><div style="font-weight:800;margin-bottom:8px">Q${i + 1}. ${esc(q.text)} ${q.required ? '<span class="badge b4">必須</span>' : '<span class="badge b1">任意</span>'}</div>${renderAnswerInput(q, i, draft)}</div>`).join("")}`;
         $("ansDraftInfo").textContent = Object.keys(draft || {}).length ? "保存済みの下書きを読み込みました" : "";
         openModal("surveyAnswerModal");
@@ -2164,7 +2200,10 @@
         const u = me();
         if (submissionSurvey && hasUserAnsweredSurvey(submissionSurvey,u,[])) return toast('すでに回答済みです','error');
         if (!submissionSurvey || !canAnswerSurvey(submissionSurvey,u) || !isSurveyOpen(submissionSurvey)) return toast('現在このアンケートには回答できません','error');
-        const { answers, errors } = collectAnswerValues(true);
+        const external=isLinkSurvey(submissionSurvey);
+        if(external!==isLinkSurvey(activeSurveyData))return toast('アンケートが更新されました。開き直してください','error');
+        if(external&&(!openedExternalSurvey||openedExternalSurvey.id!==activeSurveyId||openedExternalSurvey.url!==safePortalUrl(submissionSurvey.linkUrl)))return toast('最新の外部フォームを開いてから、回答完了を押してください','error');
+        const { answers, errors } = external?{answers:{},errors:[]}:collectAnswerValues(true);
         if (errors.length)
           return toast(`${errors.join(" / ")} を入力してください`, "error");
         await add("surveyResponses", {
@@ -2175,13 +2214,14 @@
           department: u.department || "",
           anonymous: !!activeSurveyData.anonymous,
           answers: JSON.stringify(answers),
+          ...(external?{completionType:'selfReportedExternal'}:{}),
           submittedAt: new Date().toISOString(),
         });
         addAnsweredSurveyId(u.id,activeSurveyId);
         localStorage.removeItem(draftKey(activeSurveyId, u.id));
         closeAnswerModal();
         await Promise.all([loadSurveys(), loadDashboard()]);
-        toast("回答を送信しました", "ok");
+        toast(external?"回答完了を記録しました":"回答を送信しました", "ok");
       }
       function makeChart(id, type, labels, data) {
         const ctx = $(id).getContext("2d");
@@ -2296,6 +2336,7 @@
         surveyResultCurrent = { survey, qs, rs, users };
         $("svResultTitle").textContent = `${survey.title || ""} 集計結果`;
         $("svResultSub").textContent = `${targetDeptLabel(survey.targetDept)} / 回答率 ${rate}% / ${survey.anonymous ? "匿名表示" : "記名"}`;
+        if(isLinkSurvey(survey))$('svResultSub').textContent+=' / 自己申告の完了記録・外部回答内容は表示されません';
         const numericValues = [];
         qs.forEach((q, i) => {
           if (["rating5", "rating10", "number"].includes(q.type)) {
