@@ -28,7 +28,7 @@
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<link href="./common.css?v=5673e33ed2" rel="stylesheet"/></head>
+<link href="./common.css?v=3d7619d1ef" rel="stylesheet"/></head>
 <body>
 <div class="center" id="loginScreen">
 <div class="panel login stack">
@@ -378,7 +378,7 @@
 <div class="cardHd">
 <div>
 <h3>スタッフ管理</h3>
-<div class="tiny">登録されている職員名とメールアドレスでログイン</div>
+<div class="tiny">登録されたニックネームとログイン用文字列でログイン</div>
 </div>
 <button class="btn pri sm" id="addStaffBtn" onclick="openStaffModal()">スタッフ追加</button>
 </div>
@@ -485,8 +485,8 @@
 <button class="close" onclick="closeModal('staffModal')">×</button>
 </div>
 <input id="sfId" type="hidden"/>
-<label for="sfName">氏名（ログイン画面のID）</label><input class="inp" id="sfName" placeholder="氏名" autocomplete="off"/>
-<label for="sfEmail">登録メール（ログイン画面のパスワード）</label><input class="inp" id="sfEmail" placeholder="登録メール" type="email" autocomplete="off"/><div class="tiny">変更後のログインには、変更後の氏名・登録メールを使用します。</div>
+<label for="sfName">ニックネーム（ログイン画面のID）</label><input class="inp" id="sfName" placeholder="ニックネーム" autocomplete="off"/>
+<label for="sfEmail">ログイン用文字列（パスワード欄に入力）</label><input class="inp" id="sfEmail" placeholder="例：skyforest" type="text" autocomplete="off" autocapitalize="none" spellcheck="false"/><div class="tiny">メール形式は不要です。英字の大文字・小文字は区別しません。実名・メール・他サービスのパスワードは入力しないでください。</div>
 <div class="row">
 <select class="grow" id="sfDept">
 <option>2階介護</option>
@@ -542,10 +542,13 @@
 <i class="fas fa-wand-magic-sparkles"></i> 下書き生成
             </button>
 </div>
+<label for="svDraftKind">自動作成の形式</label><select id="svDraftKind"><option value="normal">通常アンケート</option><option value="link">リンクアンケート</option></select>
 <input class="inp" id="svAiPrompt" placeholder="作成したいアンケート内容を入力"/>
 <div class="tiny" id="svAiStatus"></div>
 </div>
 <input id="svId" type="hidden"/>
+<label for="svKind">アンケート形式</label><select id="svKind" onchange="setSurveyKind(this.value)"><option value="normal">通常アンケート</option><option value="link">リンクアンケート</option></select>
+<div id="svLinkFields" class="hide"><label for="svLinkUrl">外部フォームURL（https）</label><input class="inp" id="svLinkUrl" type="url" placeholder="https://…"/><div class="tiny">本人の完了操作を記録します。外部フォームの回答内容・送信結果は取得しません。</div></div>
 <div class="row">
 <div class="grow">
 <label class="tiny">タイトル</label><input class="inp" id="svTitle" placeholder="タイトル"/>
@@ -605,6 +608,7 @@
 <div class="noteBox">
           使いやすさ重視のため、よく使う質問形式を中心にしています。必要に応じて後から追加・編集できます。
         </div>
+<div id="svQuestionFields">
 <div class="cardHd" style="margin-bottom: 0">
 <h4>質問</h4>
 <div class="right">
@@ -613,7 +617,7 @@
               単一選択</button><button class="btn out sm" onclick="addQ('multi')">複数選択</button><button class="btn out sm" onclick="addQ('text')">記述式</button>
 </div>
 </div>
-<div id="svQuestions"></div>
+<div id="svQuestions"></div></div>
 <div class="stickyFoot">
 <div class="right">
 <button class="btn out" onclick="closeSurveyModal()">
@@ -637,8 +641,8 @@
 <div class="tiny" id="ansDraftInfo"></div>
 <div class="stickyFoot">
 <div class="right">
-<button class="btn out" onclick="clearSurveyDraft()">
-              下書き消去</button><button class="btn pri" onclick="submitSurvey()">
+<button class="btn out" id="ansClearBtn" onclick="clearSurveyDraft()">
+              下書き消去</button><button class="btn pri" id="ansSubmitBtn" onclick="submitSurvey()">
 <i class="fas fa-paper-plane"></i> 送信
             </button>
 </div>
@@ -675,5 +679,5 @@
 <div class="dayModalBody" id="dayModalBody"></div>
 </div>
 </div>
-<div class="modal" id="trainingEditor"><div class="box stack"><div class="cardHd"><h3>動画研修の登録</h3><button class="close" onclick="closeModal('trainingEditor')">×</button></div><label>研修名<input class="inp" id="trTitle" maxlength="120"/></label><label>説明<textarea id="trDescription" maxlength="3000"></textarea></label><label>動画研修URL（https）<input class="inp" id="trUrl" type="url"/></label><fieldset class="audienceChoices" id="trTargetChoices"><legend>対象部署・役割</legend><span class="tiny">複数選択できます</span><div class="audienceGrid"><label><input type="checkbox" value="all"/>全部署</label><label><input type="checkbox" value="2階介護"/>2階介護</label><label><input type="checkbox" value="3階介護"/>3階介護</label><label><input type="checkbox" value="介護"/>介護（旧）</label><label><input type="checkbox" value="看護"/>看護</label><label><input type="checkbox" value="リハビリ"/>リハビリ</label><label><input type="checkbox" value="栄養"/>栄養</label><label><input type="checkbox" value="事務"/>事務</label><label><input type="checkbox" value="相談課"/>相談課</label><label><input type="checkbox" value="施設長"/>施設長</label><label><input type="checkbox" value="所長"/>所長</label><label><input type="checkbox" value="__sharedEditor__"/>共有権限者</label><label><input type="checkbox" value="__admin__"/>管理者</label></div><select aria-label="対象部署・役割" class="hide" id="trTarget" multiple="multiple"><option value="all">全部署</option><option value="2階介護">2階介護</option><option value="3階介護">3階介護</option><option value="介護">介護（旧）</option><option value="看護">看護</option><option value="リハビリ">リハビリ</option><option value="栄養">栄養</option><option value="事務">事務</option><option value="相談課">相談課</option><option value="施設長">施設長</option><option value="所長">所長</option><option value="__sharedEditor__">共有権限者</option><option value="__admin__">管理者</option></select><p class="tiny hide" id="trTargetLocked">研修の視聴対象に連動しています。</p></fieldset><label>受講期限（任意）<input class="inp" id="trDue" type="date"/></label><label>関連アンケート<select id="trSurvey"><option value="">なし：本人の完了操作で記録</option></select><p class="tiny">選んだアンケートの対象は研修の視聴対象に連動します。</p></label><label><input checked="" id="trBoard" type="checkbox"/> 掲示板にも案内を掲載</label><label>掲示板の掲載終了日（任意）<input class="inp" id="trBoardUntil" type="date"/></label><button class="btn pri" id="trainingSaveBtn" onclick="saveTraining()">登録</button><div class="helper" id="trainingSaveStatus" role="status"></div></div></div><script data-required="true" src="./common.js?v=5673e33ed2"></script></body>
+<div class="modal" id="trainingEditor"><div class="box stack"><div class="cardHd"><h3>動画研修の登録</h3><button class="close" onclick="closeModal('trainingEditor')">×</button></div><label>研修名<input class="inp" id="trTitle" maxlength="120"/></label><label>説明<textarea id="trDescription" maxlength="3000"></textarea></label><label>動画研修URL（https）<input class="inp" id="trUrl" type="url"/></label><fieldset class="audienceChoices" id="trTargetChoices"><legend>対象部署・役割</legend><span class="tiny">複数選択できます</span><div class="audienceGrid"><label><input type="checkbox" value="all"/>全部署</label><label><input type="checkbox" value="2階介護"/>2階介護</label><label><input type="checkbox" value="3階介護"/>3階介護</label><label><input type="checkbox" value="介護"/>介護（旧）</label><label><input type="checkbox" value="看護"/>看護</label><label><input type="checkbox" value="リハビリ"/>リハビリ</label><label><input type="checkbox" value="栄養"/>栄養</label><label><input type="checkbox" value="事務"/>事務</label><label><input type="checkbox" value="相談課"/>相談課</label><label><input type="checkbox" value="施設長"/>施設長</label><label><input type="checkbox" value="所長"/>所長</label><label><input type="checkbox" value="__sharedEditor__"/>共有権限者</label><label><input type="checkbox" value="__admin__"/>管理者</label></div><select aria-label="対象部署・役割" class="hide" id="trTarget" multiple="multiple"><option value="all">全部署</option><option value="2階介護">2階介護</option><option value="3階介護">3階介護</option><option value="介護">介護（旧）</option><option value="看護">看護</option><option value="リハビリ">リハビリ</option><option value="栄養">栄養</option><option value="事務">事務</option><option value="相談課">相談課</option><option value="施設長">施設長</option><option value="所長">所長</option><option value="__sharedEditor__">共有権限者</option><option value="__admin__">管理者</option></select><p class="tiny hide" id="trTargetLocked">研修の視聴対象に連動しています。</p></fieldset><label>受講期限（任意）<input class="inp" id="trDue" type="date"/></label><label>関連アンケート<select id="trSurvey"><option value="">なし：本人の完了操作で記録</option></select><p class="tiny">選んだアンケートの対象は研修の視聴対象に連動します。</p></label><label><input checked="" id="trBoard" type="checkbox"/> 掲示板にも案内を掲載</label><label>掲示板の掲載終了日（任意）<input class="inp" id="trBoardUntil" type="date"/></label><button class="btn pri" id="trainingSaveBtn" onclick="saveTraining()">登録</button><div class="helper" id="trainingSaveStatus" role="status"></div></div></div><script data-required="true" src="./common.js?v=3d7619d1ef"></script></body>
 </html>
