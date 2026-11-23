@@ -190,7 +190,7 @@
       function markBoardRead(boardId, silent = false) {
         localStorage.setItem(boardReadKey(boardId), "1");
         if (!silent) toast("掲示板を確認済みにしました", "ok");
-        loadDashboard().catch(() => {});
+        refreshBoardFromHome();
       }
       function isSurveySeen(survey, user = me(), responses = []) {
         if (!user || !survey) return true;
@@ -201,8 +201,9 @@
       function markSurveySeen(surveyId, silent = true) {
         localStorage.setItem(surveySeenKey(surveyId), "1");
         if (!silent) toast("アンケートを確認済みにしました", "ok");
-        loadSurveys().catch(() => {});
-        loadDashboard().catch(() => {});
+        const card=$('survey-'+surveyId);
+        card?.querySelectorAll('[data-survey-new],[data-survey-confirm]').forEach(el=>el.remove());
+        if(card)setTabAlert('survey',!!$('surveyList').querySelector('[data-survey-new]'));
       }
       function getRoomReadMs(roomId, userId = me()?.id || "guest") {
         return Number(localStorage.getItem(roomReadKey(roomId, userId)) || 0);
@@ -384,7 +385,8 @@
       }
       async function loadFacilityCalendar(settings = null) {
         const month = $("facilityMonthView")?.value || monthStr();
-        const all = settings || await list("settings");
+        const all = settings || await loadSettingsCached();
+        if(month !== ($("facilityMonthView")?.value || monthStr()))return;
         const row = all.find((x) => x.type === "facilityCalendar" && x.month === month);
         renderFacilityCalendarGrid("facilityCalendar", month, parseJSON(row?.items, []));
       }
@@ -423,7 +425,8 @@
         if (facilityCalendarDocId) await upd("settings", facilityCalendarDocId, payload);
         else facilityCalendarDocId = await add("settings", payload);
         toast("月間施設予定を保存しました", "ok");
-        await Promise.all([loadAdmin(), loadDashboard()]);
+        const settings=await loadSettingsCached(true);
+        await Promise.all([loadFacilityCalendarAdmin(settings),loadFacilityCalendar(settings)]);
       }
       async function runGlobalSearch(forceWord = "") {
         const input = $("globalSearch");
@@ -541,7 +544,8 @@
         $(id).classList.remove("show");
         if (id === "roomModal") {
           if (typeof closeRoomRealtime === "function") closeRoomRealtime();
-          if (activeRoom) setRoomReadMs(activeRoom, Date.now());
+          if (activeRoom){setRoomReadMs(activeRoom, Date.now());updateRoomReadLocally(activeRoom);}
+          activeRoom="";
         }
       }
       function closeSurveyModal() {
@@ -634,7 +638,7 @@
             data.body || payload?.notification?.body || "新しい更新があります";
           browserNotify(title, body);
           if (data.type === "announcement") {
-            await loadDashboard();
+            await refreshBoardOnly();
             if (data.boardId)
               setTimeout(() => highlightBoard(data.boardId), 500);
           }
@@ -679,9 +683,10 @@
         const btn = document.querySelector('.tab[data-id="dashboard"]');
         if (btn) showTab("dashboard", btn);
         markBoardRead(boardId, true);
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        el.classList.add("flashTarget");
-        setTimeout(() => el.classList.remove("flashTarget"), 2500);
+        const target=$("board-"+boardId)||el;
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        target.classList.add("flashTarget");
+        setTimeout(() => target.classList.remove("flashTarget"), 2500);
       }
       function highlightSurvey(surveyId) {
         const el = document.getElementById(`survey-${surveyId}`);
@@ -860,9 +865,37 @@
         if (id === 'admin') showAdminPane(admin() ? 'staff' : 'calendar');
       }
 
+      let homePartData=null;
+      let boardRefreshRevision=0;
+      function getHomePartData(){
+        const id=me()?.id;if(!id)return null;
+        if(!homePartData||homePartData.id!==id)homePartData={id,tasks:[],surveys:[],boards:[],rooms:[]};
+        return homePartData;
+      }
+      function renderHomeParts(home=getHomePartData()){
+        if(home)buildTodayHomeLite(home.tasks,home.surveys,home.boards,home.rooms);
+      }
+      function refreshBoardFromHome(home=getHomePartData()){
+        if(!home)return;
+        home.boards=home.boards.filter(a=>isBoardVisibleNow(a));
+        setTabAlert('dashboard',home.boards.some(a=>!isBoardRead(a,me())));
+        renderBoard(home.boards);renderHomeParts(home);
+      }
+      async function refreshBoardOnly(){
+        const home=getHomePartData();if(!home)return;
+        const revision=++boardRefreshRevision;
+        const pending=publishedBoardTask;
+        if(pending)await pending.catch(()=>{});
+        if(revision!==boardRefreshRevision||home!==getHomePartData())return;
+        publishedBoardCache=null;
+        const rows=await loadPublishedBoards();
+        if(revision!==boardRefreshRevision||home!==getHomePartData())return;
+        home.boards=rows;refreshBoardFromHome(home);
+      }
       async function loadDashboard() {
         const u = me();
         if (!u) return;
+        const home=getHomePartData(), boardRevision=boardRefreshRevision;
         // 最小サマリだけ取得: 掲示板は最新20件、アンケートは自分の未回答判定のためタイトル+targetDept+status+dueDateだけ、ルームは meta のみ
         const [myTasks, anns, surveys, roomMeta, settings] = await Promise.all([
           listMyOpenTasks(u.id).catch(() => []),
@@ -880,16 +913,18 @@
         const openTodo = visibleSurveys.filter((s) => canAnswerSurvey(s,u) && isSurveyOpen(s) && !hasUserAnsweredSurvey(s, u, []));
         $("stSurvey").textContent = openTodo.length;
         $("stRoom").textContent = roomMeta.filter((r) => r.unread > 0).length;
-        setTabAlert("dashboard", visibleAnns.some((a) => !isBoardRead(a, u)));
-        setTabAlert("rooms", roomMeta.some((r) => r.unread > 0));
+        if(home!==getHomePartData())return;
+        home.tasks=myTasks;home.surveys=openTodo;
+        home.rooms=roomMeta.map(r=>({...r,unread:r.unread&&r.lastMs>getRoomReadMs(r.key,u.id)?1:0}));
+        updateRoomReadIndicators(home);
         const b = settings.find((x) => x.type === "banner");
         if (b?.imageUrl) {
           $("bannerArea").innerHTML = `<img src="${esc(b.imageUrl)}" alt="banner">`;
           $("bannerArea").classList.remove("hide");
         } else $("bannerArea").classList.add("hide");
-        buildTodayHomeLite(myTasks, openTodo, visibleAnns, roomMeta);
+        if(boardRevision===boardRefreshRevision)home.boards=visibleAnns;
+        refreshBoardFromHome(home);
         renderQuickLinks();
-        renderBoard(visibleAnns);
         // 職員名簿はホームでは読まない (プロフィールタブで表示)
         await loadFacilityCalendar(settings);
       }
@@ -903,13 +938,12 @@
         }
       }
       let settingsCache = null;
-      let settingsCacheAt = 0;
+      let settingsCacheAt = 0, settingsReadTask=null;
       async function loadSettingsCached(force = false) {
-        const now = Date.now();
-        if (!force && settingsCache && now - settingsCacheAt < 60 * 1000) return settingsCache;
-        settingsCache = await list("settings").catch(() => []);
-        settingsCacheAt = now;
-        return settingsCache;
+        if (!force && settingsCache && Date.now() - settingsCacheAt < 60000) return settingsCache;
+        if(settingsReadTask&&!force)return settingsReadTask;
+        const task=list('settings').then(rows=>{if(settingsReadTask===task){settingsCache=rows;settingsCacheAt=Date.now();}return rows;}).finally(()=>{if(settingsReadTask===task)settingsReadTask=null;});
+        settingsReadTask=task;return task;
       }
       function getAnsweredSurveyIds(userId) {
         return parseJSON(localStorage.getItem(`ku_answered_${userId}`), []);
@@ -1085,7 +1119,7 @@
           });
           clearBoardDraft(false);
           closeModal("boardModal");
-          await loadDashboard();
+          await refreshBoardOnly().catch(console.error);
           toast("掲示板に投稿しました", "ok");
         } catch (e) {
           toast("投稿エラー: " + e.message, "error");
@@ -1101,7 +1135,7 @@
         await deleteAnnFiles(ann);
         await del ("announcements", id);
         publishedBoardCache=null;
-        await loadDashboard();
+        await refreshBoardOnly().catch(console.error);
         toast("削除しました", "ok");
       }
 
@@ -1172,10 +1206,24 @@
         const el = $("roomCards");
         if (!u || !el) return;
         const rows = await loadRoomMetaSummary(u);
-        setTabAlert("rooms", rows.some((r) => r.unread > 0));
-        el.innerHTML = rows
-          .map((r) => `<div class="card roomBtn" onclick="openRoom('${r.key}')"><div class="itemTop"><div><h3>${esc(r.label)}</h3><p class="muted" style="margin-top:8px">${r.key === "leaders" ? "役職者向け共有ルーム" : "部署・役割ごとの情報共有ルーム"}</p></div>${r.unread ? `<span class="badge b4">未読</span>` : `<span class="badge b2">既読</span>`}</div><div class="roomMeta">${r.last && r.lastMs ? `<span class="tiny">最終: ${esc(r.last.userName || "")} / ${fmt(new Date(r.lastMs))}</span>` : '<span class="tiny">まだ投稿がありません</span>'}</div></div>`)
+        const home=getHomePartData();if(!home||home.id!==u.id)return;
+        home.rooms=rows.map(r=>({...r,unread:r.unread&&r.lastMs>getRoomReadMs(r.key,u.id)?1:0}));
+        updateRoomReadIndicators(home);renderHomeParts(home);
+        el.innerHTML = home.rooms
+          .map((r) => `<div class="card roomBtn" data-home-room="${esc(r.key)}" onclick="openRoom('${r.key}')"><div class="itemTop"><div><h3>${esc(r.label)}</h3><p class="muted" style="margin-top:8px">${r.key === "leaders" ? "役職者向け共有ルーム" : "部署・役割ごとの情報共有ルーム"}</p></div>${r.unread ? `<span class="badge b4">未読</span>` : `<span class="badge b2">既読</span>`}</div><div class="roomMeta">${r.last && r.lastMs ? `<span class="tiny">最終: ${esc(r.last.userName || "")} / ${fmt(new Date(r.lastMs))}</span>` : '<span class="tiny">まだ投稿がありません</span>'}</div></div>`)
           .join("");
+      }
+      function updateRoomReadIndicators(home=getHomePartData()){
+        if(!home)return;
+        $('stRoom').textContent=home.rooms.filter(r=>r.unread).length;
+        setTabAlert('rooms',home.rooms.some(r=>r.unread));
+      }
+      function updateRoomReadLocally(key){
+        const home=getHomePartData();if(!home)return;
+        const row=home.rooms.find(r=>r.key===key);if(row)row.unread=0;
+        const badge=$('roomCards')?.querySelector(`[data-home-room="${key}"] .badge`);
+        if(badge){badge.classList.remove('b4');badge.classList.add('b2');badge.textContent='既読';}
+        updateRoomReadIndicators(home);renderHomeParts(home);
       }
       let openRoomUnsub = null;
       async function openRoom(key) {
@@ -1184,13 +1232,10 @@
         activeRoom = key;
         $("roomTitle").textContent = ROOMS[key];
         openModal("roomModal");
-        await loadRoomMsgs();
-        $("roomInput").focus();
-        startRoomRealtime(key);
-        // 既読化を即座に一覧へ反映（キャッシュ破棄して最新metaで再描画）
-        if (typeof settingsCache !== "undefined") settingsCache = null;
-        renderRoomCards().catch(() => {});
-        loadDashboard().catch(() => {});
+        updateRoomReadLocally(key);
+        try{await loadRoomMsgs();}catch(e){console.error(e);toast('チャットを読み込めませんでした','error');}
+        if(activeRoom!==key||!$('roomModal').classList.contains('show'))return;
+        $('roomInput').focus();startRoomRealtime(key);
       }
       function closeRoomRealtime() {
         if (typeof openRoomUnsub === "function") {
@@ -1219,9 +1264,11 @@
         if (!canUseRoom(activeRoom)) return toast("このルームの利用権限がありません", "error");
         if (!activeRoom) return;
         const u = me();
-        const msgs = (await listLatest("rooms_" + activeRoom, ROOM_VISIBLE_LIMIT)).sort(
+        const roomKey=activeRoom;
+        const msgs = (await listLatest("rooms_" + roomKey, ROOM_VISIBLE_LIMIT)).sort(
           (a, b) => ms(a.createdAtMs || a.createdAt) - ms(b.createdAtMs || b.createdAt),
         );
+        if(activeRoom!==roomKey)return;
         const el = $("roomMsgs");
         const lastMs = msgs.length ? ms(msgs[msgs.length - 1].createdAtMs || msgs[msgs.length - 1].createdAt) : Date.now();
         setRoomReadMs(activeRoom, Math.max(lastMs, Date.now()));
@@ -2001,7 +2048,7 @@
             const rate = targetUsers ? Math.round((rs.length / targetUsers) * 100) : 0;
             const open = isSurveyOpen(s);
             const owner = surveyOwner(s, u);
-            return `<div class="item" id="survey-${s.docId}"><div class="itemTop"><div><div class="title">${esc(s.title || "")}</div><div class="meta"><span>${esc(s.creatorName || "")}</span><span>${esc(targetDeptLabel(s.targetDept))}</span><span>${qs.length}問</span><span>回答状況は集計で確認</span>${s.anonymous ? '<span class="badge b2">匿名表示</span>' : '<span class="badge b1">記名</span>'}${open ? '<span class="badge b2">受付中</span>' : '<span class="badge b4">締切</span>'}${answered ? '<span class="badge b2">回答済</span>' : open && canAnswerSurvey(s,u) ? '<span class="badge b3">未回答</span>' : ''}${!seen && open ? '<span class="badge b4">NEW</span>' : ''}</div></div><div class="right">${!answered && open && canAnswerSurvey(s,u) ? `<button class="btn pri sm" onclick="markSurveySeen('${s.docId}',true);openSurveyAnswer('${s.docId}')">回答</button>` : ""}<button class="btn out sm" onclick="markSurveySeen('${s.docId}',true);openSurveyResult('${s.docId}')">集計</button>${!seen && !answered ? `<button class="btn out sm" onclick="markSurveySeen('${s.docId}',false)">確認</button>` : ''}${owner ? `<button class="btn out sm" onclick="editSurvey('${s.docId}')">編集</button><button class="btn out sm" onclick="duplicateSurvey('${s.docId}')">複製</button><button class="btn ${open ? "warn" : "sec"} sm" onclick="toggleSurveyStatus('${s.docId}','${open ? "closed" : "open"}')">${open ? "締切" : "再開"}</button><button class="btn dan sm" onclick="deleteSurvey('${s.docId}')">削除</button>` : ""}</div></div>${s.desc ? `<div style="margin-top:10px;white-space:pre-wrap;line-height:1.6">${esc(s.desc)}</div>` : ""}${s.dueDate ? `<div class="meta"><span>締切: ${esc(s.dueDate)}</span></div>` : ""}</div>`;
+            return `<div class="item" id="survey-${s.docId}"><div class="itemTop"><div><div class="title">${esc(s.title || "")}</div><div class="meta"><span>${esc(s.creatorName || "")}</span><span>${esc(targetDeptLabel(s.targetDept))}</span><span>${qs.length}問</span><span>回答状況は集計で確認</span>${s.anonymous ? '<span class="badge b2">匿名表示</span>' : '<span class="badge b1">記名</span>'}${open ? '<span class="badge b2">受付中</span>' : '<span class="badge b4">締切</span>'}${answered ? '<span class="badge b2">回答済</span>' : open && canAnswerSurvey(s,u) ? '<span class="badge b3">未回答</span>' : ''}${!seen && open ? '<span class="badge b4" data-survey-new>NEW</span>' : ''}</div></div><div class="right">${!answered && open && canAnswerSurvey(s,u) ? `<button class="btn pri sm" onclick="markSurveySeen('${s.docId}',true);openSurveyAnswer('${s.docId}')">回答</button>` : ""}<button class="btn out sm" onclick="markSurveySeen('${s.docId}',true);openSurveyResult('${s.docId}')">集計</button>${!seen && !answered ? `<button class="btn out sm" data-survey-confirm onclick="markSurveySeen('${s.docId}',false)">確認</button>` : ''}${owner ? `<button class="btn out sm" onclick="editSurvey('${s.docId}')">編集</button><button class="btn out sm" onclick="duplicateSurvey('${s.docId}')">複製</button><button class="btn ${open ? "warn" : "sec"} sm" onclick="toggleSurveyStatus('${s.docId}','${open ? "closed" : "open"}')">${open ? "締切" : "再開"}</button><button class="btn dan sm" onclick="deleteSurvey('${s.docId}')">削除</button>` : ""}</div></div>${s.desc ? `<div style="margin-top:10px;white-space:pre-wrap;line-height:1.6">${esc(s.desc)}</div>` : ""}${s.dueDate ? `<div class="meta"><span>締切: ${esc(s.dueDate)}</span></div>` : ""}</div>`;
           })
           .join("");
       }
@@ -2217,19 +2264,26 @@
       }
       async function openSurveyResult(id) {
         const u = me();
-        const [surveys, responses, users] = await Promise.all([
-          list("surveys"),
-          list("surveyResponses").catch(() => []),
-          list("users"),
-        ]);
-        const survey = surveys.find((s) => s.docId === id);
-        if (!survey) return;
+        if(!u||!id)return;
+        let survey;
+        try{
+          const [doc]=await Promise.all([db.collection('surveys').doc(id).get(),getTrainingLinks().catch(console.error)]);
+          if(!doc.exists)return toast('アンケートが見つかりませんでした','error');
+          survey={...doc.data(),docId:id};
+        }catch(e){console.error(e);return toast('アンケートを取得できませんでした','error');}
         if (!canUserSeeSurvey(survey, u)) return toast("このアンケートは対象外です", "error");
         if (survey.password && !surveyOwner(survey, u)) {
           const pw = prompt("集計パスワード");
           if (pw === null) return;
           if (pw !== survey.password) return toast("パスワードが違います", "error");
         }
+        let responses,users;
+        try{
+          [responses,users]=await Promise.all([
+            db.collection('surveyResponses').where('surveyId','==',id).get().then(result=>result.docs.map(d=>({...d.data(),docId:d.id}))),
+            list('users'),
+          ]);
+        }catch(e){console.error(e);return toast('集計データを取得できませんでした','error');}
         markSurveySeen(id, true);
         Object.values(charts).forEach((c) => c.destroy());
         charts = {};
@@ -2504,7 +2558,7 @@ async function boot() {
  $('loginScreen').classList.add('hide');$('app').classList.remove('hide');
  $('av').textContent=(u.name||'?').slice(0,1);$('meName').textContent=u.name||'';syncPermissionUI();
  $('facilityMonthView').value ||= monthStr();$('facilityMonthAdmin').value ||= monthStr();
- $('facilityMonthView').onchange=()=>loadDashboard();$('facilityMonthAdmin').onchange=()=>loadFacilityCalendarAdmin();
+ $('facilityMonthView').onchange=()=>loadFacilityCalendar().catch(console.error);$('facilityMonthAdmin').onchange=()=>loadFacilityCalendarAdmin();
  $('globalSearch').onkeypress=e=>{if(e.key==='Enter')runGlobalSearch();};
  $('directoryKeyword').oninput=()=>renderMiniDirectory();$('directoryDeptFilter').onchange=()=>renderMiniDirectory();
  wireBoardDraftAutosave();setNotifyBtn('default');
@@ -2649,7 +2703,7 @@ isBoardVisibleNow=function(a,now=Date.now()){return baseIsBoardVisible(a,now)&&!
 function setupRealtimeWatch(){
  clearWatchers();if(!me())return;
  const current=document.querySelector('.screen.active')?.id;
- if(current==='dashboard')watchLatest('announcements','ann',()=>{publishedBoardCache=null;loadDashboard().catch(console.error);});
+ if(current==='dashboard')watchLatest('announcements','ann',()=>refreshBoardOnly().catch(console.error));
  if(current==='survey')watchLatest('surveys','survey',()=>loadSurveys().catch(console.error));
 }
 const previousShowTab=showTab;
