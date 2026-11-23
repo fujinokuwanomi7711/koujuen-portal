@@ -1404,32 +1404,34 @@
           toast("スタッフ編集画面を開けませんでした", "error");
         }
       }
+      let staffSaving=false;
       async function saveStaff() {
-        if (!admin()) return toast("スタッフ管理は管理者のみ利用できます", "error");
-        const id = $("sfId").value;
-        const name = $("sfName").value.trim();
-        const email = $("sfEmail").value.trim().toLowerCase();
-        if (!name || !email)
-          return toast("氏名とメールアドレスは必須です", "error");
-        const data = {
-          name,
-          email,
-          department: $("sfDept").value,
-          role: $("sfRole").value,
-          extension: $("sfExt").value.trim(),
-          note: $("sfNote").value.trim(),
-        };
-        if (id) await upd("users", id, data);
-        else await add("users", { ...data, id: "u_" + Date.now() });
-        const current = me();
-        if (id && current?.docId === id) {
-          const nu = { ...current, ...data };
-          saveMe(nu);
-          syncPermissionUI();
-        }
-        closeModal("staffModal");
-        await Promise.all([loadAdmin(), loadStaffHints(), loadProfile()]);
-        toast("保存しました", "ok");
+        if (!admin()) return toast('スタッフ管理は管理者のみ利用できます','error');
+        if(staffSaving)return;
+        const docId=$('sfId').value.trim(),name=$('sfName').value.trim(),email=$('sfEmail').value.trim().toLowerCase();
+        if(!name||!email)return toast('氏名と登録メールは必須です','error');
+        if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return toast('登録メールの形式を確認してください','error');
+        const role=$('sfRole').value;
+        if(!['admin','sharedEditor','staff'].includes(role))return toast('権限を確認してください','error');
+        staffSaving=true;const button=document.querySelector('#staffModal button[onclick="saveStaff()"]');if(button)button.disabled=true;
+        let saved=false;
+        try{
+          const users=await list('users');
+          const existing=docId?users.find(u=>u.docId===docId):null;
+          if(docId&&!existing)throw new Error('スタッフ情報が見つかりません。一覧を更新してください');
+          if(users.some(u=>u.docId!==docId&&(u.name||'').trim()===name&&String(u.email||'').trim().toLowerCase()===email))throw new Error('同じ氏名と登録メールのスタッフが登録されています');
+          if(existing?.role==='admin'&&role!=='admin'&&!users.some(u=>u.docId!==docId&&u.role==='admin'&&u.active!==false))throw new Error('最後の管理者の権限は変更できません');
+          const data={name,email,department:$('sfDept').value,role,extension:$('sfExt').value.trim(),note:$('sfNote').value.trim()};
+          if(docId)await upd('users',docId,data);
+          else await add('users',{...data,id:uid('u'),active:true});
+          saved=true;staffCache=[];
+          const current=me();
+          if(existing&&(current?.docId===docId||(existing.id&&current?.id===existing.id))){saveMe({...current,...data});syncPermissionUI();$('meName').textContent=name;$('av').textContent=name.slice(0,1);}
+          closeModal('staffModal');toast(docId?'スタッフ情報を更新しました':'スタッフを追加しました','ok');
+          if(admin())await loadAdminStaffPane();
+          await loadProfile();
+        }catch(e){console.error(e);toast(saved?'保存済みですが一覧の更新に失敗しました。一覧を開き直してください':'保存できませんでした：'+e.message,'error');}
+        finally{staffSaving=false;if(button)button.disabled=false;}
       }
       async function deleteStaff(id, name) {
         if (!admin()) return toast("スタッフ管理は管理者のみ利用できます", "error");
